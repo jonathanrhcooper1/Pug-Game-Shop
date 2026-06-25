@@ -7,6 +7,8 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
+
 final class PosPaymentRouteDependencyFactory {
 	private const HANDLER_CALLBACKS = array(
 		'ingest_pos_event',
@@ -119,6 +121,7 @@ final class PosPaymentRouteDependencyFactory {
 		$permission_callbacks            = $this->permission_callback_factory()->callbacks_for_contracts( $route_contracts );
 		$validation_summary              = $this->validation_handler_factory()->readiness_summary();
 		$fee_snapshot_summary            = $this->fee_snapshot_handler_factory_summary();
+		$payment_policy                  = SquarePaymentDelegationPolicy::audit_payload();
 		$capability_route_keys           = array_keys( PosPaymentRoutePermissionCallbackFactory::capability_map( $route_contracts ) );
 		$webhook_route_keys              = PosPaymentRoutePermissionCallbackFactory::webhook_route_keys( $route_contracts );
 		$handler_keys                    = array_keys( $this->handlers() );
@@ -146,50 +149,57 @@ final class PosPaymentRouteDependencyFactory {
 		}
 
 		return array(
-			'configured'                                  => array() === $issues,
-			'route_dependency_factory_ready'              => true,
-			'route_contract_count'                        => count( $route_contracts ),
-			'controller_ready'                            => method_exists( PosPaymentController::class, 'has_handler' ),
-			'controller_handler_count'                    => count( $handler_keys ),
-			'controller_handler_callbacks'                => $handler_keys,
-			'controller_handlers_configured'              => $handlers_configured,
-			'permission_factory_ready'                    => true,
-			'permission_callback_count'                   => count( $permission_callbacks ),
-			'capability_permission_route_count'           => count( $capability_route_keys ),
-			'capability_permission_callbacks_configured'  => $capability_callbacks_configured,
-			'webhook_route_count'                         => count( $webhook_route_keys ),
-			'webhook_signature_verifier_configured'       => is_callable( $this->webhook_signature_verifier ),
-			'webhook_permission_callbacks_configured'     => $webhook_callbacks_configured,
-			'registration_planner_ready'                  => method_exists( PosPaymentRouteRegistrationPlanner::class, 'planned_registration_args' ),
-			'registrar_ready'                             => method_exists( PosPaymentRouteRegistrar::class, 'register_enabled_routes' ),
-			'bootstrapper_ready'                          => method_exists( PosPaymentRouteBootstrapper::class, 'bootstrap_current_routes' ),
-			'parser_validation_factory_ready'             => true === ( $validation_summary['parser_validation_factory_ready'] ?? false ),
-			'fee_snapshot_query_planner_ready'            => true === ( $validation_summary['fee_snapshot_query_planner_ready'] ?? false ),
-			'fee_snapshot_query_builder_ready'            => true === ( $validation_summary['fee_snapshot_query_builder_ready'] ?? false ),
-			'fee_snapshot_repository_configured'          => true === ( $validation_summary['fee_snapshot_repository_configured'] ?? false ),
-			'fee_snapshot_repository_adapter_ready'       => true === ( $validation_summary['fee_snapshot_repository_adapter_ready'] ?? false ),
-			'fee_snapshot_repository_deferred'            => true,
-			'fee_snapshot_route_connected_reads_deferred' => true === ( $fee_snapshot_summary['route_connected_reads_deferred'] ?? true ),
-			'fee_snapshot_route_handler_factory_ready'    => true === ( $fee_snapshot_summary['handler_factory_ready'] ?? false ),
-			'fee_snapshot_route_execution_enabled'        => true === ( $fee_snapshot_summary['route_connected_reads_enabled'] ?? false ),
-			'fee_snapshot_route_handler_ready'            => true === ( $fee_snapshot_summary['route_connected_handler_ready'] ?? false ),
-			'fee_snapshot_route_handler_deferred'         => true === ( $fee_snapshot_summary['route_connected_handler_deferred'] ?? true ),
-			'fee_snapshot_route_database_configured'      => true === ( $fee_snapshot_summary['database_configured'] ?? false ),
-			'fee_snapshot_route_dependency_issues'        => $this->list_values( $fee_snapshot_summary['configuration_issues'] ?? array() ),
-			'planned_route_count'                         => count( $route_plans ),
-			'registerable_route_count'                    => count( $registerable_route_keys ),
-			'registerable_route_keys'                     => $registerable_route_keys,
-			'route_registration_deferred'                 => true,
-			'route_connected_reads_deferred'              => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
-			'route_connected_writes_deferred'             => true,
-			'transaction_execution_deferred'              => true,
-			'provider_capture_deferred'                   => true,
-			'provider_inventory_write_deferred'           => true,
-			'webhook_registration_deferred'               => true,
-			'woocommerce_gateway_capture_deferred'        => true,
-			'route_connected_reads_ready'                 => false,
-			'route_connected_writes_ready'                => false,
-			'configuration_issues'                        => array_values( array_unique( $issues ) ),
+			'configured'                                   => array() === $issues,
+			'route_dependency_factory_ready'               => true,
+			'route_contract_count'                         => count( $route_contracts ),
+			'controller_ready'                             => method_exists( PosPaymentController::class, 'has_handler' ),
+			'controller_handler_count'                     => count( $handler_keys ),
+			'controller_handler_callbacks'                 => $handler_keys,
+			'controller_handlers_configured'               => $handlers_configured,
+			'permission_factory_ready'                     => true,
+			'permission_callback_count'                    => count( $permission_callbacks ),
+			'capability_permission_route_count'            => count( $capability_route_keys ),
+			'capability_permission_callbacks_configured'   => $capability_callbacks_configured,
+			'webhook_route_count'                          => count( $webhook_route_keys ),
+			'webhook_signature_verifier_configured'        => is_callable( $this->webhook_signature_verifier ),
+			'webhook_permission_callbacks_configured'      => $webhook_callbacks_configured,
+			'registration_planner_ready'                   => method_exists( PosPaymentRouteRegistrationPlanner::class, 'planned_registration_args' ),
+			'registrar_ready'                              => method_exists( PosPaymentRouteRegistrar::class, 'register_enabled_routes' ),
+			'bootstrapper_ready'                           => method_exists( PosPaymentRouteBootstrapper::class, 'bootstrap_current_routes' ),
+			'parser_validation_factory_ready'              => true === ( $validation_summary['parser_validation_factory_ready'] ?? false ),
+			'fee_snapshot_query_planner_ready'             => true === ( $validation_summary['fee_snapshot_query_planner_ready'] ?? false ),
+			'fee_snapshot_query_builder_ready'             => true === ( $validation_summary['fee_snapshot_query_builder_ready'] ?? false ),
+			'fee_snapshot_repository_configured'           => true === ( $validation_summary['fee_snapshot_repository_configured'] ?? false ),
+			'fee_snapshot_repository_adapter_ready'        => true === ( $validation_summary['fee_snapshot_repository_adapter_ready'] ?? false ),
+			'fee_snapshot_repository_deferred'             => true,
+			'fee_snapshot_route_connected_reads_deferred'  => true === ( $fee_snapshot_summary['route_connected_reads_deferred'] ?? true ),
+			'fee_snapshot_route_handler_factory_ready'     => true === ( $fee_snapshot_summary['handler_factory_ready'] ?? false ),
+			'fee_snapshot_route_execution_enabled'         => true === ( $fee_snapshot_summary['route_connected_reads_enabled'] ?? false ),
+			'fee_snapshot_route_handler_ready'             => true === ( $fee_snapshot_summary['route_connected_handler_ready'] ?? false ),
+			'fee_snapshot_route_handler_deferred'          => true === ( $fee_snapshot_summary['route_connected_handler_deferred'] ?? true ),
+			'fee_snapshot_route_database_configured'       => true === ( $fee_snapshot_summary['database_configured'] ?? false ),
+			'fee_snapshot_route_dependency_issues'         => $this->list_values( $fee_snapshot_summary['configuration_issues'] ?? array() ),
+			'planned_route_count'                          => count( $route_plans ),
+			'registerable_route_count'                     => count( $registerable_route_keys ),
+			'registerable_route_keys'                      => $registerable_route_keys,
+			'route_registration_deferred'                  => true,
+			'route_connected_reads_deferred'               => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
+			'route_connected_writes_deferred'              => true,
+			'transaction_execution_deferred'               => true,
+			'provider_capture_deferred'                    => true,
+			'provider_inventory_write_deferred'            => true,
+			'webhook_registration_deferred'                => true,
+			'woocommerce_gateway_capture_deferred'         => true,
+			'payment_capture_authority'                    => $payment_policy['payment_capture_authority'],
+			'official_square_payment_extension'            => $payment_policy['official_square_payment_extension'],
+			'official_woocommerce_square_extension_status' => $payment_policy['official_woocommerce_square_extension_status'],
+			'official_woocommerce_square_extension_active' => $payment_policy['official_woocommerce_square_extension_active'],
+			'plugin_square_payment_capture_allowed'        => $payment_policy['plugin_square_payment_capture_allowed'],
+			'plugin_square_custom_gateway_allowed'         => $payment_policy['plugin_square_custom_gateway_allowed'],
+			'square_payment_delegation_policy'             => $payment_policy,
+			'route_connected_reads_ready'                  => false,
+			'route_connected_writes_ready'                 => false,
+			'configuration_issues'                         => array_values( array_unique( $issues ) ),
 		);
 	}
 

@@ -18,12 +18,308 @@
 - `.github/workflows/pull-request-quality-gates.yml` runs local PHP checks,
   validates `.wp-env.json`, confirms required test scaffolds exist, and scans
   for production secret markers on pull requests.
+- `npm run staging:route-check` performs a public, credential-free staging
+  probe for the WordPress REST root, `tcg-store/v1` namespace, authenticated
+  health route registration signal, public connector manifest, and noindex
+  controls. On 2026-06-08 the live staging URL passed the REST root and
+  noindex checks but failed namespace, health, and connector-manifest checks
+  with `404 rest_no_route`. A follow-up read-only SSH/WP-CLI inspection showed
+  the package zips were in uploads but the plugin was not installed; the
+  current package was then installed into `wp-content/plugins`, and a later
+  check confirmed `tcg-store-platform` active at version `0.156.0`. After
+  staging constants were added to `wp-config.php`, route check passed and
+  authenticated health reported database version `10`, role version `2`,
+  environment `staging`, emails disabled, public indexing blocked, payment
+  capture deferred, provider inventory deferred, staff banner enabled, and a
+  secret-safe staging connector manifest.
+- `npm run staging:configure-scrydex` now has packaging contract coverage for
+  its dry run, status mode, stdin-based WP-CLI credential handoff, redacted
+  readiness output, temporary runner cleanup, and no provider network/data
+  writes. The command is intentionally separate from `npm run
+  scrydex:live-smoke` and from future database-writing sync workers.
+- `npm run staging:configure-offline-pairing` now has packaging contract
+  coverage for dry run/status modes, stdin-based WP-CLI handoff, hashed
+  pairing-code storage, redacted policy output, temporary runner cleanup,
+  device-pairing route gating, and no device-token issuance, sync network
+  requests, pull/push/conflict route enablement by default, or WordPress data
+  writes.
+- `npm run staging:install-package` now has packaging contract coverage for
+  the confirmed upload/install/activate path, including WP-CLI
+  `plugin install --force --activate`, active-plugin verification, and clear
+  separation from the upload-only helper that never creates a pending
+  activation state.
+- `npm run staging:offline-pairing-smoke` now has packaging contract coverage
+  for a generated one-time pairing code, temporary `offline_sync` and
+  device-pairing route gates, public REST pairing request, redacted
+  one-time-token reporting, smoke-device cleanup, previous gate restoration,
+  and continued default closure of pull, push, and conflict routes.
+- `npm run staging:offline-sync-smoke` now has packaging contract coverage for
+  temporary pairing/pull/push route gates, public REST pull/push execution,
+  temporary sync queue/conflict persistence, smoke row cleanup, route/feature
+  restoration, token redaction, deferred canonical inventory writes, and no
+  Square, payment, POS, ScryDex, production, or credential-printing side
+  effects.
+- Offline app contract coverage now verifies queue refresh and selective
+  voiding controls: `Refresh Desktop Queue` calls the Tauri list command when
+  available, and `Void Selected Operation` removes one selected operation while
+  avoiding website, Square, ScryDex, payment, or production writes.
+- Offline app Rust and contract coverage now verifies desktop queue voiding:
+  selected pending operation IDs are sanitized, marked `rejected` in SQLite,
+  removed from pending restore, and still avoid direct MySQL, network, website,
+  Square, ScryDex, payment, or production writes.
+- Offline app contract coverage now verifies queue management actions:
+  selectable queued operation cards, selected-operation review, secret-safe copy
+  and JSON export controls, session queue clearing, and explicit
+  `credentials_synced_to_app: false` payload boundaries.
+- PHP unit coverage now verifies staging safety controls: staging blocks public
+  indexing, returns noindex robots/meta/header output, suppresses customer
+  emails by default, renders a staff/admin banner, and honors explicit sandbox
+  overrides for email/indexing tests.
+- PHP and offline app contract coverage now verifies public-safe connector
+  identity: the WordPress manifest exposes stable company/site/environment
+  identity fields, and the desktop app validates/imports that identity without
+  syncing WordPress, ScryDex, Square, SSH, or payment credentials.
+- Offline app contract and browser coverage now verifies event queue review:
+  queued registrations and check-ins render as readable staff rows with event,
+  attendee, payment/check-in, local queue source, timestamp, and payload
+  summary details, while fresh browser console logs remain clean.
+- Offline app contract and browser coverage now verifies customer credit
+  ledger review: cached website ledger rows and pending local queue redemption
+  rows render together, and pending-hold totals are derived from queued
+  operations after session restore.
+- Offline app contract and browser coverage now verifies customer credit
+  account selection: cached customer directory entries can be selected, lookup
+  details render, and pending credit holds remain scoped per customer.
+- Offline app contract and browser coverage now verifies label printing:
+  `Print Label` creates a structured offline label job with barcode, card,
+  price, location, company, and printable payload text.
+- Offline app contract and browser coverage now verifies inventory quantity
+  adjustment controls: staff-entered signed deltas and reasons stage exact
+  `quantity_delta` payloads, while zero or malformed changes are blocked.
+- Offline app connector coverage now verifies route-missing manifest guidance,
+  and the live staging check confirmed `/wp-json/` responds while
+  `/wp-json/tcg-store/v1/offline/connector-manifest` and `/health` return 404
+  until the staging plugin is installed/activated.
+- Offline app contract and browser coverage now verifies event workflow inputs:
+  attendee labels, pay-at-store status, and sanitized check-in public IDs flow
+  into queued `event_reservation` and `event_checkin` operation payloads.
+- Offline app contract and browser coverage now verifies customer-credit
+  redemption amount controls: valid staff-entered dollar amounts stage exact
+  minor-unit payloads, while over-balance amounts are blocked against the
+  cached balance after local holds.
+- Offline app contract and browser coverage now verifies scanner/search
+  targeting for exact barcodes and public inventory IDs: pressing Enter stages
+  the matched cached card, and unmatched scans display the "Scan needs one
+  match" guard without staging the previous selection.
+- Local verification now includes `cargo test` for the Tauri Rust command
+  SQLite queue persistence path on Windows when Rust/Cargo and the MSVC linker
+  are installed.
+- Tauri Rust command coverage now includes authenticated offline pull/push sync
+  request validation, missing-token blocking, sanitized WordPress response
+  summary extraction, and no raw-token/raw-response return guarantees. Browser
+  sanity verification also covers the `Sync Now` desktop sync execution panel
+  in preview mode with no console warnings/errors or horizontal overflow.
+- Offline app contract and Rust coverage now verifies sanitized push outcome
+  operation IDs and local queue replay application: accepted IDs are removed
+  from the local queue while conflicts/rejections remain visible.
+- Offline app Rust coverage now verifies the desktop
+  `mark_offline_operations_synced` command updates accepted SQLite queue rows
+  to `synced`, keeps unresolved rows pending, and rejects empty/unsafe IDs.
+- Offline app contract coverage now verifies secret-free paired-device metadata
+  storage, local restore, desktop secure-store token status checks, Sync Now
+  paired-token readiness fields, and UI markers proving raw tokens are not
+  stored in browser storage or returned to React.
+- Offline app contract coverage now verifies cached event registration and
+  waitlist UI markers plus `event_reservation` operation envelopes for offline
+  walk-in registration, including payload sync intent, payment status, seat
+  snapshot, and secret-free authorization context.
+- Offline app contract coverage now verifies profile-scoped local session
+  storage keys, active-profile restore/rejection behavior, and legacy shared
+  session migration fallback for multi-company use.
+- Local WordPress and offline app coverage now verifies `event_checkin`
+  offline push parsing, stale event conflict handling, queue persistence,
+  deferred canonical mutation planning/query templates, Tauri queue acceptance,
+  and offline app Check In UI/envelope markers.
+- Local unit coverage now includes offline route runtime settings, contract
+  mutation, staging-only feature availability, runtime-aware bootstrap/health
+  planning, and pairing-route registration readiness.
+- Local unit coverage now verifies offline pairing authorization settings can
+  hash a raw Settings API pairing code on save while discarding the raw value,
+  and PHP lint covers the admin settings renderer for pairing hashes,
+  manager/location allow lists, mode scopes, and UTC expiry.
+- Local ScryDex provider coverage now targets the documented
+  `/pokemon/v1/cards` endpoint shape, including live response `data` rows,
+  `page_size`/`total_count` pagination fields, and game-context normalization.
+- Local packaging coverage now builds the WordPress plugin zip and verifies
+  the archive root, runtime entry points, runtime route-gate files, and absence
+  of tests/vendor/dev config.
+- Local unit coverage now includes ScryDex provider settings sanitization,
+  blank-field secret preservation, explicit clear flags, server-only provider
+  context, and public readiness output that redacts saved Team ID and key
+  values.
+- Local unit coverage now includes ScryDex provider factory readiness, injected
+  transport provider construction, missing-settings behavior, and admin/health
+  redaction guarantees.
+- Local unit coverage now includes ScryDex sync dry-run planning for first-page
+  requests, checkpoint resume cursors, configured-state redaction, page-size
+  clamping, invalid game fallback, and execution deferrals.
+- Local unit coverage now includes ScryDex sync execution gate diagnostics for
+  default blocked state, configured-provider gated state, secret-free health
+  output, and future-ready dependency reporting without live network calls or
+  database writes.
+- Local unit coverage now includes ScryDex usage-budget settings and
+  cards-page budget planning for disabled defaults, sanitized configured
+  budgets, invalid reserve limits, deferred usage-provider requests, and
+  already-fetched usage snapshots that block over-budget sync attempts.
+- Local unit coverage now includes ScryDex checkpoint repository planning for
+  read/upsert SQL templates, nullable resume fields, invalid table prefixes,
+  invalid checkpoint identities, and execution-gate checkpoint readiness.
+- Local unit coverage now includes provider price observation schema migration
+  contracts for ScryDex market-price snapshots, migration plan/rollback target
+  updates, and persistence planner observation IDs, game context, timestamps,
+  and sync job IDs.
+- Local unit coverage now includes ScryDex persistence SQL staging for
+  reference-card inserts, changed-row updates, provider price observation
+  inserts, checkpoint upsert plans, invalid source plans, table-prefix guards,
+  and repository deferred audit results.
+- Local unit coverage now includes ScryDex persistence repository readiness
+  diagnostics and execution-gate wiring, proving valid table prefixes produce
+  staged repository readiness and invalid prefixes keep the worker blocked.
+- Local unit coverage now includes ScryDex cards worker orchestration planning
+  for injected/mock provider pages, rate-limited provider results, persistence
+  query/repository staging, invalid table-prefix blocking, and no network or
+  database write execution.
+- Local unit coverage now includes Square inventory sync readiness diagnostics
+  for default sandbox probe planning, production-context rejection, supplied
+  inventory rows, admin System Status summaries, deferred catalog/inventory
+  writers, and continued payment authority delegation to the official
+  WooCommerce Square extension.
+- Local unit coverage now includes Square inventory batch sync planning for
+  multiple staged inventory rows, hidden/unmapped skip handling, invalid row
+  rejection, production-context blocking, aggregate idempotency keys/SKUs, and
+  retained Square network/write/payment deferrals.
+- Local unit and WordPress smoke coverage now include Square inventory batch
+  sync readiness diagnostics for default sandbox probe rows, supplied row
+  probes, production-context blocking, admin summaries, health output, Square
+  operation counts, and retained provider-write/payment deferrals.
+- Local unit coverage now includes official WooCommerce Square extension
+  status detection for inactive, active-plugin, installed-inactive, and loaded
+  class-signal cases, plus POS/readiness/admin payload assertions that payment
+  capture remains delegated to the official extension.
+- `apps/offline-app/tests/ui-shell-contract.mjs` verifies the offline app
+  inventory workspace keeps its scanner/search, sync queue, conflict center,
+  customer credit, grouped sync controls, selected-card visual frame, detail
+  action cluster, connector profile controls, active navigation, filter/grid
+  interaction markers, empty search state, responsive mobile title constraint,
+  and no-production-secret UI markers in place. The current visual/functional
+  checkpoint also captures desktop `1440x1000` and mobile `390x844` Chrome
+  screenshots against the Vite dev server, clicks filters, grid/list controls,
+  `Sync Now`, `Stage New Update`, and `Test Website Connector`, verifies the
+  filtered detail panel follows Mox Amber, and checks for zero horizontal
+  overflow or console warnings/errors.
+- `apps/offline-app/tests/workspace-state-contract.mjs` verifies the offline
+  app's typed local workspace state includes the planned sync routes,
+  reusable company/site connector profiles, SQLite operation envelope fields,
+  WordPress connector manifest ingestion/validation helpers, queued inventory
+  operation markers, customer-credit redemption envelopes, conflict-review
+  envelopes, redacted device-pairing request planning, REST-ready offline push
+  batch shaping, deferred push request planning, response summarization, and
+  no direct external endpoint or database access markers. The offline app
+  package contract also runs `tsc --noEmit`.
+- Root offline app test coverage now runs TypeScript typechecking before the
+  contract suite and verifies the local pull-refresh preview created by
+  `Sync Now`, including refreshed row counts and queued-operation preservation.
+- Root offline app test coverage now also runs the Tauri Rust command tests
+  through `scripts/run-offline-app-rust-tests.mjs`, which resolves the user
+  Cargo path on Windows before invoking `cargo test`.
+- Tauri Rust command coverage now verifies local SQLite `operation_queue`
+  creation, accepted operation inserts, duplicate `client_operation_id`
+  idempotency, invalid payload rejection, unsupported operation rejection, and
+  no direct MySQL or network write behavior.
+- Tauri Rust command coverage now also verifies pending-operation read-back
+  from local SQLite, bounded restore limits, row validation, and startup bridge
+  contract markers for hydrating the visible queue in the desktop app.
+- Tauri Rust command coverage now verifies desktop secure-store device-token
+  commands for storing, checking, deleting, scope validation, short-token
+  rejection, missing device ID rejection, keyring account normalization, and
+  no raw token return. Contract tests verify the TypeScript adapters use Tauri
+  commands instead of browser storage.
+- Tauri Rust command coverage now verifies the desktop pairing response path
+  for WordPress device registration: successful one-time token responses are
+  stored in the secure store without returning raw tokens, while rejected
+  WordPress responses fail without persisting credentials.
+- Windows packaging verification now has a PATH-aware helper for
+  `x86_64-pc-windows-msvc` NSIS builds; the latest local package build produced
+  an unsigned installer successfully after Cargo was prepended to PATH.
+- Offline app browser verification now covers the functional local-session
+  controls at desktop width: stage inventory update, prepare print label,
+  review/approve all conflicts into history, stage customer-credit use into a
+  pending hold, add a second company connector profile, validate its connector
+  manifest, and confirm no console warnings/errors or horizontal overflow. A
+  mobile-width pass verifies the compact Settings nav remains accessible by
+  button name and the connector editor can save a profile without overflow.
+- Local unit and WordPress smoke coverage now include the WordPress offline
+  connector manifest diagnostics, proving authenticated health exposes the
+  company/site profile, route count, offline device-token auth mode, desktop
+  secure credential storage boundary, official WooCommerce Square payment
+  authority, ScryDex server-side credential storage, and no credential sync to
+  the offline app.
+- Local unit coverage now includes the public-safe offline connector manifest
+  route contract at `/offline/connector-manifest`, proving it is read-only,
+  exposes the expected manifest URL, and does not register device pairing,
+  pull, push, or conflict routes.
+- Offline app contract coverage now verifies live connector manifest fetch
+  markers, credential-free `fetch` options, timeout handling, local preview
+  validation, and multi-company profile import state for website connector
+  testing.
+- Offline app contract coverage now verifies the pairing route REST-index
+  check, future WordPress pairing request body fields, explicit
+  no-raw-code/no-credential-sync UI text, and continued deferral of live token
+  issuance until secure-store support is connected.
+- Local unit and WordPress smoke coverage now include the app pairing contract
+  inside offline pairing readiness, proving `/offline/devices/register`,
+  requested offline scopes, redacted pairing-code handling, desktop secure
+  token storage, network/token deferrals, and no credential sync to the app.
+- `apps/offline-app/tests/queue-bridge-contract.mjs` verifies staged offline
+  queue operations stay behind a Tauri command adapter boundary and do not use
+  direct browser storage or network writes.
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs` verifies the
+  offline app produces the SQLite `operation_queue` insert plan, keeps it
+  visible in the bridge/UI/Tauri command boundary, and leaves local
+  persistence, queue replay, canonical website mutations, network writes, and
+  direct MySQL access deferred.
+- `apps/offline-app/tests/tauri-command-contract.mjs` verifies the desktop
+  command scaffold, frontend Tauri adapter detection, Rust serde dependencies,
+  supported offline operation/entity type validation, and no direct browser
+  storage/network markers. The offline app Windows workflow also runs
+  `cargo test` for the Tauri command tests when Rust is available in CI.
+- `packages/api-client/tests/woocommerce-product-adapter.mjs` verifies staged
+  WooCommerce create/update/stockout request plans stay non-production,
+  reject live-looking credential contexts, keep writes deferred, and preserve
+  the official WooCommerce Square handoff for catalog/inventory sync.
 - `.github/workflows/php.yml` runs Composer validation, dependency audit,
   syntax checks, unit tests, bootstrap smoke, and WordPress coding standards
   against PHP 8.1, 8.2, and 8.3.
 - `.github/workflows/wordpress-integration.yml` provisions WordPress and MySQL
   in GitHub Actions, installs WooCommerce, activates the plugin, and runs
   `apps/wordpress-plugin/tests/wordpress-integration-smoke.php` through WP-CLI.
+  It then switches to `WP_ENVIRONMENT_TYPE=staging`, enables only the
+  inventory/pricing feature plus staff search/create runtime gates, and runs
+  `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php` to prove
+  the staff `/inventory/search` and `POST /inventory` routes can execute while
+  public reads, WooCommerce projection, Square projection, labels, POS
+  ingestion, and production route availability remain closed. The staging smoke
+  seeds one disposable Pokemon inventory row, creates one disposable Bulbasaur
+  row through REST, verifies its initial price-change log row, and asserts
+  staff search returns both rows with staff SKU data. The workflow also runs an
+  explicit destructive migration rehearsal in the disposable database, rolling
+  from the current target to schema version `1`, verifying Phase 2 and provider
+  price observation tables are dropped, migrating back to the target, and
+  verifying those tables return. It
+  then runs an explicit non-production inventory search benchmark fixture that
+  seeds 50,000 disposable rows and emits baselines for public visible search,
+  staff deep pagination, and staff barcode lookup through the staged search
+  handler.
 - `apps/wordpress-plugin/tests/wp-now-blueprint.json` can be used with
   `npx @wp-now/wp-now start --blueprint=tests/wp-now-blueprint.json` for a
   local WordPress Playground smoke site when Docker/MySQL are unavailable.
@@ -33,6 +329,84 @@
 - Local unit coverage now includes event registration input validation,
   registration policy outcomes, and registration response shaping. WordPress
   integration smoke coverage asserts the local registration route is registered.
+- Local unit coverage now includes inventory intake persistence planning for
+  schema-aligned insert templates, stable public IDs, fallback barcode/SKU
+  generation, money normalization, listed/sold timestamps, actor attribution,
+  unsafe table-prefix rejection, incomplete request rejection, and deferred
+  repository/projection metadata.
+- Local unit coverage now includes the explicit inventory intake repository
+  adapter for prepared `$wpdb` inserts, invalid-plan short-circuiting,
+  table-prefix mismatch rejection, failed insert handling, zero/unexpected
+  insert-count rejection, duplicate barcode/SKU preflight rejection,
+  transactional initial price-change log persistence, rollback on price-log
+  insert failure, created-item response payloads, and audit redaction.
+- Local unit coverage now includes staged inventory intake route handler and
+  factory composition for successful created-item responses, invalid payload
+  short-circuiting, repository failure rejection, default write deferral,
+  explicitly enabled repository-backed writes, initial price-log response
+  metadata, side-effect-free WooCommerce/Square projection contracts, provider
+  failures, and table prefix issues.
+- Local unit coverage now includes gated inventory route registration planning
+  and registrar behavior for default-disabled routes, explicit public-read
+  gating, explicit write-gate clearing, injected controller handler readiness,
+  capability permission callbacks, public-read permission callbacks, and locked
+  device/owner permission routes.
+- Local unit coverage now includes inventory public-read rate limiting,
+  covering missing-limiter public denial, per-bucket limit enforcement, window
+  reset behavior, readiness reporting, and staff capability fallback when
+  public reads are not safely open.
+- Local unit coverage now includes inventory route dependency factory and
+  status presentation behavior for blocked default dependencies, staged
+  search/create handler composition, permission callback assembly, registrar
+  handoff, controller dispatch, and admin/health readiness summaries.
+- WordPress integration smoke coverage now asserts authenticated health exposes
+  inventory route dependency readiness while inventory search and create routes
+  remain unregistered by default.
+- Local unit and WordPress smoke coverage now include the inventory route
+  bootstrapper, proving blocked, gated, and future-ready route registration
+  paths while the production default remains unregistered.
+- Local unit coverage now verifies the default inventory dependency graph
+  exposes staged search/intake handler factories while route-connected reads
+  and writes remain deferred.
+- Local unit coverage now includes the staff Inventory admin workspace
+  presenter, covering readiness rows, route contract lockout rows, and default
+  pending checkpoint rows.
+- Local unit coverage now includes the staff Inventory admin search panel,
+  covering default lockout, staging-ready route state, safe filter
+  sanitization, and route metadata for the read-only REST-backed results table.
+- Local unit coverage now includes the staff Inventory admin intake panel,
+  covering default lockout, staging-ready route state, safe form sanitization,
+  and route metadata for the gated REST-backed create form.
+- Local unit coverage now includes the staff Inventory admin card lookup UI,
+  proving reference-search results expose image URL, set/number, stock/price
+  context, condition and quantity controls, and intake handoff markers.
+- Local unit coverage now includes Staff Inventory workspace projection
+  planning readiness, proving WooCommerce/Square contracts can be marked ready
+  while external writes remain deferred.
+- Local unit coverage now includes WooCommerce product write request planning
+  for serialized-card create/update/stockout envelopes, non-production
+  environment gating, idempotency keys, product IDs/SKUs, and continued
+  product-write/payment/Square deferrals.
+- Local unit coverage now includes WooCommerce write request readiness wiring
+  through guarded projection execution, staged inventory create metadata,
+  dependency health/admin summaries, Staff Inventory workspace rows, and
+  production request-context rejection before writer callbacks.
+- Package-level API-client coverage now includes WooCommerce product adapter
+  validation for staged create/update/stockout request plans, production/live
+  credential rejection, deferred WordPress/WooCommerce writes, and official
+  WooCommerce Square handoff.
+- Offline app package coverage now includes reconnect push request planning
+  and response summarization for queued operation batches while network
+  execution, direct MySQL access, production API keys, queue replay, and
+  canonical mutations stay deferred.
+- Local unit coverage now includes inventory route runtime settings,
+  staging-only staff search/create route contract configuration, and dependency
+  factory proof that staff inventory search and create routes register only
+  when their runtime contracts, handlers, and permission dependencies are
+  explicitly ready.
+- Local unit coverage now includes environment-aware feature flag availability,
+  proving inventory/pricing can be enabled for local/development/staging while
+  production sanitizes it off.
 - Local unit coverage now includes customer credit schema, entry type sign and
   manager-approval rules, posting policy previews, and ledger posting service
   idempotency. WordPress integration smoke coverage asserts customer credit
@@ -156,10 +530,16 @@
   hold transitions back to available inventory.
 - Local unit coverage now includes manager override policy behavior for
   below-minimum sale approval, distinct manager checks, required reasons,
-  invalid amounts, and override-row persistence requirements.
+  manager reauthentication, reauthentication timestamps, invalid amounts, and
+  override-row persistence requirements.
 - Local unit coverage now includes manager override persistence/audit payload
   planning for accepted below-minimum approvals, rejected decisions,
-  no-row-required decisions, optional context IDs, and price formatting.
+  no-row-required decisions, optional context IDs, price formatting, stable
+  fallback public IDs, and reauthentication audit hashes.
+- Local unit coverage now includes manager override repository persistence for
+  approved override rows, skipped plans, table-prefix validation, invalid-row
+  rejection, failed inserts, unexpected insert counts, and raw reason redaction
+  from repository audit payloads.
 - Local unit coverage now includes WooCommerce serialized cart item metadata
   validation for exact inventory/reservation identifiers, owner token hashes,
   quantity-one enforcement, reservation expiry, price snapshots, and currency.
@@ -229,6 +609,20 @@
   domain responses, request cursor carry-forward, normalized data rows,
   tombstone inclusion/exclusion, UTC timestamps, entity IDs, row versions, and
   invalid response contract inputs.
+- Offline app coverage now includes sanitized live pull inventory, active
+  customer credit, event snapshot, and conflict snapshot extraction in the
+  Tauri command, TypeScript pull-record cache application, stale row rejection,
+  unmatched-customer rejection, inserted/updated counts, credit redemption
+  preview capping, event registration count capping, event conflict operation
+  preservation, manager override preservation, and visible Sync Now cache apply
+  status markers.
+- Offline app coverage now includes guarded desktop conflict-resolution request
+  shaping, route validation, idempotency/header checks, no-raw-response
+  summaries, UI live-apply/fallback markers, and Windows package manifest route
+  exposure.
+- Packaging coverage now includes a shared staging SSH helper contract so all
+  guarded SFTP/WP-CLI staging scripts use the same GoDaddy-compatible
+  algorithm configuration and continue to avoid printing credentials.
 - Local unit coverage now includes the staged offline pull route handler,
   proving valid requests return the presenter-shaped response contract,
   injected change-set providers are passed through without cursor advancement,
@@ -546,12 +940,83 @@
   execution is explicitly cleared.
 - Local unit coverage now includes POS/payment dependency health/admin status
   assertions for route-connected read deferral and read-ready state.
+- Local unit coverage now includes Square inventory projection planning for
+  visible available serialized cards, zero-count unavailable mapped cards,
+  hidden/unmapped skip behavior, required scan identity/price/location
+  validation, existing Square ID handling, and explicit network/payment
+  deferrals.
 - Local unit coverage now includes ScryDex sync page processor planning for
   normalized reference rows, price rows, invalid-card errors, checkpoint
   advancement, and retryable provider failures.
 - Local unit coverage now includes ScryDex persistence planning for
   deterministic reference-card inserts, changed-row updates, unchanged-row
   detection, price observations, and failed page plan guards.
+- Local unit coverage now includes ScryDex persistence query building and
+  repository staging for SQL templates, prepare-argument counts, checkpoint
+  upserts, deferred execution audit rows, and invalid-plan rejection.
+- Local unit coverage now includes ScryDex persistence readiness health/gate
+  wiring for empty-page repository probes, derived gate state, and retained
+  database-write deferrals.
+- Local unit coverage now includes ScryDex cards worker orchestration planning
+  for full mock page staging, retryable provider failures, credential
+  redaction, injected-result requirements, and retained deferrals.
+- Local unit coverage now includes inventory search SQL-template planning for
+  public/staff/hidden card listings, prepared `SELECT` and `COUNT` templates,
+  scan-column filters, pagination arguments, and tamper rejection.
+- Local unit coverage now includes the explicit inventory search repository
+  adapter for prepared `$wpdb` reads, selected row normalization, count
+  loading, invalid-plan short-circuiting, table-prefix mismatch rejection,
+  database failure handling, malformed-row rejection, and audit metadata.
+- Local unit coverage now includes staged inventory search route handler and
+  factory composition for public redaction, staff fields, invalid query
+  short-circuiting, repository failure rejection, default read deferral,
+  explicitly enabled repository-backed reads, provider failures, and table
+  prefix issues.
+- Local unit coverage now includes WooCommerce product projection planning for
+  exact serialized inventory rows, covering available visible product
+  create/update payloads, mapped unavailable stockout updates, hidden/unmapped
+  skips, scan identity and price validation, store-currency mismatch blocking,
+  single-quantity enforcement, serialized metadata, and deferred WooCommerce
+  write metadata.
+- Local unit coverage now includes guarded WooCommerce product projection
+  execution, covering default execution lockout, skipped/failed projection
+  handling, explicit staging writer execution, writer failure rejection, and
+  audit-safe deferral metadata.
+- WordPress integration staging smoke coverage now asserts staged inventory
+  create responses expose WooCommerce product and Square inventory projection
+  contracts while keeping external writes and network calls deferred.
+- Local unit coverage now includes guarded Square inventory projection
+  execution, covering default network-write lockout, skipped/failed projection
+  handling, explicit catalog/inventory writer execution, writer failure
+  rejection, and payment-capture authority delegation through the official
+  WooCommerce Square extension.
+- Shared POS validation now includes Square payment delegation coverage,
+  proving plugin payment capture, refund execution, and custom gateway capture
+  remain disallowed while inventory sync and reconciliation stay permitted.
+- Local WordPress unit coverage now includes the reusable Square payment
+  delegation policy plus POS/payment readiness, POS/payment dependency,
+  Square projection, and inventory workspace assertions proving admin/health
+  surfaces show that payment capture/refunds/custom gateway behavior belong to
+  the official WooCommerce Square extension.
+- Root automation now includes the API-client Square inventory adapter
+  executable test, covering sandbox Catalog/Inventory request planning,
+  production/live credential rejection, idempotency/external ID preservation,
+  reconciliation-only Square POS line mapping, and unmapped-line staff
+  conflicts.
+- Local WordPress unit coverage now includes the PHP Square inventory sync
+  request planner, covering sandbox Catalog/Inventory envelope planning,
+  skipped/failed projections, zero-count mapped inventory changes, external ID
+  extraction, official Square payment delegation metadata, production-declared
+  credential rejection, and deferred network/provider writes.
+- Local WordPress unit coverage now includes Square sync request planner
+  wiring through projection execution, inventory dependency health/admin
+  summaries, and the Inventory workspace, including production-context
+  rejection before writer callbacks can run.
+- WordPress integration coverage now includes a non-production inventory search
+  benchmark fixture that seeds 50,000 deterministic disposable rows, runs
+  public visible search, staff deep pagination, and staff barcode lookup
+  through the staged search handler, and emits timing baselines for target
+  staging review.
 
 ## Required Test Backlog
 
@@ -566,7 +1031,7 @@ corresponding modules are implemented:
 - Reservation database integration, concurrent double-sell prevention tests,
   Action Scheduler cleanup workers, and WooCommerce cart timer integration.
 - Customer credit ledger database integration and replay tests.
-- Manager override persistence, manager reauthentication, and audit tests.
+- Manager override REST/checkout integration and live database replay tests.
 - ScryDex database write workers, scheduled worker, image download,
   usage-budget, and webhook integration tests.
 - External tournament-provider registration worker tests are deferred.
@@ -578,8 +1043,9 @@ corresponding modules are implemented:
   callback wiring, device last-seen database writes, live conflict reads/writes,
   conflict audit persistence, device auth, and full reconnect integration
   tests.
-- Live POS/payment sandbox contract tests, WooCommerce gateway lifecycle tests,
-  and provider webhook reconciliation tests.
+- Live POS/payment sandbox contract tests, Square catalog/inventory sandbox
+  projection tests, WooCommerce gateway lifecycle tests, and provider webhook
+  reconciliation tests.
 
 ## Critical Business Tests
 
@@ -629,6 +1095,12 @@ corresponding modules are implemented:
 - Concurrent redemption cannot overspend.
 - Manager approval for adjustment/void/merge.
 - Offline conflict cannot create silent negative balance.
+- Offline conflict resolution SQL updates require the expected conflict row
+  version, a mutable current status, and a single affected row before the
+  repository reports the manager decision as applied.
+- Offline conflict resolution REST adapters must stay deferred by default, then
+  apply or report stale manager decisions only when the conflict route gate,
+  current-row lookup, repository, and manager permission callback are present.
 
 ### Buylist
 

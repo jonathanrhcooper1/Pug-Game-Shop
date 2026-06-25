@@ -1,0 +1,451 @@
+.tcg-events,
+.tcg-event-detail {
+  --pug-event-ink: var(--tcg-text, #101820);
+  --pug-event-blue: var(--tcg-primary, #0f5f8f);
+  --pug-event-gold: var(--tcg-accent, #ffd044);
+  --pug-event-line: rgba(16, 24, 32, 0.12);
+  color: var(--pug-event-ink);
+  width: 100%;
+  max-width: 100%;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.tcg-events {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.tcg-events:has(.tcg-event-card:only-child) {
+  grid-template-columns: minmax(280px, 420px);
+}
+
+.tcg-events:has(.tcg-event-card:nth-child(2):last-child) {
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+}
+
+.tcg-events-empty,
+.tcg-event-detail-empty {
+  display: block;
+  padding: 18px;
+  color: #f8fbff;
+  background: linear-gradient(135deg, rgba(15, 95, 143, 0.28), rgba(255, 208, 68, 0.14));
+  border: 1px solid rgba(255, 208, 68, 0.34);
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+  font-weight: 800;
+}
+
+.tcg-event-card,
+.tcg-event-detail {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--pug-event-line);
+  border-radius: 8px;
+  box-shadow: 0 12px 34px rgba(16, 24, 32, 0.08);
+}
+
+.tcg-event-card {
+  min-width: 0;
+  padding: 0;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.tcg-event-card:hover,
+.tcg-event-card:focus-within {
+  border-color: rgba(255, 208, 68, 0.68);
+  box-shadow: 0 18px 42px rgba(16, 24, 32, 0.16);
+  transform: translateY(-2px);
+}
+
+.tcg-event-card__link {
+  display: grid;
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tcg-event-card__link:focus-visible {
+  outline: 3px solid rgba(255, 208, 68, 0.88);
+  outline-offset: 4px;
+}
+
+.tcg-event-detail {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.tcg-event-card--pokemon,
+.tcg-event-hero--pokemon {
+  --pug-event-game: #ffd044;
+}
+
+.tcg-event-card--mtg,
+.tcg-event-card--magic,
+.tcg-event-card--magic-the-gathering,
+.tcg-event-hero--mtg,
+.tcg-event-hero--magic,
+.tcg-event-hero--magic-the-gathering {
+  --pug-event-game: #4fdcf4;
+}
+
+.tcg-event-card--lorcana,
+.tcg-event-hero--lorcana {
+  --pug-event-game: #c879ff;
+}
+
+.tcg-event-card--riftbound,
+.tcg-event-hero--riftbound {
+  --pug-event-game: #79d78f;
+}
+
+.tcg-event-hero {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  color: #f8fbff;
+  background:
+    linear-gradient(135deg, rgba(8, 18, 31, 0.96), rgba(18, 59, 89, 0.88)),
+    radial-gradient(circle at 88% 0%, rgba(255, 208, 68, 0.2), transparent 32%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.tcg-event-card .tcg-event-hero {
+  min-height: 230px;
+  margin: 0;
+}
+
+.tcg-event-hero__game {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: rgba(248, 251, 255, 0.82);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tcg-event-game-mark {
+  display: inline-grid;
+  min-width: 58px;
+  min-height: 40px;
+  place-items: center;
+  color: #07131d;
+  background: var(--pug-event-game, var(--pug-event-gold));
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.tcg-event-game-mark--pokemon {
+  color: #11285f;
+  background: linear-gradient(135deg, #ffd044, #f7f1a7);
+}
+
+.tcg-event-game-mark--magic-the-gathering {
+  color: #052033;
+  background: linear-gradient(135deg, #4fdcf4, #d7fbff);
+}
+
+.tcg-event-game-mark--lorcana {
+  color: #23073d;
+  background: linear-gradient(135deg, #c879ff, #f0d7ff);
+}
+
+.tcg-event-game-mark--riftbound {
+  color: #07220e;
+  background: linear-gradient(135deg, #79d78f, #d8ffe0);
+}
+
+.tcg-event-hero h2,
+.tcg-event-hero h3 {
+  color: #ffffff;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 30px;
+  line-height: 1.04;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.32);
+}
+
+.tcg-event-card .tcg-event-hero h3 {
+  font-size: 22px;
+  line-height: 1.08;
+}
+
+.tcg-event-hero__meta {
+  color: rgba(248, 251, 255, 0.78) !important;
+  font-size: 14px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.tcg-event-card .tcg-event-hero .tcg-event-card__image {
+  width: 100%;
+  height: 132px;
+  margin: 0;
+  overflow: hidden;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+
+.tcg-event-detail .tcg-event-hero .tcg-event-card__image {
+  width: 100%;
+  height: 220px;
+  margin: 0;
+  overflow: hidden;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+
+.tcg-event-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tcg-event-card .tcg-event-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tcg-event-stat {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  background: #f7fafb;
+  border: 1px solid var(--pug-event-line);
+  border-radius: 8px;
+}
+
+.tcg-event-stat span,
+.tcg-event-registration__payment span {
+  color: rgba(16, 24, 32, 0.62);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tcg-event-stat strong,
+.tcg-event-registration__payment strong {
+  color: #101820;
+  font-size: 14px;
+  font-weight: 950;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.tcg-event-card__image {
+  width: calc(100% + 28px);
+  height: 170px;
+  margin: -14px -14px 2px;
+  object-fit: cover;
+  background: #f2f6f7;
+}
+
+.tcg-event-card h3,
+.tcg-event-detail h2,
+.tcg-event-detail h3,
+.tcg-event-card p,
+.tcg-event-detail p {
+  margin: 0;
+}
+
+.tcg-event-card h3,
+.tcg-event-detail h2 {
+  line-height: 1.1;
+}
+
+.tcg-event-card p,
+.tcg-event-detail p {
+  color: rgba(16, 24, 32, 0.68);
+}
+
+.tcg-event-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tcg-event-badges li {
+  padding: 5px 8px;
+  color: #102015;
+  background: rgba(255, 208, 68, 0.34);
+  border: 1px solid rgba(255, 208, 68, 0.58);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.tcg-event-card__cta {
+  display: inline-grid;
+  min-height: 42px;
+  place-items: center;
+  margin-top: auto;
+  color: #111111;
+  background: var(--pug-event-gold);
+  border: 1px solid rgba(16, 24, 32, 0.14);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.tcg-event-detail__back {
+  width: fit-content;
+  color: var(--pug-event-blue);
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.tcg-event-detail__back:hover,
+.tcg-event-detail__back:focus {
+  color: #083a5b;
+  text-decoration: underline;
+}
+
+.tcg-event-registration {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  background: #f7fafb;
+  border: 1px solid var(--pug-event-line);
+  border-radius: 8px;
+}
+
+.tcg-event-registration--closed {
+  color: rgba(16, 24, 32, 0.66);
+}
+
+.tcg-event-registration__fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.tcg-event-registration label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  color: rgba(16, 24, 32, 0.7);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tcg-event-registration input {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--pug-event-ink);
+  background: #ffffff;
+  border: 1px solid var(--pug-event-line);
+  border-radius: 8px;
+}
+
+.tcg-event-registration button {
+  width: 100%;
+  min-height: 42px;
+  color: #111111;
+  background: var(--pug-event-gold);
+  border: 1px solid rgba(16, 24, 32, 0.14);
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.tcg-event-registration__payment {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 208, 68, 0.16);
+  border: 1px solid rgba(255, 208, 68, 0.34);
+  border-radius: 8px;
+}
+
+.tcg-event-registration__payment small {
+  color: rgba(16, 24, 32, 0.68);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.tcg-event-registration__notice {
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.tcg-event-registration__notice--success {
+  color: #124223;
+  background: rgba(121, 215, 143, 0.2);
+  border: 1px solid rgba(18, 66, 35, 0.12);
+}
+
+.tcg-event-registration__notice--error {
+  color: #7b2017;
+  background: rgba(216, 79, 63, 0.12);
+  border: 1px solid rgba(216, 79, 63, 0.24);
+}
+
+@media (max-width: 980px) {
+  .tcg-events {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tcg-events:has(.tcg-event-card:only-child) {
+    grid-template-columns: minmax(0, 420px);
+  }
+
+  .tcg-event-registration__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tcg-events {
+    grid-template-columns: 1fr;
+  }
+
+  .tcg-event-registration__fields,
+  .tcg-event-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .tcg-event-card .tcg-event-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tcg-event-hero h2,
+  .tcg-event-hero h3 {
+    font-size: 24px;
+  }
+
+  .tcg-event-card .tcg-event-hero h3 {
+    font-size: 22px;
+  }
+}

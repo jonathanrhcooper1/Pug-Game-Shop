@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\OfflineDevicePairingRouteReadinessPlanner;
 use TCGStorePlatform\Api\V1\OfflineDeviceRegistrationRouteHandler;
+use TCGStorePlatform\Api\V1\OfflineRouteRuntimeConfigurator;
 use TCGStorePlatform\Offline\OfflineDevicePairingAuthorizerFactory;
 use TCGStorePlatform\Offline\OfflineDevicePairingPermissionCallbackAdapter;
 use TCGStorePlatform\Offline\OfflineDeviceRegistrationService;
@@ -33,6 +34,15 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_true( in_array( 'policy_provider_not_configured', $plan['policy_summary']['policy_configuration_issues'], true ) );
 		$this->assert_false( $plan['permission_callback_ready'] );
 		$this->assert_false( $plan['controller_callback_ready'] );
+		$this->assert_same( 'offline_device_pairing_request', $plan['app_pairing_contract']['action'] );
+		$this->assert_same( '/wp-json/tcg-store/v1/offline/devices/register', $plan['app_pairing_contract']['rest_path'] );
+		$this->assert_same( array( 'offline_pull', 'offline_push', 'conflicts' ), $plan['app_pairing_contract']['requested_scopes'] );
+		$this->assert_same( 'desktop_secure_store', $plan['app_pairing_contract']['device_token_storage'] );
+		$this->assert_true( $plan['app_pairing_contract']['pairing_code_values_redacted'] );
+		$this->assert_false( $plan['app_pairing_contract']['raw_pairing_codes_stored'] );
+		$this->assert_true( $plan['app_pairing_contract']['network_request_deferred'] );
+		$this->assert_true( $plan['app_pairing_contract']['production_token_issuance_deferred'] );
+		$this->assert_false( $plan['app_pairing_contract']['credential_values_synced_to_app'] );
 		$this->assert_same( 0, $plan['registerable_route_count'] );
 		$this->assert_true( in_array( 'permission_callback_not_ready', $plan['registration_block_reasons'], true ) );
 		$this->assert_true( in_array( 'controller_callback_not_ready', $plan['registration_block_reasons'], true ) );
@@ -60,11 +70,37 @@ final class OfflineDevicePairingRouteReadinessPlannerTest extends TestCase {
 		$this->assert_same( array( 'no_registerable_offline_routes' ), $plan['bootstrap_block_reasons'] );
 	}
 
+	public function test_readiness_reports_runtime_enabled_pairing_route_ready_to_register(): void {
+		$route_contracts = ( new OfflineRouteRuntimeConfigurator() )->route_contracts(
+			array(
+				'device_pairing_route_enabled' => true,
+			)
+		);
+		$plan            = ( new OfflineDevicePairingRouteReadinessPlanner(
+			new OfflineDeviceRegistrationRouteHandler( new OfflineDeviceRegistrationService() ),
+			new OfflineDevicePairingPermissionCallbackAdapter( null, static fn (): bool => true ),
+			null,
+			null,
+			$route_contracts
+		) )->plan( true );
+
+		$this->assert_same( 'ready', $plan['status'] );
+		$this->assert_true( $plan['feature_enabled'] );
+		$this->assert_false( $plan['registration_deferred'] );
+		$this->assert_true( $plan['live_enabled_by_default'] );
+		$this->assert_true( $plan['should_register'] );
+		$this->assert_same( 1, $plan['registerable_route_count'] );
+		$this->assert_same( array(), $plan['registration_block_reasons'] );
+		$this->assert_same( array(), $plan['bootstrap_block_reasons'] );
+		$this->assert_false( $plan['app_pairing_contract']['network_request_deferred'] );
+		$this->assert_false( $plan['app_pairing_contract']['route_registration_deferred'] );
+	}
+
 	public function test_readiness_can_build_pairing_permission_from_configured_settings_policy(): void {
 		$settings = array(
 			'offline_pairing_authorization' => $this->policy(),
 		);
-		$plan = ( new OfflineDevicePairingRouteReadinessPlanner(
+		$plan     = ( new OfflineDevicePairingRouteReadinessPlanner(
 			new OfflineDeviceRegistrationRouteHandler( new OfflineDeviceRegistrationService() ),
 			null,
 			new OfflineDevicePairingAuthorizerFactory(

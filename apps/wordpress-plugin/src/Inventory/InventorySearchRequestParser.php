@@ -19,6 +19,9 @@ final class InventorySearchRequestParser {
 		$errors     = array();
 		$text_query = trim( (string) ( $query['q'] ?? ( $query['query'] ?? '' ) ) );
 		$game       = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
+		$set_filter = trim( (string) ( $query['set'] ?? ( $query['set_name'] ?? ( $query['set_filter'] ?? '' ) ) ) );
+		$raw_or_graded = strtolower( trim( (string) ( $query['raw_or_graded'] ?? ( $query['product_type'] ?? '' ) ) ) );
+		$updated_after = $this->mysql_datetime( $query['updated_after'] ?? ( $query['updatedAfter'] ?? '' ), 'updated_after', $errors );
 		$visibility = strtolower( trim( (string) ( $query['visibility'] ?? 'public' ) ) );
 		$sort       = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
 		$page       = $this->positive_int( $query['page'] ?? 1, 'page', $errors, 1 );
@@ -31,8 +34,18 @@ final class InventorySearchRequestParser {
 			$text_query = substr( $text_query, 0, 120 );
 		}
 
+		if ( strlen( $set_filter ) > 120 ) {
+			$errors[]   = 'set_filter_too_long';
+			$set_filter = substr( $set_filter, 0, 120 );
+		}
+
 		if ( '' !== $game && 1 !== preg_match( '/^[a-z0-9_-]{2,64}$/', $game ) ) {
 			$errors[] = 'game_invalid';
+		}
+
+		if ( '' !== $raw_or_graded && ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
+			$errors[]     = 'raw_or_graded_invalid';
+			$raw_or_graded = '';
 		}
 
 		if ( ! in_array( $visibility, self::VISIBILITY, true ) ) {
@@ -63,7 +76,10 @@ final class InventorySearchRequestParser {
 				$visibility,
 				$sort,
 				$page,
-				$page_size
+				$page_size,
+				$set_filter,
+				$raw_or_graded,
+				$updated_after
 			)
 		);
 	}
@@ -94,6 +110,27 @@ final class InventorySearchRequestParser {
 		$errors[] = $field . '_invalid';
 
 		return $fallback;
+	}
+
+	/**
+	 * @param list<string> $errors Validation errors.
+	 */
+	private function mysql_datetime( mixed $value, string $field, array &$errors ): string {
+		$value = trim( (string) $value );
+
+		if ( '' === $value ) {
+			return '';
+		}
+
+		$timestamp = strtotime( $value );
+
+		if ( false === $timestamp ) {
+			$errors[] = $field . '_invalid';
+
+			return '';
+		}
+
+		return gmdate( 'Y-m-d H:i:s', $timestamp );
 	}
 
 	/**

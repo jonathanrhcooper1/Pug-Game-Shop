@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "TCG Store Offline",
-  "version": "0.155.0",
-  "identifier": "com.tcgstoreplatform.offline",
+  "productName": "Pug Store App",
+  "version": "0.202.14",
+  "identifier": "com.thepug.storeapp",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -12,13 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "TCG Store Offline",
+        "title": "Pug Store App",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
         "minHeight": 720,
-        "resizable": true,
-        "fullscreen": false
+        "resizable": false,
+        "fullscreen": true,
+        "decorations": false
       }
     ],
     "security": {
@@ -30,11 +31,11 @@
     "targets": ["nsis"],
     "publisher": "Configured per deployment",
     "category": "Business",
-    "shortDescription": "Offline sync app for trading-card store operations.",
-    "longDescription": "Offline sync app for inventory, kiosk, customer credit, buylist, event, and staff workflows.",
+    "shortDescription": "Local store app with live sync and offline fallback for trading-card store operations.",
+    "longDescription": "Local store app with live sync and offline fallback for inventory, kiosk, customer credit, buylist, event, and staff workflows.",
     "windows": {
       "nsis": {
-        "installerMode": "perMachine",
+        "installMode": "perMachine",
         "displayLanguageSelector": false
       }
     }

@@ -18,7 +18,33 @@ interface ScryDexProvider {
 		string $cursor = ''
 	): ScryDexResult;
 
+	/**
+	 * @param array<string, string> $filters Provider expansion filters.
+	 */
+	public function search_expansions(
+		string $query = '',
+		array $filters = array(),
+		int $page = 1,
+		string $cursor = ''
+	): ScryDexResult;
+
+	/**
+	 * @param array<string, string> $filters Provider card filters.
+	 */
+	public function search_expansion_cards(
+		string $expansion_id,
+		string $query = '',
+		array $filters = array(),
+		int $page = 1,
+		string $cursor = ''
+	): ScryDexResult;
+
 	public function get_card( string $provider_card_id ): ScryDexResult;
+
+	/**
+	 * @param array<string, string> $filters Provider price-history filters.
+	 */
+	public function get_card_price_history( string $provider_card_id, array $filters = array() ): ScryDexResult;
 
 	public function get_usage(): ScryDexResult;
 

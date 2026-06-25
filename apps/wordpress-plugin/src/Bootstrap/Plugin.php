@@ -8,10 +8,19 @@
 namespace TCGStorePlatform\Bootstrap;
 
 use TCGStorePlatform\Admin\AdminMenu;
+use TCGStorePlatform\Api\V1\CustomerController;
+use TCGStorePlatform\Api\V1\CustomerCreditController;
 use TCGStorePlatform\Api\V1\EventsController;
+use TCGStorePlatform\Api\V1\FulfillmentOrderController;
 use TCGStorePlatform\Api\V1\HealthController;
+use TCGStorePlatform\Api\V1\KioskOrderController;
+use TCGStorePlatform\Api\V1\OfflineConnectorManifestController;
+use TCGStorePlatform\Api\V1\InventoryRouteDependencyFactory;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
 use TCGStorePlatform\Api\V1\PosPaymentRouteDependencyFactory;
+use TCGStorePlatform\Api\V1\ReportsController;
+use TCGStorePlatform\Api\V1\ScryDexCatalogController;
+use TCGStorePlatform\Api\V1\ScryDexWebhookController;
 use TCGStorePlatform\Auth\AdminAccess;
 use TCGStorePlatform\Auth\RoleManager;
 use TCGStorePlatform\Events\EventShortcodes;
@@ -19,8 +28,16 @@ use TCGStorePlatform\FeatureFlags\FeatureFlags;
 use TCGStorePlatform\Logging\AuditLogger;
 use TCGStorePlatform\Logging\Logger;
 use TCGStorePlatform\Migrations\MigrationRunner;
+use TCGStorePlatform\PublicSite\InventorySearchShortcode;
+use TCGStorePlatform\PublicSite\ProductShelfShortcode;
 use TCGStorePlatform\Scheduler\DailyScheduler;
+use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Settings\SettingsPage;
+use TCGStorePlatform\Staging\StagingSafety;
+use TCGStorePlatform\ScryDex\ScryDexScheduledRefreshRunner;
+use TCGStorePlatform\ScryDex\ScryDexWebhookRefreshRunner;
+use TCGStorePlatform\WooCommerce\CustomerAccountPortalController;
+use TCGStorePlatform\WooCommerce\GroupedInventoryProductHooks;
 
 final class Plugin {
 	private static ?self $instance = null;
@@ -55,6 +72,8 @@ final class Plugin {
 		$audit_logger     = new AuditLogger();
 		$migration_runner = new MigrationRunner( $logger );
 		$scheduler        = new DailyScheduler( $logger );
+		$scrydex_runner   = new ScryDexScheduledRefreshRunner( $logger );
+		$scrydex_webhooks = new ScryDexWebhookRefreshRunner( $logger );
 
 		add_action( 'admin_init', array( $migration_runner, 'maybe_migrate' ), 5 );
 		add_action( 'admin_init', array( RoleManager::class, 'maybe_install' ), 6 );
@@ -64,11 +83,27 @@ final class Plugin {
 		( new AdminAccess() )->register();
 		( new AdminMenu( $logger ) )->register();
 		( new SettingsPage( $audit_logger ) )->register();
+		( new StagingSafety() )->register();
 		( new HealthController( $scheduler ) )->register();
+		( new OfflineConnectorManifestController() )->register();
 		( new OfflineRouteBootstrapper() )->register();
 		( new PosPaymentRouteDependencyFactory() )->bootstrapper()->register();
+		InventoryRouteDependencyFactory::from_settings( Settings::all() )->bootstrapper()->register();
+		( new CustomerController() )->register();
+		( new CustomerCreditController() )->register();
+		( new CustomerAccountPortalController() )->register();
+		( new GroupedInventoryProductHooks() )->register();
+		( new InventorySearchShortcode() )->register();
+		( new ProductShelfShortcode() )->register();
 		( new EventsController() )->register();
+		( new KioskOrderController() )->register();
+		( new FulfillmentOrderController() )->register();
+		( new ReportsController() )->register();
+		( new ScryDexCatalogController() )->register();
+		( new ScryDexWebhookController( $logger ) )->register();
 		( new EventShortcodes() )->register();
+		$scrydex_runner->register();
+		$scrydex_webhooks->register();
 		$scheduler->register();
 
 		add_action(

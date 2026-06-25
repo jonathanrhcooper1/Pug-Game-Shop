@@ -143,6 +143,26 @@ namespace TCGStorePlatform\Tests\Unit {
 			$this->assert_false( isset( $callbacks['POST /offline/push'] ) );
 		}
 
+		public function test_factory_can_attach_manager_conflict_permission_when_supplied(): void {
+			$manager_callback = static function ( mixed $request = null ): bool {
+				unset( $request );
+
+				return true;
+			};
+			$factory          = new OfflineRoutePermissionCallbackFactory( null, null, null, $manager_callback );
+			$callbacks        = $factory->callbacks_for_contracts();
+			$routes           = OfflineRouteContracts::route_contracts();
+
+			$this->assert_same( 2, count( $callbacks ) );
+			$this->assert_same( $manager_callback, $callbacks['GET /offline/conflicts'] );
+			$this->assert_same(
+				$manager_callback,
+				$callbacks['POST /offline/conflicts/(?P<conflict_id>[a-zA-Z0-9_-]+)/resolve']
+			);
+			$this->assert_same( $manager_callback, $factory->callback_for_route_contract( $routes[3] ) );
+			$this->assert_same( $manager_callback, $factory->callback_for_route_contract( $routes[4] ) );
+		}
+
 		public function test_factory_requires_registered_device_resolver_for_registered_device_callbacks(): void {
 			$factory = new OfflineRoutePermissionCallbackFactory();
 			$routes  = OfflineRouteContracts::route_contracts();

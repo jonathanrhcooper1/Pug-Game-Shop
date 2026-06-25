@@ -41,7 +41,7 @@ final class InventoryRouteContracts {
 			),
 			array(
 				'namespace'               => self::NAMESPACE,
-				'path'                    => '/inventory/(?P<inventory_id>\d+)',
+				'path'                    => '/inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)',
 				'method'                  => 'PUT',
 				'callback'                => 'update_inventory_item',
 				'permission'              => 'edit_inventory',
@@ -65,7 +65,7 @@ final class InventoryRouteContracts {
 			),
 			array(
 				'namespace'               => self::NAMESPACE,
-				'path'                    => '/inventory/(?P<inventory_id>\d+)/mark-sold',
+				'path'                    => '/inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold',
 				'method'                  => 'POST',
 				'callback'                => 'mark_inventory_item_sold',
 				'permission'              => 'staff_or_pos_device',

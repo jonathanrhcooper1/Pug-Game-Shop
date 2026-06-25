@@ -18,6 +18,23 @@ and the expected installer artifact is an unsigned `.exe`.
 
 ## Build Commands
 
+## Development And Demo Launcher
+
+During development, double-click `Start-Pug-Store.cmd` at the repository root.
+It starts or reuses the LAN sync server and local app, waits for both health
+checks, then opens:
+
+- Employee app: `http://127.0.0.1:1420/`
+- Customer kiosk: `http://127.0.0.1:1420/?mode=kiosk`
+
+Double-click `Stop-Pug-Store.cmd` to stop only the processes started by that
+launcher. The same commands are available as `npm run demo:start` and
+`npm run demo:stop`.
+
+The release deployment remains installer-based. The employee and kiosk
+experiences are packaged as the Tauri Windows application, while the LAN
+middleman is packaged separately for the store's central host computer.
+
 Validate the packaging contract:
 
 ```sh
@@ -40,6 +57,74 @@ Version `0.35.0` adds the first local SQLite schema contract in
 identity, sync cursors, queued operations, sync logs, cached branding,
 inventory, customer credit, events, and conflict tables. The schema is local
 state only; WordPress remains authoritative once operations sync.
+
+The reconnect push planning checkpoint adds offline app workspace support for
+queued operation batches to be shaped into deferred
+`POST /wp-json/tcg-store/v1/offline/push` request plans and summarized from
+the WordPress push response shape. Live network execution, production API
+keys, queue replay, canonical mutations, and direct MySQL access remain
+disabled.
+
+The current visual checkpoint adds the project-local Pug Game Shop crest,
+desktop app-window chrome, queue/conflict badges, a fuller default cached
+inventory view, and selected-card action layout tightening. Local Chrome QA
+captures desktop and mobile screenshots, clicks `Stage Inventory Update`, and
+checks for no horizontal overflow or console warnings while live SQLite writes,
+push execution, and production network calls remain disabled.
+
+The current functional checkpoint adds active sidebar navigation, status
+filters, list/grid inventory modes, scan and quantity staging, print-label
+preview, conflict review/history selection, a sync preview button, and
+company/site connector profiles. The Pug Game Shop staging profile points to
+the configured WordPress host and records that Square inventory is owned by
+the plugin while payment capture stays with the official WooCommerce Square
+extension. ScryDex credentials remain WordPress/server-side only, device
+tokens remain reserved for desktop secure storage, and all network execution
+remains deferred until pairing and staging acceptance.
+
+The WordPress plugin now mirrors that app-side profile with an authenticated,
+secret-free offline connector manifest in health output and System Status. The
+manifest includes company branding, site/rest-base identity, planned offline
+route map, device-token and desktop secure-storage requirements, Square
+inventory/payment authority boundaries, ScryDex redaction status, and HTTPS
+readiness flags. It does not issue tokens, expose ScryDex keys, call providers,
+or register live offline routes.
+
+The offline app can now ingest and validate that manifest shape locally. The
+Settings connector panel turns a manifest into a reusable company/site profile,
+checks route counts, confirms device-token and desktop secure-storage
+boundaries, verifies Square payments remain delegated to the official
+WooCommerce Square extension, confirms ScryDex credentials are redacted, and
+shows whether credentials are synced to the app. Network calls, token exchange,
+pairing-code submission, provider writes, and production mutations remain
+deferred.
+
+The same local queue preview now covers customer-credit redemption and conflict
+review controls. These buttons produce offline operation envelopes and SQLite
+queue insert plans, but ledger replay, manager approval writes, website sync,
+canonical inventory/customer mutations, and network execution remain deferred
+until device pairing and staging acceptance.
+
+The Settings connector panel can also prepare a redacted device-pairing
+request for the selected company/site. Empty pairing codes show a required
+message; entered codes are represented by a local fingerprint and never echoed
+back in visible UI. The preview shapes `POST /offline/devices/register`, the
+requested offline scopes, and desktop secure token storage while keeping live
+token issuance and network submission disabled.
+
+Each installed local app is configured for one website at a time. Managers set
+the WordPress host and LAN sync server URL in Settings, then use the LAN setup
+probe to call `GET /setup/status` on the local middleman. That probe must
+report the same WordPress origin as the app profile before inventory pull,
+push, kiosk orders, customer credit, or event sync should be trusted on that
+machine. To reuse the app for another company, replace the saved website setup
+instead of selecting from multiple company profiles.
+
+WordPress pairing readiness now exposes the matching app pairing contract in
+authenticated health and System Status. Staging can compare the offline app's
+selected connector route map with the plugin's planned device register, pull,
+push, conflict list, and conflict resolve contracts before enabling any live
+pairing route.
 
 ## Device Enrollment
 

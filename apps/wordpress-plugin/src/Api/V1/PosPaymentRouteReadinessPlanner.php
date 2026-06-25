@@ -7,6 +7,8 @@
 
 namespace TCGStorePlatform\Api\V1;
 
+use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
+
 final class PosPaymentRouteReadinessPlanner {
 	private const DEFAULT_DEPENDENCIES = array(
 		'route_handlers_configured'                  => false,
@@ -44,6 +46,7 @@ final class PosPaymentRouteReadinessPlanner {
 		$route_contracts      = $route_contracts ?? PosPaymentRouteContracts::route_contracts();
 		$permission_callbacks = $this->permission_callbacks( $route_contracts );
 		$controller_handlers  = $this->controller_handlers( $route_contracts );
+		$payment_policy       = SquarePaymentDelegationPolicy::audit_payload();
 		$dependencies         = $this->dependencies(
 			$dependency_overrides,
 			$route_contracts,
@@ -70,43 +73,50 @@ final class PosPaymentRouteReadinessPlanner {
 		);
 
 		return array(
-			'feature_enabled'                            => $pos_payments_feature_enabled,
-			'status'                                     => $this->status_from_plan(
+			'feature_enabled'                              => $pos_payments_feature_enabled,
+			'status'                                       => $this->status_from_plan(
 				$pos_payments_feature_enabled,
 				$should_register_routes
 			),
-			'planned_route_count'                        => count( $route_plans ),
-			'registerable_route_count'                   => count( $registerable_route_keys ),
-			'should_register_routes'                     => $should_register_routes,
-			'registration_deferred'                      => ! $should_register_routes,
-			'route_readiness_block_reasons'              => $block_reasons,
-			'registerable_route_keys'                    => $registerable_route_keys,
-			'route_registration_summary'                 => $route_plans,
-			'route_handlers_configured'                  => true === $dependencies['route_handlers_configured'],
-			'controller_handler_count'                   => count( $controller_handlers ),
-			'controller_handler_keys'                    => $controller_handlers,
-			'permission_callbacks_configured'            => true === $dependencies['permission_callbacks_configured'],
-			'permission_callback_count'                  => count( $permission_callbacks ),
-			'permission_callback_keys'                   => array_keys( $permission_callbacks ),
-			'route_transaction_executor_configured'      => true === $dependencies['route_transaction_executor_configured'],
-			'webhook_verifier_configured'                => true === $dependencies['webhook_verifier_configured'],
-			'sandbox_provider_credentials_configured'    => true === $dependencies['sandbox_provider_credentials_configured'],
-			'production_provider_credentials_configured' => true === $dependencies['production_provider_credentials_configured'],
-			'provider_capture_enabled'                   => true === $dependencies['provider_capture_enabled'],
-			'provider_inventory_writes_enabled'          => true === $dependencies['provider_inventory_writes_enabled'],
-			'woocommerce_gateway_capture_enabled'        => true === $dependencies['woocommerce_gateway_capture_enabled'],
-			'route_registration_deferred'                => $this->any_route_flag( $route_plans, 'route_registration_deferred' ),
-			'route_connected_reads_deferred'             => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
-			'route_connected_writes_deferred'            => $this->any_route_flag( $route_plans, 'route_connected_writes_deferred' ),
-			'transaction_execution_deferred'             => $this->any_route_flag( $route_plans, 'transaction_execution_deferred' ),
-			'provider_capture_deferred'                  => $this->any_route_flag( $route_plans, 'provider_capture_deferred' )
+			'planned_route_count'                          => count( $route_plans ),
+			'registerable_route_count'                     => count( $registerable_route_keys ),
+			'should_register_routes'                       => $should_register_routes,
+			'registration_deferred'                        => ! $should_register_routes,
+			'route_readiness_block_reasons'                => $block_reasons,
+			'registerable_route_keys'                      => $registerable_route_keys,
+			'route_registration_summary'                   => $route_plans,
+			'route_handlers_configured'                    => true === $dependencies['route_handlers_configured'],
+			'controller_handler_count'                     => count( $controller_handlers ),
+			'controller_handler_keys'                      => $controller_handlers,
+			'permission_callbacks_configured'              => true === $dependencies['permission_callbacks_configured'],
+			'permission_callback_count'                    => count( $permission_callbacks ),
+			'permission_callback_keys'                     => array_keys( $permission_callbacks ),
+			'route_transaction_executor_configured'        => true === $dependencies['route_transaction_executor_configured'],
+			'webhook_verifier_configured'                  => true === $dependencies['webhook_verifier_configured'],
+			'sandbox_provider_credentials_configured'      => true === $dependencies['sandbox_provider_credentials_configured'],
+			'production_provider_credentials_configured'   => true === $dependencies['production_provider_credentials_configured'],
+			'provider_capture_enabled'                     => true === $dependencies['provider_capture_enabled'],
+			'provider_inventory_writes_enabled'            => true === $dependencies['provider_inventory_writes_enabled'],
+			'woocommerce_gateway_capture_enabled'          => true === $dependencies['woocommerce_gateway_capture_enabled'],
+			'payment_capture_authority'                    => $payment_policy['payment_capture_authority'],
+			'official_square_payment_extension'            => $payment_policy['official_square_payment_extension'],
+			'official_woocommerce_square_extension_status' => $payment_policy['official_woocommerce_square_extension_status'],
+			'official_woocommerce_square_extension_active' => $payment_policy['official_woocommerce_square_extension_active'],
+			'plugin_square_payment_capture_allowed'        => $payment_policy['plugin_square_payment_capture_allowed'],
+			'plugin_square_custom_gateway_allowed'         => $payment_policy['plugin_square_custom_gateway_allowed'],
+			'square_payment_delegation_policy'             => $payment_policy,
+			'route_registration_deferred'                  => $this->any_route_flag( $route_plans, 'route_registration_deferred' ),
+			'route_connected_reads_deferred'               => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
+			'route_connected_writes_deferred'              => $this->any_route_flag( $route_plans, 'route_connected_writes_deferred' ),
+			'transaction_execution_deferred'               => $this->any_route_flag( $route_plans, 'transaction_execution_deferred' ),
+			'provider_capture_deferred'                    => $this->any_route_flag( $route_plans, 'provider_capture_deferred' )
 				|| true !== $dependencies['provider_capture_enabled'],
-			'provider_inventory_write_deferred'          => $this->any_route_flag( $route_plans, 'provider_inventory_write_deferred' )
+			'provider_inventory_write_deferred'            => $this->any_route_flag( $route_plans, 'provider_inventory_write_deferred' )
 				|| true !== $dependencies['provider_inventory_writes_enabled'],
-			'webhook_registration_deferred'              => $this->any_route_flag( $route_plans, 'webhook_registration_deferred' ),
-			'woocommerce_gateway_capture_deferred'       => $this->any_route_flag( $route_plans, 'woocommerce_gateway_capture_deferred' )
+			'webhook_registration_deferred'                => $this->any_route_flag( $route_plans, 'webhook_registration_deferred' ),
+			'woocommerce_gateway_capture_deferred'         => $this->any_route_flag( $route_plans, 'woocommerce_gateway_capture_deferred' )
 				|| true !== $dependencies['woocommerce_gateway_capture_enabled'],
-			'production_safety_ready'                    => true !== $dependencies['production_provider_credentials_configured']
+			'production_safety_ready'                      => true !== $dependencies['production_provider_credentials_configured']
 				&& true !== $dependencies['provider_capture_enabled']
 				&& true !== $dependencies['provider_inventory_writes_enabled']
 				&& true !== $dependencies['woocommerce_gateway_capture_enabled'],

@@ -8,6 +8,8 @@
 namespace TCGStorePlatform\Settings;
 
 final class OfflinePairingAuthorizationSettings {
+	public const KEY = 'offline_pairing_authorization';
+
 	private const DEVICE_MODES = array( 'kiosk', 'staff', 'admin' );
 	private const SCOPES       = array(
 		'offline_pull',

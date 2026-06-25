@@ -1,12 +1,23 @@
 # Square Inventory Adapter Tests
 
-Planned package-level coverage for Square inventory projection/reconciliation.
+Executable package-level coverage now lives in
+`packages/api-client/tests/square-inventory-adapter.mjs`.
 
-- Project serialized card inventory from the WooCommerce/plugin source of truth
-  into Square catalog/inventory payloads without treating Square as canonical.
-- Confirm idempotency keys and external IDs prevent duplicate Square updates.
-- Verify sandbox-only request fixtures and no production Square credentials.
-- Verify reconciliation-only mode can read Square POS order/inventory events and
-  map them back to serialized inventory IDs for staff review.
-- Confirm adapter failures do not mutate plugin inventory state without an
-  explicit, reviewed reconciliation action.
+Current coverage verifies:
+
+- Serialized card inventory projections become sandbox-safe Square Catalog and
+  Inventory request plans without treating Square as canonical.
+- Idempotency keys and external IDs are preserved for duplicate-update guards.
+- Production environments, credentials declared as production, and
+  live-looking credentials are rejected without rejecting sandbox-declared
+  token placeholders.
+- Reconciliation-only Square POS events can map provider line items back to
+  serialized inventory IDs for staff review.
+- Unmapped provider lines create staff-review conflicts and keep inventory
+  mutations deferred.
+- WordPress inventory rows with barcodes/SKUs and stored Square variation IDs
+  produce deferred Square inventory-count pull expectations using
+  `/v2/inventory/counts/batch-retrieve`.
+- Missing Square variation IDs, missing Square locations, and duplicate scan
+  identities are surfaced as staff-review mapping conflicts before any network
+  pull is attempted.

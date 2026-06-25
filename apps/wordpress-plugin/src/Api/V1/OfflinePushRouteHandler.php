@@ -57,6 +57,7 @@ final class OfflinePushRouteHandler {
 		}
 
 		$persistence = $route_result->persistence_result();
+		$canonical_transaction_execution = $route_result->canonical_mutation_transaction_execution_result();
 
 		if ( $persistence->is_rejected() ) {
 			return $this->rejected(
@@ -64,6 +65,20 @@ final class OfflinePushRouteHandler {
 				array() !== $persistence->errors()
 					? $persistence->errors()
 					: array( 'push_persistence_rejected' )
+			);
+		}
+
+		if (
+			null !== $canonical_transaction_execution
+			&& ! $canonical_transaction_execution->is_executed()
+			&& ! $this->canonical_transaction_execution_is_noop( $route_result )
+		) {
+			return $this->rejected(
+				'offline_push_canonical_mutation_execution_failed',
+				array_merge(
+					$canonical_transaction_execution->block_reasons(),
+					$canonical_transaction_execution->errors()
+				)
 			);
 		}
 
@@ -109,7 +124,14 @@ final class OfflinePushRouteHandler {
 	 * @return array<string, mixed>
 	 */
 	private function ready_meta( OfflinePushRouteProcessingResult $route_result ): array {
-		$persistence = $route_result->persistence_result();
+		$persistence                              = $route_result->persistence_result();
+		$canonical_transaction_execution          = $route_result->canonical_mutation_transaction_execution_result();
+		$canonical_transaction_execution_deferred = null === $canonical_transaction_execution;
+		$canonical_transaction_executed           = null !== $canonical_transaction_execution
+			&& $canonical_transaction_execution->is_executed();
+		$canonical_transaction_noop               = $this->canonical_transaction_execution_is_noop( $route_result );
+		$canonical_mutations_deferred             = ! $canonical_transaction_executed
+			&& ! $canonical_transaction_noop;
 
 		return array(
 			'push_resolution_deferred'                    => false,
@@ -118,15 +140,15 @@ final class OfflinePushRouteHandler {
 			'push_queue_replay_deferred'                  => true,
 			'push_canonical_mutation_planning_deferred'   => null === $route_result->canonical_mutation_plan(),
 			'push_canonical_mutation_sql_planning_deferred' => null === $route_result->canonical_mutation_query_build_plan(),
-			'push_canonical_mutation_sql_execution_deferred' => true,
+			'push_canonical_mutation_sql_execution_deferred' => ! $canonical_transaction_executed,
 			'push_canonical_mutation_repository_staging_deferred' => null === $route_result->canonical_mutation_repository_result(),
-			'push_canonical_mutation_repository_execution_deferred' => true,
-			'push_canonical_mutation_repository_execution_gate_deferred' => true,
-			'push_canonical_mutation_repository_transaction_deferred' => true,
-			'push_canonical_mutation_transaction_preflight_deferred' => true,
-			'push_canonical_mutation_transaction_execution_deferred' => true,
-			'push_canonical_mutation_repository_deferred' => true,
-			'push_canonical_mutations_deferred'           => true,
+			'push_canonical_mutation_repository_execution_deferred' => ! $canonical_transaction_executed,
+			'push_canonical_mutation_repository_execution_gate_deferred' => $canonical_transaction_execution_deferred,
+			'push_canonical_mutation_repository_transaction_deferred' => $canonical_transaction_execution_deferred,
+			'push_canonical_mutation_transaction_preflight_deferred' => $canonical_transaction_execution_deferred,
+			'push_canonical_mutation_transaction_execution_deferred' => $canonical_transaction_execution_deferred,
+			'push_canonical_mutation_repository_deferred' => ! $canonical_transaction_executed,
+			'push_canonical_mutations_deferred'           => $canonical_mutations_deferred,
 			'route_still_gated'                           => true,
 			'default_route_execution_deferred'            => true,
 			'route_registration_deferred'                 => true,
@@ -199,8 +221,37 @@ final class OfflinePushRouteHandler {
 			'canonical_mutation_transaction_preflight_blocked_count' => null !== $route_result->canonical_mutation_transaction_preflight_result()
 				? $route_result->canonical_mutation_transaction_preflight_result()->blocked_mutation_count()
 				: 0,
+			'canonical_mutation_transaction_execution_status' => null !== $route_result->canonical_mutation_transaction_execution_result()
+				? $route_result->canonical_mutation_transaction_execution_result()->status()
+				: 'deferred',
+			'canonical_mutation_transaction_execution_rows_affected' => null !== $route_result->canonical_mutation_transaction_execution_result()
+				? $route_result->canonical_mutation_transaction_execution_result()->rows_affected()
+				: 0,
+			'canonical_mutation_transaction_execution_operation_ids' => null !== $route_result->canonical_mutation_transaction_execution_result()
+				? $route_result->canonical_mutation_transaction_execution_result()->mutation_operation_ids()
+				: array(),
+			'canonical_mutation_transaction_execution_block_reasons' => null !== $route_result->canonical_mutation_transaction_execution_result()
+				? $route_result->canonical_mutation_transaction_execution_result()->block_reasons()
+				: array(),
+			'canonical_mutation_transaction_execution_errors' => null !== $route_result->canonical_mutation_transaction_execution_result()
+				? $route_result->canonical_mutation_transaction_execution_result()->errors()
+				: array(),
 			'audit'                                       => $route_result->audit_payload(),
 		);
+	}
+
+	private function canonical_transaction_execution_is_noop(
+		OfflinePushRouteProcessingResult $route_result
+	): bool {
+		$execution = $route_result->canonical_mutation_transaction_execution_result();
+
+		if ( null === $execution || ! $execution->is_blocked() ) {
+			return false;
+		}
+
+		$query_plan = $route_result->canonical_mutation_query_build_plan();
+
+		return null !== $query_plan && 0 === count( $query_plan->mutation_queries() );
 	}
 
 	/**

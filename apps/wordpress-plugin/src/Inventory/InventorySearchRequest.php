@@ -19,7 +19,10 @@ final class InventorySearchRequest {
 		private string $visibility,
 		private string $sort,
 		private int $page,
-		private int $page_size
+		private int $page_size,
+		private string $set_filter = '',
+		private string $raw_or_graded = '',
+		private string $updated_after = ''
 	) {
 	}
 
@@ -29,6 +32,18 @@ final class InventorySearchRequest {
 
 	public function game(): string {
 		return $this->game;
+	}
+
+	public function set_filter(): string {
+		return $this->set_filter;
+	}
+
+	public function raw_or_graded(): string {
+		return $this->raw_or_graded;
+	}
+
+	public function updated_after(): string {
+		return $this->updated_after;
 	}
 
 	/**

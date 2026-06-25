@@ -62,6 +62,9 @@ minimum price, or manager-controlled fields.
 The first shared sync-engine policy module is implemented and tested for:
 
 - Offline inventory reservation acceptance and unavailable-item conflict.
+- Offline inventory update acceptance when row versions match, plus stale
+  server-row conflict planning for manager review while canonical writes remain
+  deferred.
 - Offline event reservation acceptance, waitlist, and capacity conflict.
 - Offline credit redemption acceptance, cached-limit rejection, and server
   overspend conflict.
@@ -352,6 +355,17 @@ Version `0.127.0` adds transaction preflight after the execution gate. Staged
 push responses now classify canonical query kinds before execution, reporting
 inventory guarded updates as preflight-ready while event registration and
 customer-credit ledger write plans remain deferred.
+Current development adds an explicit canonical mutation transaction executor
+for preflight-ready inventory guarded updates. The executor starts a database
+transaction, runs the prepared inventory status update, commits only when
+exactly one row is affected, and rolls back when the row-version/status guard
+matches no rows. Default offline route wiring still keeps this executor
+deferred until staging enables the remaining route-connected write gates.
+Route-connected push handling now accepts a second explicit canonical mutation
+execution switch. When both switches are enabled, the route executes
+preflight-ready inventory guarded updates, reports execution rows and operation
+IDs in the response/meta/audit payloads, and rejects the push if the guarded
+update fails. Default route wiring keeps that switch disabled.
 The offline device registration service can also consume that authorizer before
 credential issuance, so a denied pairing policy stops direct staged service
 registration before credentials or repository writes are created.
@@ -448,6 +462,41 @@ produce inspection-only guard templates. Inventory receives a guarded status
 update template, while event and customer-credit mutations receive lookup guard
 templates and keep registration, ledger, and repository execution
 deferred.
+The offline app now stages `inventory_reservation` hold operations with cached
+WordPress public inventory IDs and per-connector route/canonical write
+readiness. The staging connector keeps canonical inventory writes deferred by
+default, while non-production connectors can explicitly mark guarded holds as
+ready for future paired-device push execution.
+Connector testing in the offline app now produces a local, secret-free report
+for each company/site profile. The report checks manifest shape, offline route
+map, pairing readiness, guarded inventory hold status, credential boundaries,
+and deferred network reachability before live pairing or push execution.
+`Sync Now` now also creates a local pull-refresh preview. The preview reports
+refreshed inventory, customer-credit, event, and conflict row counts, records a
+future pull cursor, preserves queued operations for push acceptance, and keeps
+network execution plus device authorization headers deferred.
+The Tauri desktop command now persists accepted offline operation envelopes to
+the local `offline.sqlite` `operation_queue` table using an idempotent
+`client_operation_id` primary key. Browser mode remains preview-only, and queue
+replay, push execution, canonical WordPress mutations, and device-token network
+writes remain deferred until the paired-device route gates are enabled.
+The desktop app can also read pending local queue rows back from SQLite on
+startup, validate each operation envelope, and merge those operations into the
+visible queue. This restore path is bounded, local-only, and still does not
+perform website writes or direct MySQL access.
+Staging offline pairing setup now has a repeatable WP-CLI helper that stores
+only hashed, short-lived pairing-code policy in WordPress settings and can
+enable the pairing route gate separately from pull, push, and conflict route
+gates. This prepares multi-company connector pairing without issuing device
+tokens, exposing raw pairing codes, writing canonical website data, or running
+sync network requests by default.
+The local app setup model is now one configurable WordPress website per
+installation, backed by a LAN middleman server. The local server exposes
+`GET /setup/status` as a secret-free probe that reports the configured website
+origin, REST base, local database, pull/push wiring, and credential redaction.
+The offline app's Settings panel stores one active connector profile, preserves
+the configured LAN server URL during manifest import, and warns if the LAN
+server reports a different WordPress site before staff rely on local sync.
 
 The first SQLite migration defines local tables for device identity, sync
 cursors, queued operations, sync logs, cached branding, cached inventory,

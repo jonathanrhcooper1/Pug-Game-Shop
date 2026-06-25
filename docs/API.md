@@ -16,13 +16,23 @@
 ## Route Map
 
 Current implementation status: dependency-free route contract tests cover the
-health endpoint plus public Events list/detail/registration routes. WordPress
-integration smoke tests verify those routes register in a real WordPress
-process. Planned customer credit route contracts and posting payload validation
-and planned buylist route contracts plus intake payload validation are
-implemented but not registered live. Planned offline device pairing, push,
-pull, conflict list, and conflict resolution route contracts are implemented
-but not registered live. Offline push payload validation is implemented for
+health endpoint, the public-safe offline connector manifest endpoint, and
+public Events list/detail/registration routes. WordPress integration smoke
+tests verify those routes register in a real WordPress process. The connector
+manifest is available at `/offline/connector-manifest` and returns only the
+secret-free company/site route map used by the desktop app, including a
+public-safe `connector_identity` block for stable multi-company profile/site
+matching; it does not issue device tokens or register sync write routes.
+Authenticated health responses expose `staging_safety` so staff can verify
+whether staging mode is active, public indexing is blocked, real customer
+emails are disabled, payment capture stays deferred, provider inventory writes
+stay deferred, and the staff/admin banner is visible.
+Planned customer credit route
+contracts and posting payload validation and planned buylist route contracts
+plus intake payload validation are implemented but not registered live. Planned
+offline device pairing, push, pull, conflict list, and conflict resolution
+route contracts are implemented but not registered live. Offline push payload
+validation is implemented for
 operation envelope shape, duplicate operation IDs, device matching, supported
 operation/entity pairs, timestamps, and schema version gating. Full permission,
 nonce, request/response, and write-flow REST tests remain staging-gated as each
@@ -356,6 +366,47 @@ registered routes during staged enablement.
 | GET | `/reference/search` | public/configured limits |
 | GET | `/inventory/search` | public or staff fields by capability |
 | GET | `/search/versions` | public |
+
+The `/inventory/search` route now has staged parser, planner, SQL-template,
+repository, and route-handler coverage. An explicitly enabled handler factory
+can compose repository-backed reads and return public-redacted or staff-visible
+search responses for staging tests. Gated route registration planning now
+requires an explicit public-read permission flag, injected controller handlers,
+cleared route registration deferral, and cleared route-connected read deferral
+before a future `/inventory/search` route can register. The inventory route
+dependency factory can now assemble the staged search handler into that
+controller for readiness checks, but default live route registration remains
+disabled until rate limits, target database performance, and staging smoke
+tests are accepted.
+Inventory route runtime settings can now clear the staff `/inventory/search`
+registration and read deferrals for staging composition only. The default
+settings keep staff search disabled, public search disabled, writes disabled,
+WooCommerce projection disabled, Square projection disabled, and label actions
+disabled. The `inventory_pricing` feature flag is available only in local,
+development, and staging environments and remains unavailable in production, so
+runtime settings alone do not register production routes.
+Inventory item creation now has plan-only persistence coverage that can shape a
+validated intake request into a schema-aligned prepared insert template. A
+staged route handler factory can explicitly compose the parser, persistence
+planner, and repository adapter into a created-item response for `POST
+/inventory` tests. Gated route registration planning now requires an injected
+handler, capability callback, cleared registration deferral, and cleared write
+deferral before a future `POST /inventory` route can register. The inventory
+route dependency factory can now assemble the staged create handler into that
+controller for readiness checks. Barcode label printing and WooCommerce/Square
+projection writes remain disabled until staging acceptance.
+Authenticated health now exposes this route dependency summary under
+`inventory_route_dependencies`, and admin System Status mirrors the same
+blocked/ready summary for staging review. WordPress smoke coverage asserts the
+inventory search and create routes remain unregistered by default.
+The inventory route bootstrapper is now wired to WordPress `rest_api_init`, but
+authenticated health reports `inventory_route_bootstrap.status = blocked` by
+default because the `inventory_pricing` feature flag is off in non-production
+environments and unavailable in production. No inventory route is registerable
+until staging explicitly enables the feature flag and route runtime gates. The
+bootstrap summary exposes per-route registration, read/write deferral,
+permission, handler, WooCommerce projection, Square projection, and label-print
+flags for staging review.
 
 ### Pricing And Overrides
 

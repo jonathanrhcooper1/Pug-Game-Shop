@@ -1,7 +1,7 @@
-=== TCG Store Platform ===
+=== Pug Game Shop Card Manager ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.155.0
+Stable tag: 0.202.14
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
@@ -290,6 +290,12 @@ routes report blocked/ready/rejected execution status and transaction-adapter
 deferral before any canonical writes can run.
 Phase 7.93 adds canonical mutation transaction preflight metadata to classify
 staged query kinds before any future transaction executor can run.
+Phase 7.94 adds explicit canonical inventory mutation transaction execution for
+preflight-ready guarded updates while default route wiring remains gated.
+Phase 7.95 wires canonical inventory mutation transaction execution into
+explicitly enabled route-connected push handlers, surfacing execution status,
+rows affected, operation IDs, and deferral flags while the default canonical
+write gate remains disabled.
 Phase 8.1 adds POS/payment reconciliation policy tests for sandbox responses,
 scan-gated sales, refunds, declines, and unmapped line conflicts.
 Phase 8.2 adds POS transaction-ingestion contract tests for sandbox adapter
@@ -378,10 +384,21 @@ Inventory and commerce modules remain disabled until their implementation phases
 
 1. Install and activate WooCommerce 8.2 or newer.
 2. Upload the complete `wordpress-plugin` directory.
-3. Activate TCG Store Platform.
-4. Open TCG Store > System Status and resolve any dependency warnings.
+3. Activate Pug Game Shop Card Manager.
+4. Open Pug Cards > System Status and resolve any dependency warnings, unless
+   the company short name has been changed in plugin settings.
 
 == Changelog ==
+
+= 0.156.0 =
+
+* Added provider price observation schema migration for ScryDex market-price
+  snapshots with reversible rollback support.
+* Extended ScryDex persistence planning with stable observation IDs, game
+  context, sync job IDs, and observed timestamps.
+* Wired route-connected canonical inventory execution behind an explicit
+  staged gate, surfacing transaction execution status and deferral state in
+  offline push responses.
 
 = 0.155.0 =
 
@@ -677,6 +694,9 @@ Inventory and commerce modules remain disabled until their implementation phases
   registration and customer-credit ledger write plans remain deferred.
 * Added route response, route meta, sync readiness, smoke, and unit coverage
   for preflight status, counts, block reasons, and transaction deferral.
+* Added explicit transaction execution coverage for preflight-ready inventory
+  guarded updates, including commit success and rollback on zero-row
+  double-sell guard failures.
 
 = 0.126.0 =
 

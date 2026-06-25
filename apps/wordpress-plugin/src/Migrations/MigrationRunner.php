@@ -141,9 +141,16 @@ final class MigrationRunner {
 			new Version0007Reservations(),
 			new Version0008OfflineSync(),
 			new Version0009PosPayments(),
+			new Version0010ProviderPriceObservations(),
+			new Version0011ReferenceCardImages(),
+			new Version0012ScryDexCatalog(),
+			new Version0013ExternalInventoryMappings(),
+			new Version0014ReferenceVariantImages(),
+			new Version0015ProviderPriceReferenceBackfill(),
+			new Version0016InventoryQuantityOnHand(),
+			new Version0017SquareLocationMapping(),
 		);
 	}
-
 	/**
 	 * @return list<Migration>
 	 */

@@ -14,15 +14,18 @@ final class EventRegistrationService {
 	private EventRegistrationRepository $repository;
 	private EventRegistrationPolicy $policy;
 	private EventRegistrationDuplicateGuard $duplicate_guard;
+	private EventRegistrationNotificationMailer $notification_mailer;
 
 	public function __construct(
 		EventRegistrationRepository $repository,
 		?EventRegistrationPolicy $policy = null,
-		?EventRegistrationDuplicateGuard $duplicate_guard = null
+		?EventRegistrationDuplicateGuard $duplicate_guard = null,
+		?EventRegistrationNotificationMailer $notification_mailer = null
 	) {
-		$this->repository      = $repository;
-		$this->policy          = $policy ?? new EventRegistrationPolicy();
-		$this->duplicate_guard = $duplicate_guard ?? new EventRegistrationDuplicateGuard();
+		$this->repository          = $repository;
+		$this->policy              = $policy ?? new EventRegistrationPolicy();
+		$this->duplicate_guard     = $duplicate_guard ?? new EventRegistrationDuplicateGuard();
+		$this->notification_mailer = $notification_mailer ?? new EventRegistrationNotificationMailer();
 	}
 
 	public function register_by_slug( string $slug, EventRegistrationInput $input ): EventRegistrationResult {
@@ -147,6 +150,7 @@ final class EventRegistrationService {
 			);
 
 			$this->repository->commit();
+			$this->send_registration_confirmation( $event, $registration, $decision );
 
 			return EventRegistrationResult::success(
 				$this->present_registration( $registration ),
@@ -171,6 +175,22 @@ final class EventRegistrationService {
 		$slug = trim( $slug, '-' );
 
 		return substr( $slug, 0, 191 );
+	}
+
+	/**
+	 * @param array<string, mixed> $event Event row.
+	 * @param array<string, mixed> $registration Registration row.
+	 */
+	private function send_registration_confirmation(
+		array $event,
+		array $registration,
+		EventRegistrationDecision $decision
+	): void {
+		try {
+			$this->notification_mailer->send_registration_confirmation( $event, $registration, $decision );
+		} catch ( Throwable ) {
+			// Email delivery should not roll back or hide a successful registration.
+		}
 	}
 
 	private function status_for_rejection( string $code ): int {

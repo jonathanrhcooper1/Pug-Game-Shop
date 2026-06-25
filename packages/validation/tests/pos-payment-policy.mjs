@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   POS_PAYMENT_OUTCOME,
+  POS_PAYMENT_DELEGATION,
   comparePosFeeEstimates,
   normalizePosPaymentResponse,
   planPosTransactionIngestion,
   planPosRefundReconciliation,
   planPosSaleReconciliation,
+  squarePaymentDelegationPolicy,
 } from "../src/posPaymentPolicy.mjs";
 
 const fixture = JSON.parse(
@@ -125,7 +127,27 @@ test("POS transaction ingestion records idempotency and scan-gated sale transiti
   assert.equal(result.details.payment.amountMinorUnits, 12500);
   assert.equal(result.details.routeConnectedWritesDeferred, true);
   assert.equal(result.details.productionCaptureDeferred, true);
+  assert.equal(
+    result.details.paymentDelegation.paymentCaptureAuthority,
+    POS_PAYMENT_DELEGATION.OFFICIAL_WOOCOMMERCE_SQUARE_EXTENSION,
+  );
+  assert.equal(result.details.paymentDelegation.pluginPaymentCapturePermitted, false);
   assert.equal(result.details.inventoryTransitions[0].source, "pos_scan_gate");
+});
+
+test("Square payment capture is delegated to the official WooCommerce extension", () => {
+  const delegation = squarePaymentDelegationPolicy({ provider: "square-sandbox" });
+
+  assert.equal(
+    delegation.paymentCaptureAuthority,
+    POS_PAYMENT_DELEGATION.OFFICIAL_WOOCOMMERCE_SQUARE_EXTENSION,
+  );
+  assert.equal(delegation.pluginPaymentCapturePermitted, false);
+  assert.equal(delegation.pluginRefundExecutionPermitted, false);
+  assert.equal(delegation.customGatewayCapturePermitted, false);
+  assert.equal(delegation.inventorySyncPermitted, true);
+  assert.equal(delegation.reconciliationPermitted, true);
+  assert.equal(delegation.officialWooCommerceSquareExtensionRequired, true);
 });
 
 test("POS transaction ingestion replays processed provider events without transitions", () => {

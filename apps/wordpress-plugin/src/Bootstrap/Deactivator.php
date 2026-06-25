@@ -8,6 +8,7 @@
 namespace TCGStorePlatform\Bootstrap;
 
 use TCGStorePlatform\Scheduler\DailyScheduler;
+use TCGStorePlatform\WooCommerce\GroupedInventoryProductHooks;
 
 final class Deactivator {
 	/**
@@ -22,6 +23,7 @@ final class Deactivator {
 			foreach ( $site_ids as $site_id ) {
 				switch_to_blog( (int) $site_id );
 				DailyScheduler::unschedule();
+				GroupedInventoryProductHooks::unschedule_reservation_expiry();
 				restore_current_blog();
 			}
 
@@ -29,5 +31,6 @@ final class Deactivator {
 		}
 
 		DailyScheduler::unschedule();
+		GroupedInventoryProductHooks::unschedule_reservation_expiry();
 	}
 }

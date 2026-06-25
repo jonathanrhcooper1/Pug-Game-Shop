@@ -1,0 +1,139 @@
+<?php
+/**
+ * Public inventory search presenter tests.
+ *
+ * @package TCGStorePlatform
+ */
+
+namespace TCGStorePlatform\Tests\Unit;
+
+use TCGStorePlatform\Inventory\InventorySearchRequest;
+use TCGStorePlatform\PublicSite\InventorySearchPresenter;
+use TCGStorePlatform\Tests\TestCase;
+
+final class PublicInventorySearchPresenterTest extends TestCase {
+	public function test_presenter_groups_public_inventory_without_private_fields(): void {
+		$request   = new InventorySearchRequest( 'charizard', 'pokemon', array( 'available' ), null, 'public', 'relevance', 1, 24 );
+		$presenter = new InventorySearchPresenter();
+		$payload   = $presenter->present(
+			$request,
+			array(
+				$this->row( 1001, 'secret-barcode-a' ),
+				$this->row( 1002, 'secret-barcode-b' ),
+			),
+			2,
+			array(
+				'settings'             => array(
+					'branding' => array(
+						'company_name'       => 'The Pug Game Shop',
+						'company_short_name' => 'The Pug',
+						'logo_url'           => 'https://example.test/logo.png',
+						'primary_color'      => '#0F5F8F',
+						'accent_color'       => '#FFD044',
+					),
+				),
+				'product_url_callback' => static fn ( mixed $product_id ): string => 1001 === (int) $product_id ? 'https://example.test/product/charizard/' : '',
+			)
+		);
+		$json      = (string) json_encode( $payload );
+
+		$this->assert_same( 'public_inventory_search', $payload['resource'] );
+		$this->assert_same( 1, $payload['page'] );
+		$this->assert_same( 24, $payload['page_size'] );
+		$this->assert_same( 1, $payload['total_pages'] );
+		$this->assert_false( $payload['has_next_page'] );
+		$this->assert_same( 1, count( $payload['groups'] ) );
+		$this->assert_same( 2, $payload['groups'][0]['quantity'] );
+		$this->assert_same( '125.00', $payload['groups'][0]['price'] );
+		$this->assert_same( 'https://example.test/product/charizard/', $payload['groups'][0]['product_url'] );
+		$this->assert_not_contains( 'secret-barcode', $json );
+		$this->assert_not_contains( 'inventory_id', $json );
+		$this->assert_not_contains( 'cost', $json );
+	}
+
+	public function test_rendered_html_contains_search_form_card_art_stock_and_action(): void {
+		$request   = new InventorySearchRequest( 'charizard', 'pokemon', array( 'available' ), null, 'public', 'relevance', 1, 24 );
+		$presenter = new InventorySearchPresenter();
+		$payload   = $presenter->present(
+			$request,
+			array(
+				$this->row( 1001, 'secret-barcode-a' ),
+				$this->row( 1002, 'secret-barcode-b' ),
+			),
+			50,
+			array(
+				'product_url_callback' => static fn (): string => 'https://example.test/product/charizard/',
+			)
+		);
+
+		$html = $presenter->render_html( $payload );
+
+		$this->assert_contains( 'Browse The Pug inventory', $html );
+		$this->assert_contains( 'Search Inventory', $html );
+		$this->assert_contains( 'Set / Expansion', $html );
+		$this->assert_contains( 'tcg-public-inventory__quick-filters', $html );
+		$this->assert_contains( 'Quick game filters', $html );
+		$this->assert_contains( 'Filter by game', $html );
+		$this->assert_contains( '>MTG</a>', $html );
+		$this->assert_contains( '<option value="magicthegathering">MTG</option>', $html );
+		$this->assert_contains( '<option value="riftbound">Riftbound</option>', $html );
+		$this->assert_contains( 'tcg_inventory_set', $html );
+		$this->assert_contains( 'tcg_inventory_cache_bust', $html );
+		$this->assert_contains( 'tcg_inventory_page', $html );
+		$this->assert_contains( 'tcg_inventory_page_size', $html );
+		$this->assert_contains( 'Showing 1-2 of 50 matching items', $html );
+		$this->assert_contains( 'Page 1 of 3', $html );
+		$this->assert_contains( 'Next page', $html );
+		$this->assert_contains( 'data-tcg-inventory-cache-bust', $html );
+		$this->assert_contains( 'Date.now()', $html );
+		$this->assert_contains( 'Charizard', $html );
+		$this->assert_contains( 'tcg-public-inventory__media', $html );
+		$this->assert_contains( 'tcg-public-inventory__chips', $html );
+		$this->assert_contains( 'Base Set / 4/102 / NM / Holo', $html );
+		$this->assert_contains( '$125.00', $html );
+		$this->assert_contains( '2 in stock', $html );
+		$this->assert_contains( 'https://images.example.test/charizard.png', $html );
+		$this->assert_contains( 'Choose condition', $html );
+		$this->assert_not_contains( 'secret-barcode', $html );
+	}
+
+	public function test_empty_inventory_state_explains_visible_available_requirement(): void {
+		$request   = new InventorySearchRequest( '', '', array( 'available' ), null, 'public', 'relevance', 1, 24 );
+		$presenter = new InventorySearchPresenter();
+		$payload   = $presenter->present( $request, array(), 0 );
+
+		$html = $presenter->render_html( $payload );
+
+		$this->assert_contains( 'tcg-public-inventory__empty', $html );
+		$this->assert_contains( 'No singles are live online yet.', $html );
+		$this->assert_contains( 'online visibility set to visible', $html );
+		$this->assert_contains( 'status set to available', $html );
+		$this->assert_contains( '/shop-singles/', $html );
+		$this->assert_contains( '/contact/', $html );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function row( int $product_id, string $barcode ): array {
+		return array(
+			'inventory_id'           => 55,
+			'public_id'              => 'inv-public',
+			'game'                   => 'pokemon',
+			'card_name'              => 'Charizard',
+			'set_name'               => 'Base Set',
+			'set_code'               => 'BASE',
+			'card_number'            => '4',
+			'printed_number'         => '4/102',
+			'variant'                => 'Holo',
+			'finish'                 => 'Foil',
+			'condition_code'         => 'NM',
+			'barcode'                => $barcode,
+			'cost'                   => '60.0000',
+			'sale_price'             => '125.0000',
+			'sale_currency'          => 'USD',
+			'front_image_remote_url' => 'https://images.example.test/charizard.png',
+			'woocommerce_product_id' => $product_id,
+		);
+	}
+}

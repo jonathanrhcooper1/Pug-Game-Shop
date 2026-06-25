@@ -1,6 +1,6 @@
-# TCG Store Platform WordPress Plugin
+# Pug Game Shop Card Manager WordPress Plugin
 
-Version: `0.155.0`
+Version: `0.156.0`
 
 ## Implemented Features
 
@@ -217,6 +217,12 @@ Version: `0.155.0`
 - Canonical mutation transaction preflight metadata for staged query kinds,
   including ready/blocked counts, operation IDs, deferred event/credit write
   plans, and transaction execution deferral.
+- Explicit canonical inventory mutation transaction execution for
+  preflight-ready guarded updates, including begin/commit/rollback handling and
+  zero-row guard failures while route wiring remains gated by default.
+- Route-connected canonical inventory execution wiring for explicitly enabled
+  offline push handlers, with response/meta/audit execution status and
+  deferral fields while the default gate remains disabled.
 - Offline pull request validation for device IDs, cached domains, cursors,
   page-size bounds, tombstone inclusion, and schema version.
 - Offline pull response presentation for per-domain cursors, change rows,
@@ -426,6 +432,14 @@ Version: `0.155.0`
 - Offline conflict resolution planning for future row updates, response
   payloads, stale-version guards, terminal-status guards, action availability
   checks, and redacted audit payloads.
+- Offline conflict resolution SQL planning and repository writeback foundation
+  for guarded manager decisions, including mutable-status filters, expected
+  row-version checks, single-row execution outcomes, and redacted query audits
+  while live route registration remains disabled by default.
+- Offline conflict resolution route adapter and handler factory for explicitly
+  enabled staging execution, including current conflict lookups, manager
+  permission callback injection, applied/stale response states, and retained
+  default route deferral.
 - Offline push operation resolution planning for future queue replay outcomes,
   response payloads, operation result rows, manager-reviewed conflict rows,
   deterministic conflict IDs, and redacted audit payloads.
@@ -504,8 +518,9 @@ versions.
 1. Use a staging WordPress site with WooCommerce 8.2 or newer.
 2. Copy this complete directory to
    `wp-content/plugins/tcg-store-platform`.
-3. Activate **TCG Store Platform**.
-4. Open **TCG Store > System Status**.
+3. Activate **Pug Game Shop Card Manager**.
+4. Open **Pug Cards > System Status** unless the company short name has been
+   changed in plugin settings.
 5. Confirm schema version `8 / 8`, WooCommerce, Action Scheduler, and the next
    daily UTC run.
 6. Authenticate as a manager/admin and request

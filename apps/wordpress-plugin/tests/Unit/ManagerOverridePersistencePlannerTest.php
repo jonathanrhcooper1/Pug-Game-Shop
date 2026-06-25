@@ -14,7 +14,7 @@ use TCGStorePlatform\Tests\TestCase;
 
 final class ManagerOverridePersistencePlannerTest extends TestCase {
 	public function test_planner_builds_row_and_audit_payload_for_approved_override(): void {
-		$request  = new ManagerOverrideRequest( 10, 22, 1500, 900, 1200, 'usd', 'Customer recovery.' );
+		$request  = $this->approved_request();
 		$decision = ( new ManagerOverridePolicy() )->authorize_below_minimum_sale( $request );
 		$plan     = ( new ManagerOverridePersistencePlanner() )->plan(
 			$request,
@@ -39,6 +39,8 @@ final class ManagerOverridePersistencePlannerTest extends TestCase {
 		$this->assert_same( 'manager_override.approved', $plan->audit_data()['action'] );
 		$this->assert_same( '12.0000', $plan->audit_data()['minimum_sale_price'] );
 		$this->assert_same( hash( 'sha256', 'Customer recovery.' ), $plan->audit_data()['reason_hash'] );
+		$this->assert_same( '2026-06-07 14:00:00', $plan->audit_data()['reauthenticated_at'] );
+		$this->assert_same( hash( 'sha256', '2026-06-07 14:00:00' ), $plan->audit_data()['reauth_hash'] );
 	}
 
 	public function test_planner_skips_when_policy_rejects_override(): void {
@@ -61,7 +63,7 @@ final class ManagerOverridePersistencePlannerTest extends TestCase {
 	}
 
 	public function test_invalid_optional_context_ids_are_omitted(): void {
-		$request  = new ManagerOverrideRequest( 10, 22, 1500, 900, 1200, 'USD', 'Customer recovery.' );
+		$request  = $this->approved_request();
 		$decision = ( new ManagerOverridePolicy() )->authorize_below_minimum_sale( $request );
 		$plan     = ( new ManagerOverridePersistencePlanner() )->plan(
 			$request,
@@ -77,5 +79,44 @@ final class ManagerOverridePersistencePlannerTest extends TestCase {
 		$this->assert_same( null, $plan->row_data()['inventory_id'] );
 		$this->assert_same( null, $plan->row_data()['order_id'] );
 		$this->assert_same( null, $plan->row_data()['location_id'] );
+	}
+
+	public function test_planner_generates_stable_public_id_when_missing(): void {
+		$request  = $this->approved_request();
+		$decision = ( new ManagerOverridePolicy() )->authorize_below_minimum_sale( $request );
+		$first    = ( new ManagerOverridePersistencePlanner() )->plan(
+			$request,
+			$decision,
+			array(
+				'inventory_id' => 42,
+				'cart_id'      => 'cart-abc',
+			)
+		);
+		$second   = ( new ManagerOverridePersistencePlanner() )->plan(
+			$request,
+			$decision,
+			array(
+				'inventory_id' => 42,
+				'cart_id'      => 'cart-abc',
+			)
+		);
+
+		$this->assert_true( $first->should_persist() );
+		$this->assert_same( 36, strlen( $first->row_data()['public_id'] ) );
+		$this->assert_same( $first->row_data()['public_id'], $second->row_data()['public_id'] );
+	}
+
+	private function approved_request(): ManagerOverrideRequest {
+		return new ManagerOverrideRequest(
+			10,
+			22,
+			1500,
+			900,
+			1200,
+			'usd',
+			'Customer recovery.',
+			true,
+			'2026-06-07 14:00:00'
+		);
 	}
 }

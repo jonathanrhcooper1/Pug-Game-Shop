@@ -12,6 +12,9 @@
     "pairing_route": "/offline/devices/register",
     "pull_route": "/offline/pull",
     "push_route": "/offline/push",
+    "conflict_resolution_route": "/offline/conflicts/{conflict_id}/resolve",
+    "local_sync_discovery": "udp:pug-local-sync-discovery-v1:8788",
+    "manual_middleman_url_fallback": true,
     "direct_mysql_access": false
   },
   "branding": {

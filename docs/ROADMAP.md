@@ -21,7 +21,13 @@ endpoint on the target WordPress/WooCommerce versions.
 
 ## Phase 2: Inventory And Pricing
 
-Status: In progress; manager override policy helpers implemented
+Status: In progress; manager override policy helpers, inventory intake
+persistence planning plus explicit repository adapter and staged route handler
+factory, gated inventory route registration and dependency composition,
+health/admin readiness status, bootstrapper wiring, inventory search
+planning/SQL-template contracts, explicit repository read adapter, staged route
+handler factory, WooCommerce product projection planning, and guarded
+WooCommerce/Square projection execution implemented
 
 Deliver reference/inventory/location tables, intake, barcode generation, label
 contracts, required minimum price, pricing policy, movement log, price log, and
@@ -33,8 +39,13 @@ and intake benchmarks meet agreed targets.
 ## Phase 3: ScryDex Sync
 
 Status: In progress; generic sync schema, ScryDex checkpoint/resume helpers,
-mock-backed ScryDex provider adapter, card/price normalization, and sync page
-processing plus persistence planning implemented
+mock-backed ScryDex provider adapter, secret-preserving staged settings,
+provider factory readiness, dry-run request/checkpoint planning, execution-gate
+readiness diagnostics, usage-budget settings/planning, checkpoint repository
+planning, provider price observation schema migration, card/price normalization,
+sync page processing plus persistence planning, and persistence SQL/repository
+staging plus health/execution-gate readiness wiring and worker orchestration
+planning implemented
 
 Deliver adapter, capability discovery, card/expansion/price/image sync,
 checkpoints, resume, usage tracking, webhook verification, live logs, and daily
@@ -107,6 +118,14 @@ plus pull cursor advancement planning
 plus pull cursor advance SQL planning
 plus pull cursor advance repository adaptation
 plus route-aware pull cursor advance provider
+plus desktop-secure-store device token commands
+plus Tauri-only WordPress pairing POST and secure token storage
+plus WordPress admin pairing authorization policy settings
+plus desktop local SQLite operation-queue persistence
+plus desktop local SQLite queue restore
+plus premium offline app command-center UI refresh with project-local crest,
+desktop app chrome, no-horizontal-overflow screenshot QA, and local queue
+staging interaction verification
 plus pull handler cursor advance orchestration
 plus pull route handler factory composition
 plus push persistence SQL/repository staging
@@ -129,6 +148,66 @@ plus deferred push canonical mutation repository scaffold
 plus route-connected deferred push canonical mutation repository metadata
 plus push canonical mutation repository execution gate
 plus push canonical mutation transaction preflight
+plus push canonical inventory mutation transaction execution
+plus route-connected push canonical inventory execution wiring
+plus offline app connector-aware guarded inventory hold staging
+plus offline app per-company connector test reports
+plus offline app typed local pull-refresh preview and typecheck gate
+plus polished offline inventory command workspace UI and shell contract
+plus functional offline app controls for sidebar navigation, filters, grid/list
+views, scan/quantity staging, print-label preview, conflict review/history,
+sync preview, and reusable company/site connector profiles
+plus WordPress offline connector manifest health/admin diagnostics for
+company/site pairing, route maps, secure storage boundaries, Square authority
+split, and ScryDex redaction status
+plus public-safe WordPress offline connector manifest route for app website
+validation without credential sync
+plus offline app manifest ingestion and validation for reusable multi-company
+website connector profiles without syncing credentials
+plus live public connector manifest fetching/import in the offline app for
+reusable company website profiles with local preview fallback
+plus offline app customer-credit and conflict-review controls that stage local
+queue operation envelopes
+plus offline app redacted pairing-code request preview for selected website
+connector profiles
+plus offline app credential-free pairing route index check and future WordPress
+pairing request body shaping without raw-code storage
+plus Tauri desktop secure-store command boundary for offline device-token
+storage, status checks, and deletion without raw-token UI return
+plus offline app secret-free paired-device metadata restore and Sync Now
+desktop-token readiness reporting per company connector profile
+plus guarded Tauri authenticated offline pull/push request command and desktop
+Sync Now execution panel with sanitized WordPress response summaries
+plus offline app push-result queue replay application for accepted/conflict/
+rejected operation IDs
+plus Tauri local SQLite queue status update command for accepted push IDs
+plus sanitized desktop pull inventory record extraction and local cache apply
+counts for newer server rows
+plus sanitized desktop pull active customer credit extraction and local balance
+cache apply counts for newer server rows
+plus sanitized desktop pull event snapshot extraction and local cache apply
+counts for newer server rows
+plus sanitized desktop pull conflict snapshot extraction and local conflict
+panel cache apply counts for newer server rows
+plus offline app event panel with cached event registration and waitlist
+operation staging
+plus WordPress/offline app event check-in operation parsing, deferred mutation
+planning, local queue staging, and UI check-in action
+plus profile-scoped offline app queue/session storage for multi-company
+connector isolation with legacy shared-session migration fallback
+plus guarded WordPress conflict resolution SQL planning and repository
+writeback foundation with row-version guards while live route registration
+stays gated
+plus explicit WordPress conflict resolution route adapter and manager
+permission wiring behind the existing conflict route runtime gate
+plus offline app guarded desktop conflict-resolution execution with local queue
+fallback for paired non-production connector profiles
+plus WordPress app pairing contract diagnostics aligned with offline app
+route-map preview
+plus typed local workspace state and staged operation envelope preview
+plus browser-safe offline queue bridge contract
+plus local SQLite queue insert planning
+plus Tauri queue command scaffold and adapter detection
 implemented
 
 Deliver Tauri app, SQLite schema, local search/images, pairing, device auth,
@@ -154,6 +233,13 @@ snapshot repository adaptation plus fee snapshot repository readiness metadata
 plus explicit staged fee snapshot route handler plus staged fee snapshot route
 handler factory composition plus POS/payment route-connected read deferral
 gates plus dependency health/admin read-gate status
+plus Square inventory projection planning
+plus explicit Square payment delegation to the official WooCommerce Square
+extension
+plus official WooCommerce Square extension status diagnostics
+plus Square inventory sync readiness diagnostics
+plus Square inventory batch sync planning
+plus Square inventory batch sync readiness health/admin diagnostics
 implemented
 
 Deliver WooCommerce/Square payment observation, transaction ingestion, barcode

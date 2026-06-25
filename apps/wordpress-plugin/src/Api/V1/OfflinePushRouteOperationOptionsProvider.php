@@ -14,10 +14,11 @@ use TCGStorePlatform\Offline\OfflinePushPayload;
 
 final class OfflinePushRouteOperationOptionsProvider {
 	private const SUPPORTED_OPERATION_TYPES = array(
+		'inventory_update',
 		'event_reservation',
+		'event_checkin',
 	);
-
-	private const EVENT_PAYMENT_STATUSES = array(
+	private const EVENT_PAYMENT_STATUSES    = array(
 		EventPaymentStatus::NOT_REQUIRED,
 		EventPaymentStatus::PAY_AT_STORE,
 		EventPaymentStatus::PENDING_ONLINE,

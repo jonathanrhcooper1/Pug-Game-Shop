@@ -26,7 +26,9 @@ final class ScryDexSyncPageProcessorTest extends TestCase {
 		$this->assert_same( ScryDexSyncPagePlan::SUCCESS, $plan->status() );
 		$this->assert_same( 2, count( $plan->reference_rows() ) );
 		$this->assert_same( 2, count( $plan->price_rows() ) );
+		$this->assert_same( 2, count( $plan->variant_rows() ) );
 		$this->assert_same( 'sdx-pkm-001', $plan->reference_rows()[0]['provider_card_id'] );
+		$this->assert_same( 'sdx-pkm-001-holo-unlimited', $plan->variant_rows()[0]['provider_variant_id'] );
 		$this->assert_same( '120.0000', $plan->price_rows()[0]['market_price'] );
 		$this->assert_true( null !== $next );
 		$this->assert_same( 1, $next->page_number() );
@@ -56,6 +58,7 @@ final class ScryDexSyncPageProcessorTest extends TestCase {
 
 		$this->assert_same( ScryDexSyncPagePlan::PARTIAL_SUCCESS, $plan->status() );
 		$this->assert_same( array(), $plan->reference_rows() );
+		$this->assert_same( array(), $plan->variant_rows() );
 		$this->assert_same( 'missing_provider_card_id', $plan->errors()[0]['errors'][0] );
 		$this->assert_true( null !== $next );
 		$this->assert_same( 0, $next->committed_count() );

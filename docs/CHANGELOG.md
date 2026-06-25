@@ -1,19 +1,1569 @@
 # Changelog
 
+- Added one-click Windows development/demo launch and shutdown commands. The
+  launcher starts or reuses the LAN sync server and local app, verifies both
+  endpoints, opens employee and customer-kiosk views, and only stops processes
+  that it owns.
+- Customer kiosk now occupies the full display instead of inheriting an
+  implicit app-grid column, renders the complete filtered inventory gallery,
+  and independently polls LAN/WordPress inventory connectivity so its badge
+  distinguishes live inventory from local or offline fallback.
+- Redesigned the customer pickup tray with card thumbnails, concise card
+  details, item prices, icon remove controls, a dedicated customer-details
+  section, and responsive placement ahead of the gallery on smaller screens.
+
 All notable changes follow Semantic Versioning.
 
 ## [Unreleased]
 
 ### Added
 
+- Added LAN middleman first-run WordPress inventory bootstrap sync for release
+  `0.202.13`, so all existing website inventory rows seed into the local cache
+  and Square before changed-since polling takes over.
+- Added a live ScryDex Vision card scanner for the employee app Inventory and
+  Trade-In card lookup panels. Camera frames are cropped in the app, identified
+  by the LAN server, and converted back into normal ScryDex/reference catalog
+  results for staff confirmation without exposing ScryDex credentials to
+  clients.
+
+### Audit
+
+- Added the 2026-06-17 production-readiness report bundle:
+  `PRODUCTION_AUDIT_REPORT.md`, `TEST_RESULTS.md`,
+  `CONNECTOR_STATUS_REPORT.md`, `SYNC_QUEUE_REPORT.md`,
+  `UI_REVIEW_REPORT.md`, `BUG_FIX_SUMMARY.md`, `OPEN_BLOCKERS.md`, and
+  `docs/SYSTEM_MAP.md`.
+- Added a public production Playwright smoke test covering public page loads,
+  forbidden production phrases, raw shortcode leakage, unsafe local/staging
+  links, event listing behavior, and expected 404 handling.
+- Verified production active syncs for ScryDex catalog/search, public shop
+  shortcodes, local inventory push, WooCommerce/Square sale flow, customer
+  credit/customer pushes, event/kiosk pushes, and local pickup fulfillment.
+
+### Fixed
+
+- Fixed the employee app inventory workspace at compact desktop/small-screen
+  widths so the inventory panel and selected-card detail panel stack cleanly
+  without overlap or horizontal scrolling.
+- Updated Windows packaging to build fullscreen, decorationless Store and Kiosk
+  installers, remove the fake in-app window buttons, and include hidden LAN
+  server startup helpers in the release package.
+- Fixed the LAN server release ZIP layout so shared `packages/api-client`
+  runtime code is included with `apps/local-sync-server`.
+- Updated the production active-sync inventory smoke verifier so a confirmed
+  WordPress inventory search match counts as a successful push when the local
+  accepted-result echo does not include the original local entity id.
+- Added a WooCommerce stock reconciliation hook for grouped card products so
+  Square/WooCommerce stock count changes mark matching custom inventory rows
+  sold and stop stale sold cards from staying available in the employee app.
+- Fixed the trade-in offer UI so Add Card to Offer clears the selected card and
+  result list for the next scan, and each offer row keeps an independent
+  cash/credit payout field.
+- Added Square inventory count polling to the LAN server so Square POS sales can
+  be detected from live Square counts, marked sold locally, and pushed to
+  WordPress without waiting for a manual WooCommerce Square sync.
+- Verified Square count reconciliation handles partial inventory count drops,
+  not only zero-stock sales, and renamed the employee app's visible Checkout
+  workspace to Sale Completion so staff use Square as the payment/POS authority.
+- Added Square location auto-discovery for inventory polling when a token is
+  configured but `PUG_SQUARE_LOCATION_ID` is left blank.
+- Standardized local, website cart, and kiosk card holds to 15 minutes.
+- Fixed mobile product image layout by isolating card art in a top container so
+  it cannot overlap product text on phone screens.
+- Fixed customer kiosk scrolling with a scrollable shell, constrained inventory
+  gallery, and vertical selected-card tray behavior on smaller screens.
+- Added direct DYMO Connect printing for employee inventory labels. The LAN
+  sync server now exposes authenticated `/labels/dymo/printers` and
+  `/labels/dymo/print` routes, detects the local DYMO LabelWriter 550 Turbo,
+  uses the detected 30336 roll (`Small30336`) with Code 128 barcodes, and the
+  employee app falls back to browser printing only when DYMO Connect is
+  unavailable.
+- Simplified selected-inventory label printing so one Print Barcode Label click
+  sends the selected card directly to DYMO instead of creating a second
+  prepared-label print button first.
+- Updated the employee-app print path so labels try the DYMO printer attached
+  to the current workstation first, fall back to the LAN middleman server
+  printer second, and only use the browser print dialog as a final fallback.
+- Completed the strict 2026-06-22 Square catalog import pass from column AH:
+  1,471 card rows, 2,105 physical units, 1,204 ScryDex image hydrations, 267
+  hidden unmatched review rows, zero failed rows, and zero LAN queue backlog.
+- Fixed the local WordPress inventory pull merge so accepted local inventory
+  rows keep their local identity while storing the WordPress public ID. The live
+  local cache was deduped from 4,052 rows to 2,106 real rows, leaving zero
+  duplicate barcodes, zero sync queue backlog, and 2,104 Square-ready rows.
+- Fixed Square POS sale finalization so the WordPress inventory public ID keeps
+  its original casing instead of being normalized like a scan barcode before
+  calling the website mark-sold endpoint.
+- Added `inventory:import-square-catalog-local`, a dry-run/execute Square
+  catalog importer for live local inventory loads. It reads quantity from column
+  AH (`Current Quantity The PUG`), includes MTG Singles, Pokemon, One Piece, and
+  graded-card rows, preserves Square catalog IDs, skips One Piece
+  supplies/events, and marks Square `variable` price rows hidden until ScryDex
+  pricing is applied.
+- Imported the 2026-06-22 Square catalog into the local/website inventory flow:
+  1,570 source rows and 3,278 physical units, with all imported rows carrying
+  Square IDs and the LAN sync queue reconciled to zero pending items.
+- Moved pickup-order audio selection into the employee app: staff stations can
+  choose a local MP3/MP4, test it, or use the built-in tone without depending
+  on a WordPress media setting.
+- Added an event creation handoff that clears stale player lookup fields and
+  moves staff to the selected event's check-in workflow after the event product
+  is created.
+- Added `inventory:prepare-pug-grading-singles`, a Square catalog converter
+  that keeps MTG/Pokemon singles, excludes graded rows, outputs the `Pug
+  Grading Singles` import category, and flags Square `variable` price rows for
+  ScryDex pricing.
+- Added production/local live-inventory cutover cleanup commands that back up
+  first, remove generated card inventory/products, clear stale LAN queue rows
+  and open sync conflicts, and preserve ScryDex catalog/reference data,
+  customers, orders, and credit ledger history.
+- Added a generated `pug-order-notification.mp3` chime plus a production upload
+  command that registers the file in WordPress Media Library and enables it for
+  employee pickup-order sound alerts.
+- Removed sample card inventory, queued-write counts, and demo conflict rows
+  from the local app seed state so a clean live database starts cleanly.
+- Fixed the employee app empty-inventory startup path so the local app renders
+  the PIN screen and empty inventory state after live inventory is cleared.
+- Added employee-only pickup order sound notifications for the employee app.
+  WordPress managers can upload/select an MP3 or MP4 alert in the platform
+  settings, the paid pickup queue exposes only safe notification metadata, and
+  the LAN sync server serves that metadata through a PIN-session Bearer token
+  endpoint without sending WordPress credentials to clients.
+- Added a complete client-safe handover documentation package under
+  `release-package/`, refreshed support references under `docs/`, and updated
+  the production release package builder so the documentation bundle is included
+  in the installable full-product ZIP.
+- Added the complete `the-pug-production-release-0.202.0.zip` artifact under
+  `releases/0.202.0`, including checksum documentation, and updated the
+  production release packager so the storefront theme ZIP is included in future
+  full-product bundles.
+- Replaced the storefront footer WooCommerce credit with `Created by JC
+  Electronics`, added The Pug address/phone/directions to the Contact page, and
+  added event registration confirmation emails that include event details,
+  payment status, and the shop address.
+- Split the local app counter flow so `Customers` now focuses on customer
+  profile details, local store-credit balance, credit issue, ledger history,
+  kiosk/order history, and checkout receipts, while the new `Checkout` tab
+  handles guest/customer sale start, barcode/product lookup, kiosk order import,
+  misc sale lines, local credit use, Square receipt capture, receipt delivery,
+  Square reader handoff, and Dymo label prep.
+- Added LAN checkout transaction history storage and API support, including
+  customer-linked and guest receipts, item lines, Square references, receipt
+  delivery choice, staff attribution, and profile/search visibility.
+- Cleaned production app wording by removing visible staging language from the
+  local app flow and replacing customer-facing sync jargon with plain store
+  language.
+- Fixed phone-width layout for the `Checkout` and `Customers` app tabs so the
+  customer credit/profile cards no longer overflow horizontally.
+- Added a Customers workspace kiosk-order checkout section: staff can search
+  kiosk pickup orders, load an order total/cards into checkout, attach the
+  order to the selected customer profile, and complete the local sale with the
+  Square receipt while keeping customer credit local-store only.
+- Added a server-side Square Terminal connector scaffold for the LAN sync
+  server, including secret-safe status, manager activation-code, and reader
+  checkout routes plus app UI states for manual receipt mode vs configured
+  reader checkout.
+- Hid new-customer creation on the Customers workspace until staff explicitly
+  request it, removing the confusing LAN customer queue block from the default
+  checkout surface.
+- Expanded ScryDex card normalization so daily and manual catalog syncs store
+  grade-specific price points from `price_points`, `graded_prices`,
+  `gradedPrices`, and variant-level graded price maps, including grading
+  company, grade, low/mid/high, currency, and raw payload metadata.
+- Updated daily/manual/live ScryDex card pulls to request `prices,pop_reports`
+  consistently, carry ScryDex top-level and variant `prices` payloads into the
+  local reference cache, and infer documented perfect graded rows as grade 10.
+- Added a ScryDex-primary price-history fallback for graded card searches. When
+  staff searches in graded mode and cached card rows do not have grade-specific
+  prices, WordPress requests the documented ScryDex card price-history endpoint,
+  merges the newest graded rows into the response, and persists them to the
+  provider price-point table.
+- Fixed ScryDex price-history persistence so graded rows use a valid stored
+  condition and MySQL timestamp values, allowing production WordPress to save
+  grade/company-specific prices instead of rejecting them during enrichment.
+- Increased the local sync WordPress catalog timeout and preserved merged
+  `price_points` in the LAN cache so the employee app receives newly enriched
+  graded price rows instead of stale raw-only card records.
+- Simplified the employee app Customers workspace into a checkout-focused
+  counter flow: search/select or create customer, review selected customer
+  credit/ledger history, enter Square ticket and store-credit redemption
+  amounts, attach the Square receipt/reference, and record the credit use.
+- Added secret-safe LAN queue diagnostics to sync status and the Queue page so
+  staff can see pending operation type, customer/reference ids, amount, and
+  queued time without exposing raw payload JSON or credentials.
+- Fixed graded Trade-In valuation so raw/base card market prices are shown only
+  as reference data when an exact graded ScryDex price is missing; staff must
+  enter a manual offer or use secondary comps instead of accidentally staging a
+  graded card from raw pricing.
+- Removed setup-token names from Trade-In graded comp messages shown in the app
+  and local sync API responses.
+- Added a Trade-Ins manual offer value field before staging a card, with
+  market-mid-first valuation for trade offers and persisted manual override
+  markers on saved trade-in line items.
+- Added server-side secondary graded pricing lookup for Trade-Ins with
+  PriceCharting support, ScryDex/reference cache remaining primary, a local
+  cache table, no client credential exposure, and offline app status/details
+  when secondary comps are used.
+- Added a Trade-Ins market-value panel for selected graded cards, including
+  grade/company-aware ScryDex price matching, visible fallback warnings, and
+  direct comp-search links when exact graded pricing is unavailable.
+- Connected Trade-Ins and Customers end to end in the local app: staff can
+  search existing customers by name, email, phone, or ID, create a missing
+  customer, save/reopen/decline/approve trade offers under that profile, and
+  automatically apply accepted store-credit payouts to the customer ledger.
+- Fixed customer profile trade-in matching so one customer's email/lookup fields
+  cannot accidentally match unrelated trade-in records.
+- Fixed the employee app sync header so it refreshes online/local-cache status
+  and last-sync time from the LAN middleman heartbeat instead of staying on the
+  seeded offline state.
+- Fixed local manager reports so missing currency or legacy blank amounts do
+  not break report generation; reports now render summary cards, graph series,
+  KPI cards, CSV header data, and row previews from the local/WordPress report
+  path.
+- Fixed the local app trade-in workflow so selected customers stay attached,
+  cards can be searched directly from the Trade-Ins screen, saved trade offers
+  can be loaded back into the cart for editing, accepted offers create
+  sellable inventory, events auto-select when loaded, and WooCommerce cart card
+  thumbnails render with eager fixed-size image markup.
+- Saved trade-in offers now update the existing LAN middleman draft/review
+  record when staff save, accept, or decline a loaded quote instead of creating
+  duplicate drafts, and converted/declined rows show the staff display name for
+  reporting.
+- The local app frame now keeps the navigation rail visible while the Trade-Ins
+  and Events workspaces scroll, with mobile sticky header/nav behavior preserved.
+- Updated offline app UI contracts for the current Trade-Ins copy and specific
+  `Use Single` / `Use Graded` card-result actions.
+- Linked ScryDex provider price observations and price points back to their
+  reference cards during new imports and added database migration 15 to backfill
+  existing unlinked rows, so graded price points can attach to card search and
+  intake results.
+- Hardened the local middleman release ZIP so `.env`, `.env.*`, SQLite
+  databases, logs, and node_modules are excluded from packaged production
+  artifacts.
+- Redesigned the local app Trade-Ins workspace to match the lighter Inventory
+  page treatment, moved customer lookup to the top of the flow, added live
+  customer match cards, and changed the primary customer action between
+  `Use Customer` and `Create & Use Customer` based on lookup results.
+- Added live cart/kiosk hold enforcement to local inventory reads, kiosk order
+  creation, and fulfillment refreshes. Cards selected in a kiosk/cart now move
+  into a held state for 30 minutes, expired holds are released back into
+  sellable inventory, and legacy kiosk orders without explicit hold timestamps
+  are expired by their created time so old holds cannot linger.
+- Cleaned the local middleman queue after active-sync smoke tests and verified
+  the review stack starts with `queue_depth: 0` while all WordPress push/pull
+  channels remain connected to the production site.
+- Removed the pale product-image background from grouped singles product pages
+  and WooCommerce cart line items so card art renders on the storefront theme
+  without the gray/blue frame.
+- Hardened production active-sync verification with bounded retries for
+  transient SSH transport timeouts while still failing real command errors.
+- Final production release pass for 0.202.0 verified the active sync chain
+  across ScryDex/reference cache, WordPress inventory creation, WooCommerce
+  product projection, Square-sale inventory adjustment, customer credit, kiosk
+  inventory, local pickup fulfillment, and production reference search.
+- Refined the employee Trade-Ins screen into a counter-style offer flow with
+  customer name/phone lookup, per-card trade percentage and payout controls,
+  running offer totals, Save Quote, Customer Accepts, and Customer Declines
+  actions. Declined offers are stored for later lookup by customer phone,
+  name, staff, receipt/order id, card, or set.
+- Fixed resolved local app conflicts continuing to show as open after reboot by
+  deriving the sync summary status from the live conflict queue.
+- Fixed grouped WooCommerce singles options so blank raw singles and explicit
+  raw singles merge into one card with independent condition/version choices
+  instead of duplicate rows.
+- Fixed local trade-in order persistence so the LAN middleman saves draft,
+  review, approval, paid, and converted trade-in records without SQLite insert
+  placeholder errors.
+- Normalized storefront navigation links to HTTPS on the production domain.
+- Added first-class graded-card visibility to inventory search: the employee app
+  now filters Singles vs Graded Cards and shows grading company, grade, and
+  certification details, while WordPress staff inventory search supports a
+  server-side raw/graded filter and displays graded metadata in results.
+- Hardened trade-in/buy-in transaction status flow in the LAN middleman: trade
+  records now block duplicate conversion, preserve conversion audit fields, and
+  expose Review, Approve, Paid, Converted, Complete, and Reject actions in the
+  employee app.
+- After app inventory intake, the inventory list now filters by card name
+  instead of the newly generated barcode so same-printing cards added in
+  different conditions stay visible as one grouped card with condition stock
+  selectors.
+- Customer credit ledger entries now carry staff/reference details, balance
+  before and after, and exact line-item causes for local credit adjustments and
+  Square POS credit redemptions, with the employee app displaying the grouped
+  ledger lines.
+- Trade-in/buy-in drafts now keep the logged-in staff user on the shared
+  transaction record, return the staff display name to app clients, and support
+  transaction lookup by receipt/order id, customer, staff, card, set, status,
+  grade, grading company, and payout text.
+- Added a manager Reports dashboard with graph-ready filters, KPI cards,
+  employee intake versus sales comparisons, online versus in-store comparisons,
+  trade-in cash versus credit comparisons, inventory health metrics, retail KPI
+  formulas, CSV export contracts, and local-app REST data contracts.
+- Added a LAN middleman reports proxy so manager/owner app sessions can pull
+  website report plans through `/reports/{report}` without exposing WordPress
+  credentials to app clients.
+- Trade-in draft line items now keep their own payout percentage, payout type,
+  calculated default value, and manually editable final value, while inventory
+  intake remains separate from trade/buy-in records.
+- Removed trade-in preview/staging controls from the Inventory intake screen
+  and tightened the Trade-Ins layout so draft lookup filters wrap cleanly
+  without pulling inventory content into the trade/buy-in workspace.
+- Trade-Ins can now stage the currently selected inventory card when the
+  intake form is empty, while still keeping staged trade lines out of sellable
+  inventory until review and conversion.
+- Added a manager/owner Reports screen to the local app with date, employee,
+  channel, and game filters, graph-style comparison cards, KPI cards, and a
+  live LAN report refresh action.
+- Tightened the local app selected-card preview sizing so graded intake and
+  inventory detail layouts no longer create horizontal overflow.
+- Fixed the pickup fulfillment status flow so WordPress Ready for Pickup
+  responses preserve the app's picked-card checklist, the app refreshes the
+  shared fulfillment queue after status changes, and completed orders leave the
+  active picking view without a hard reload.
+- The employee app Trade-Ins screen now includes shared transaction lookup and
+  staff filters, and each saved draft shows who processed it for later reports
+  and accountability.
+- The storefront theme now normalizes same-site links to HTTPS on the production
+  GoDaddy host so menu and CTA links do not regress to mixed-scheme URLs.
+- Offline app intake search now keeps every returned candidate visible after
+  selecting Use Card, supports Set / Expansion filtering for broad names, and
+  no longer collapses the result list back to the selected card only.
+- Local app sync status now reports Online / Online local-cache / Offline
+  fallback from live LAN and WordPress connector state, and refreshes the last
+  sync timestamp whenever status, heartbeat, kiosk, or auto-sync checks run.
+- Fulfillment picking now accepts valid public id, inventory id, reservation id,
+  or Woo order item id references for checked cards, so Ready for pickup can be
+  reached reliably from website pickup orders.
+- Added manager-visible store operations settings for grading-company options,
+  local-store-only customer credit policy, and fulfillment notification/email
+  controls.
+- Added graded-card intake fields for grading company, grade, and certification
+  number to the staff inventory form, with product-type labels for Singles and
+  Graded Cards.
+- Added a trade-in value planner that pulls market-mid value, applies a
+  staff-selected 0% to 100% trade-in percentage in 5% increments, rounds down to
+  the nearest whole dollar, and separates cash versus store-credit totals.
+- Added trade-in receipt payload planning and manager-only report planning/REST
+  scaffolding for customer, sales, inventory, trade-in, fulfillment, ScryDex,
+  Square reconciliation, and audit reports.
+- Switched the app and LAN sync server primary WordPress connector to the
+  corrected HTTPS production site so application-password authentication works
+  for live REST writes.
+- Centralized sale-price and trade-in rounding rules. Customer sale prices over
+  $1.00 now round up to the next whole dollar, and trade-in values round down
+  after the configured payout percentage.
+- Fixed LAN inventory intake pushes so app-added cards can become available on
+  WordPress immediately when the Main Store location is configured, with
+  WordPress returning accepted inventory instead of leaving all items pending.
+- Added a WooCommerce Ready for pickup order status path for fulfillment
+  updates and one-time ready-for-pickup customer email notification support.
+
+### Changed
+
+- Employee inventory now groups serialized copies of the same card printing
+  into one visible record, shows total physical stock and condition-level
+  quantities/prices, and lets staff select NM, LP, or another condition before
+  operating on the exact underlying barcode.
+- WooCommerce card detail and cart rows now render the projected ScryDex image
+  even when no WordPress media attachment exists, including legacy serialized
+  products whose image is recovered from canonical inventory. Home-page game cards now
+  deep-link into the Singles page with the matching game filter, MTG labels are
+  consistent across website and app surfaces, and employee pick rows now show
+  card art, barcode, location, and price with a clearer scan-friendly layout.
+- Customer kiosk mode is now a dedicated customer-only screen at `?mode=kiosk`,
+  while the employee app's former Kiosk tab is now an Order Fulfillment queue
+  that separates unpaid in-store kiosk requests from paid WooCommerce local
+  pickup orders.
+- Added WordPress and LAN middleman fulfillment endpoints for paid WooCommerce
+  local pickup orders, including persisted local caching, staff status updates,
+  retryable offline status queues, and no payment or inventory mutation from
+  fulfillment-status changes.
+- Offline app ScryDex inventory lookup now requests the full local result set
+  instead of only the first 8 matches, adds a Set / Expansion filter to narrow
+  broad searches, keeps the scrollable result list stable, and still clears the
+  search into a focused intake draft after staff choose Use Card.
+- Employee Order Fulfillment now separates active kiosk/WooCommerce pickup work
+  from completed orders and adds completed-order search by customer, order,
+  receipt, barcode, and card text.
+- Graded-card intake metadata now flows from the app to the LAN server and
+  WordPress inventory push payloads, including grading company, grade, and
+  certification number.
+- Local sync ScryDex search now accepts `limit` and `set`/`set_filter`
+  parameters, returns uncapped local-cache matches by default, and pages the
+  WordPress catalog proxy until all matching fallback rows are returned.
+- The local WordPress catalog proxy client now retries with a legacy 50-row
+  limit if a live site has not yet been updated for 250-row intake searches.
+- WordPress reference-card search now allows intake lookups up to 250 rows so
+  the local app can pull a fuller set of candidate printings from the website
+  catalog when the LAN cache misses.
+- WooCommerce product projection now marks generated card products for the
+  official WooCommerce Square extension by setting the extension's
+  `wc_square_synced=yes` taxonomy flag when the extension taxonomy is
+  available, while keeping Square payment capture delegated to WooCommerce
+  Square.
+- Grouped card product galleries now render ScryDex card art as a static
+  product image instead of WooCommerce's zoom/lightbox anchor, preventing the
+  single-product page from trapping clicks after image zoom.
+- The LAN middleman server now advertises itself through safe UDP discovery so
+  installed employee/kiosk apps can find the local sync host automatically, with
+  manual URL setup preserved as fallback and no credentials returned in
+  discovery payloads.
+- The offline app setup/settings flow can discover and apply a local middleman
+  server, and browser preview mode clearly falls back to manual URL entry.
+- Inventory intake pricing now stores market price, market-plus-10 percent auto
+  retail, minimum sale floor, final sale price, and pricing source so added card
+  inventory respects the daily pricing rule without dropping below staff-set
+  minimums.
+- Added a package contract and generated zip for the local sync middleman
+  server install bundle.
+- Local inventory intake and exact Square POS sale finalization are now
+  online-first: when the LAN server has WordPress push connectors configured,
+  it immediately attempts the WordPress/WooCommerce update and reports accepted,
+  retry, and queue-depth counts while preserving the offline queue fallback when
+  the website is unavailable.
+- The offline app Add Inventory flow now consumes the LAN server's auto-sync
+  result directly, so staff see whether WordPress/WooCommerce accepted the item
+  without needing a separate manual Sync action.
+- Production local-sync smoke scripts now recognize the LAN server auto-sync
+  response first and use manual `/sync/push` only as a fallback, keeping live
+  smoke verification compatible with online-first inventory intake.
+- Product shelf cards now replace WooCommerce's default gray placeholder image
+  with a branded PUG gradient tile when no real product image exists, keeping
+  Sealed, Graded, and Accessories visually aligned with the home page.
+- Production Sealed, Graded, and Accessories shelves were seeded with 18
+  visible WooCommerce products across their product categories so those pages
+  display live product grids instead of empty connected states during the site
+  preview.
+- Production browser click-through now covers the custom storefront pages,
+  legacy `/shop/` redirect, Singles search, product detail condition/price
+  display, link health, and desktop/mobile overflow checks.
+- Sealed, Graded, and Accessories storefront pages now use a plugin-owned
+  `[tcg_product_shelf]` renderer that reads WooCommerce products from their
+  shelf categories and shows a branded connected-empty state when a category has
+  no published products yet.
+- Production public shortcode verification now checks the product shelf
+  shortcode alongside Singles inventory and Events, and production page setup
+  verifies Sealed, Graded, and Accessories use the shelf shortcode instead of
+  the bare WooCommerce products shortcode.
+- Production storefront pages now use the custom Pug commerce shelves only:
+  Singles, Sealed, Graded, Accessories, Events, Buying, and Contact, with the
+  legacy WooCommerce `/shop/` route redirected to Singles and theme footer shop
+  links rewritten to the same custom shelves.
+- Public Singles now has 48 visible live card products seeded from the ScryDex
+  catalog, 12 each for Pokemon, Magic: The Gathering, Lorcana, and One Piece,
+  with card images, two-decimal pricing, condition/version selection, and exact
+  WooCommerce product links.
+- Public Singles and product-detail UI received a fuller dark arcade storefront
+  treatment, full-width responsive layout, mobile no-overflow behavior, and
+  ScryDex remote images on both listings and single product galleries.
+- Production and staging plugin install/upload scripts now rebuild the
+  WordPress plugin package from the current working tree by default unless a
+  custom zip path is explicitly provided, preventing stale versioned zips from
+  being deployed.
+- Production customer upserts now store missing customer barcodes as `NULL`
+  instead of an empty string, preventing unique-barcode collisions when the LAN
+  app creates multiple customers without barcode assignments.
+- The production local-sync workflow smoke now verifies event pull/push,
+  customer creation, credit add/redemption, hidden inventory intake,
+  kiosk-visible inventory intake, kiosk pickup ordering, and production cleanup
+  in one run.
+- Production commerce navigation can now be configured to use the Pug storefront
+  shelves directly: Home, Singles, Sealed Products, Graded Cards, Accessories,
+  and Events, while removing the basic WooCommerce Shop link from the header.
+- The LAN local sync server now supports exact Square POS sale finalization:
+  staff can finalize scanned inventory against a Square receipt/order reference,
+  queue the exact serialized cards as sold, and push that status to WordPress so
+  WooCommerce product stock/options update without the Pug plugin capturing
+  Square payments.
+- The offline app and local sync contracts now treat `sold` as a first-class
+  inventory status and expose the WordPress sale-push connector status.
+- Imported the Pug arcade WooCommerce storefront theme into source control,
+  added a package/install path for the theme, and wired local `wp-env` to load
+  the same storefront experience.
+- Production public page setup now restores the Shop hub plus Singles, Sealed
+  Products, Graded Cards, and Accessories shelves, plus matching WooCommerce
+  product categories that preserve the live storefront theme.
+- WooCommerce card product projections now tag graded inventory with the
+  `graded-cards` category so graded cards can appear on their own storefront
+  shelf.
+- Public event empty states now remain readable on the dark Pug storefront
+  theme while the event calendar is empty.
+- Public inventory search now includes a set/expansion filter that searches set
+  name and set code while preserving the filter in pagination URLs.
+- Public Singles inventory now uses a dark Pug storefront design and explains
+  when no `available` and `visible` card inventory exists yet.
+- Visible local inventory intake now asks WordPress to publish/update the
+  WooCommerce card product during the LAN inventory push, including the explicit
+  production WooCommerce product-sync approval and without enabling payment or
+  Square inventory writes.
+- The production local-sync inventory smoke can now run in visible mode to
+  verify automatic WooCommerce product publishing and cleanup of the temporary
+  saleable product.
+- WooCommerce card product projections now tag published singles with the
+  `singles` category and the matching game product category.
+- The offline app Add Inventory flow now immediately attempts the LAN queue push
+  after a successful intake and shows a shorter staff-facing publish result.
+- The LAN local sync server now supports a manager-only, secret-free
+  `/setup/config` route that persists the one-website binding in SQLite; the
+  offline app Settings save flow publishes website setup to the middleman when
+  a manager PIN session is active.
+- The offline app UI version badge now matches the packaged app version, and
+  the UI shell contract asserts that alignment.
+- The production ScryDex index runner now returns secret-safe card page
+  summaries for each set import, including scoped expansion ID, page number,
+  provider row count, normalized row counts, persistence status, and transaction
+  commit status.
+- The production ScryDex index runner now preserves case-sensitive provider
+  expansion IDs when importing cards by set, matching ScryDex scoped card
+  endpoints such as `/expansions/OGN/cards`.
+- The guarded production WooCommerce card smoke now verifies the rendered
+  customer condition selector UI, including selected option, stock, two-decimal
+  price data, and the serialized quantity lock.
+- WooCommerce grouped card product pages now show a clearer exact-copy selector
+  with selected condition/version, two-decimal price, copy count, and responsive
+  product-page styling before the cart reservation is created.
+- Customer credit REST responses now present balances, ledger amounts, and
+  posting results as standard two-decimal currency strings so website, local
+  app, and connector screens do not display database-precision `.0000`
+  amounts.
+- Added a local sync operator smoke command for store workstations to verify a
+  running LAN server, configured website binding, device presence, and
+  secret-free heartbeat handling without mutating WordPress or Square.
+- Local sync server testing now includes a multi-client LAN smoke that simulates
+  two employee stations plus a customer kiosk sharing one pickup queue, blocking
+  duplicate holds, and marking stale local devices offline.
+- LAN kiosk pickup orders now have a shared queue across employee and kiosk
+  clients: the local sync server stores item snapshots, exposes staff list/status
+  endpoints, and the offline app can refresh and update pickup status without
+  mutating inventory.
+- Square POS inventory support now includes a manager-only count reconciliation
+  path: the LAN server can compare returned Square inventory counts to
+  serialized website inventory, report mismatches/missing/unexpected counts, and
+  keep all provider inventory writes deferred.
+- Offline kiosk pickup now lists only available kiosk-visible inventory, shows
+  customer/order readiness and pickup total, and gives staff a pull workflow for
+  queued, pulling, ready, and completed pickup tickets.
+- WooCommerce grouped card product pages now load a dedicated product UI
+  stylesheet for remote card art, condition/version selector controls,
+  selected-price display, and mobile layout polish.
+- Production is now verified on WordPress plugin `0.189.0` after backup-backed
+  package deployment, ScryDex catalog/search checks, public shortcode checks,
+  local sync smokes, and the WooCommerce exact-inventory smoke.
+- WordPress plugin package, offline app package, Tauri config, and Rust crate
+  metadata now align with workspace version `0.189.0`.
+- Added a guarded production WooCommerce card smoke that creates a temporary
+  grouped card product, verifies remote card art, two-decimal condition prices,
+  exact inventory reservation release, paid-order conversion to sold, and full
+  cleanup.
+- Production is now verified on WordPress plugin `0.188.0` after backup-backed
+  package deployment, ScryDex catalog/search checks, public shortcode checks,
+  local sync smokes, and the WooCommerce exact-inventory smoke.
+- WooCommerce inventory publishing now supports grouped card products: existing
+  inventory rows for the same card can sync to one product with remote card art
+  metadata, stock by condition/version, condition-specific price options, and
+  exact inventory reservation during add-to-cart and checkout.
+- WordPress plugin package, offline app package, Tauri config, and Rust crate
+  metadata now align with workspace version `0.188.0`.
+- WordPress inventory admin Square POS Mapping rows now include secure manager
+  forms for saving Square catalog item and variation IDs back to the website
+  inventory record, using the website as the source of truth and leaving
+  payment capture delegated.
+- WordPress inventory admin now includes a Square POS Mapping dashboard fed by
+  staff inventory search results, showing POS-visible counts, ready Square
+  variation mappings, duplicate barcode/SKU issues, missing scan IDs, missing
+  Square variations, and reconciliation-only authority notes.
+- LAN Square POS inventory planning now returns a manager-readable readiness
+  summary with POS-visible counts, mapped Square pull feed rows, review items,
+  next actions, and reconciliation-only authority labels while keeping payment
+  capture delegated outside the app.
+- Version `0.186.0` adds operational checkout and browse polish across the
+  connected systems: Square store-credit handoff now requires a ticket total,
+  receipt/reference, and cashier confirmation; the LAN server returns and
+  posts those reconciliation fields to WordPress credit metadata; kiosk pickup
+  reservations now carry the LAN order ID into staged local holds; and the
+  offline app hydrates PIN/user access from the LAN policy when available.
+- Offline inventory intake now records ScryDex pricing provenance in queued LAN
+  payloads, including catalog source, observed timestamp, suggested price,
+  final staff price, and override reason when staff changes the ScryDex
+  suggestion.
+- Public inventory search now supports server-rendered pagination with
+  next/previous links and visible result ranges while preserving branded card
+  art, price, stock, condition, variant, and product links.
+- Customer account portal output now includes recent event registrations beside
+  store credit and card purchase history, with customer-safe labels for status,
+  payment, check-in, game, format, and entry fee.
+- ScryDex catalog export pages now use deterministic per-table primary-key
+  ordering and include an export manifest so full catalog downloads are
+  reproducible and easier to audit.
+- LAN ScryDex reference search now preserves WordPress/ScryDex price points in
+  the local `store-sync.sqlite` reference cache, and offline intake updates the
+  draft price from the selected condition/version when price points are
+  available.
+- Offline inventory details now keep selected inventory-row art separate from
+  the ScryDex intake draft, show version and online/kiosk/POS visibility in the
+  detail panel, and keep selected ScryDex card art uncropped.
+- Public inventory search now renders with saved website branding settings
+  across ready and blocked states, aligns the stylesheet with the active
+  `--tcg-*` brand variables, and gives card art a roomier display treatment.
+- WordPress reference card lookup now returns cached `reference_card_id` values
+  and the admin card lookup handoff fills the hidden intake field, keeping
+  ScryDex lookup-to-intake tied to the canonical website reference record when
+  available.
+- Offline app inventory search now matches more of the LAN/server search
+  surface, including card number, set code, condition, provider IDs, selected
+  variant metadata, and Square catalog mapping IDs, while website pull refreshes
+  preserve existing local variant/image metadata.
+- Inventory intake through the offline app and LAN server now preserves
+  selected ScryDex variant metadata, including provider/reference variant IDs,
+  finish, language, raw/graded mode, and variant-specific image URLs through
+  the WordPress inventory push body.
+- The offline app Sync Now flow now requests both website inventory and
+  website events from the LAN middleman server, merges pulled event snapshots
+  into the Events workspace, and shows separate inventory/event pull health in
+  the sidebar, Status, and Settings screens.
+- The LAN sync server can now pull published WordPress events into the local
+  SQLite event cache, including the WordPress event slug required for local
+  event registration and check-in pushes.
+- Local inventory rows now retain the accepted WordPress inventory `public_id`
+  after push, and kiosk pickup orders send that WordPress ID instead of the
+  local-only ID when reserving website inventory.
+- Added a guarded production local-sync workflows smoke covering event
+  pull/register/check-in, customer credit add/redeem, hidden inventory intake,
+  kiosk reservation, and WordPress/local cleanup.
+- The LAN ScryDex reference search now ignores variant-only matches for normal
+  card-name searches, preventing noisy stamp variants from blocking a
+  WordPress catalog fallback for real card results such as `Pikachu`.
+- The offline app Queue badge and sync strip now prefer the live LAN
+  `store-sync.sqlite` queue depth when the middleman server is connected,
+  while keeping device-only queue counts as secondary detail for offline mode.
+- WordPress plugin package, offline app package, Tauri config, and Rust crate
+  metadata now align with workspace version `0.185.0`.
+- Public inventory cards now use a stronger The Pug display-case treatment
+  with framed card art, detail chips for condition/variant/set/number, clearer
+  stock badges, and two-decimal staff inventory price display in admin search.
+- Prepared the production WordPress package as version `0.179.0` so public
+  inventory CSS and price-display fixes bust deployed asset caches.
+- WordPress plugin packages now include the plugin `assets/` directory and
+  assert customer-account, public-events, and public-inventory CSS files in the
+  package contract. Version `0.180.0` republishes the public UI fix with the
+  actual stylesheet assets present.
+- Public inventory search pages now mark themselves as uncacheable when the
+  shortcode page or inventory query parameters are present, preventing
+  Cloudflare/GoDaddy full-page cache from serving stale card search, price,
+  stock, or stylesheet HTML. Version `0.181.0` publishes this production cache
+  safeguard.
+- Public inventory cache bypass now also runs at the final `send_headers`
+  phase and emits explicit `no-store`/edge-cache headers for GoDaddy-managed
+  production pages. Version `0.182.0` publishes the host-cache header ordering
+  fix.
+- Public inventory cache headers now also flow through WordPress'
+  `wp_headers` filter so dynamic search pages can override static public cache
+  headers before the response header set is emitted. Version `0.183.0`
+  publishes the header-source fix.
+- Public inventory search forms now add a timestamp cache-bust field on submit
+  so customer/staff search URLs stay fresh even when managed WordPress edge
+  cache forces static cache headers. Version `0.184.0` publishes the
+  customer-facing freshness fallback.
+- WordPress inventory rows can now persist Square catalog item/variation
+  mappings after provider sync, and the LAN/offline cache keeps those mapping
+  fields so staff can see POS mapping status while Square payment capture
+  remains delegated to the official WooCommerce Square extension.
+- The LAN sync server now exposes a manager-only Square POS barcode/SKU
+  inventory-readiness plan, and the offline app Settings screen can run it to
+  show mapped versus review-needed POS rows without making Square network
+  calls.
+- Local sync inventory intake now preserves online/kiosk/POS visibility from
+  the desktop app through SQLite, WordPress push mapping, and production smoke
+  verification, with a guarded hidden-row live smoke that cleans itself up and
+  supports active WordPress location mapping for immediately available stock.
+- LAN user/PIN access policy changes are now stored as `local_only` audit
+  operations instead of pending WordPress pushes, so Sync status reflects only
+  work that can actually be accepted by WordPress.
+- The offline app ScryDex intake flow now shows a selected-card preview with
+  card art, catalog source, condition stock, queued quantity/price, variants,
+  and lookup path, including a responsive mobile layout for phone-sized
+  manager/employee screens.
+- The offline app queue now exposes a dedicated `Sync to Website` command,
+  prevents overlapping manual sync clicks, preserves the inventory status
+  returned by WordPress after LAN push acceptance, and keeps the status/queue
+  visibility panel resilient during app reloads.
+- The offline app now records LAN client heartbeats while unlocked, shows
+  employee/kiosk/manager client presence on the Status screen, and aligns the
+  Tauri Windows package metadata with the current app version.
+- Added branded customer-facing WordPress shortcodes for public inventory
+  search and event registration, including image/condition/price/stock display,
+  safe grouping of serialized inventory rows, and dedicated public CSS.
+- Prepared the production WordPress package as version `0.177.0` so the live
+  site can verify the deployed public inventory and event-registration
+  shortcodes distinctly from the previous ScryDex catalog release.
+- Added a production public-shortcode verifier and fixed the public inventory
+  shortcode to use the real inventory parser contract, preventing fatal errors
+  when invalid filters are rendered on the live website.
+- Added a production public-page configurator for publishing the Card Inventory
+  and Events pages with verified shortcodes while backing up prior page content
+  to post meta and avoiding homepage/menu changes.
+- WordPress reference-card search now ranks exact, prefix, and contains matches
+  on card name ahead of identifier and set-name-only matches, so intake lookups
+  like `Charizard` surface actual Charizard cards before set-only results.
+- Added a production reference-search verifier that checks the live WordPress
+  catalog route through WP-CLI without printing credentials, including result
+  relevance, image presence, two-decimal price formatting, and catalog-cache
+  source.
+- Added a SQLite-backed LAN local sync server package with 4-digit PIN auth,
+  manager-gated user access, local inventory intake queueing, kiosk holds,
+  customer credit/event workflows, and WordPress catalog proxy lookup.
+- Reference-card lookup prices now present as two-decimal money values in API
+  responses and admin intake/search results, while database precision remains
+  four decimals.
+- ScryDex persistence now accepts observed provider card/variant IDs containing
+  `?` and `!`, allowing legitimate cards such as Unseen Forces Unown variants
+  to import instead of blocking the batch.
+- ScryDex variant integrity status now checks variants by `reference_card_id`
+  only, matching the production table schema and avoiding false zero-coverage
+  reports.
+- ScryDex catalog integrity and latest-card previews now calculate variant
+  coverage through the `reference_card_id` relationship used by the variants
+  table, so imported variants are visible in production status checks.
+- Empty ScryDex usage snapshots are now treated as deferred usage checks, and
+  manager-triggered catalog indexing only forwards real usage snapshots into
+  card workers. Production indexing diagnostics now include card block reasons.
+- ScryDex manager-triggered catalog indexing now explicitly enables the
+  repository readiness gates after validating the WordPress database and
+  constructing the checkpoint/persistence repositories, allowing production
+  card pages to run instead of stopping with zero provider requests.
+- The WooCommerce customer account portal now renders a branded The Pug-style
+  “Collector Vault” dashboard with store-credit metrics, recent-order cards,
+  quick shop/order actions, responsive styling, and account-page-only CSS
+  loaded from the plugin.
+- The offline app shell now uses The Pug brand mark, displays card art in
+  inventory and kiosk search results, constrains money inputs to two decimal
+  places, and tracks app-to-LAN inventory intake receipts until WordPress
+  accepts, retries, or rejects them.
+- The local sync server contract now includes employee/kiosk client heartbeat
+  and status endpoints so the future status screen can show online/offline
+  client presence without returning credentials.
+- ScryDex catalog admin imports now surface card-worker failures directly in
+  the progress table instead of treating a blocked card batch as a completed
+  zero-row page. Block reasons, configuration issues, and provider error codes
+  are shown without exposing credentials.
+- The production ScryDex index runner now defaults to the full enterprise
+  mirror flow: all expansion pages, all stored sets, and card pagination until
+  ScryDex returns a short page. Explicit small limits remain opt-in for smoke
+  tests, and repeated bounded runs now carry the ScryDex continuation
+  checkpoint forward.
+- Staff lookup/intake and customer account money displays now format prices
+  with two decimal places for human-facing UI while preserving four-decimal
+  database precision for provider/import data.
+- ScryDex card imports now normalize the live API shape where prices are nested
+  under each `variants[].prices[]` entry. The importer now stores those
+  condition/variant price points, ties them to the generated provider variant
+  ID, and keeps the primary card price populated even when no top-level price
+  field is present.
+- ScryDex HTTP requests now use the documented `page_size` pagination
+  parameter while continuing to read ScryDex's `page_size`, `count`, and
+  `total_count` response metadata for resume/continuation decisions.
+- Staff card lookup/intake now carries variant-specific image URLs and latest
+  condition/variant price points from the WordPress catalog cache and ScryDex
+  fallback responses into the intake form, so staff can choose the exact card
+  version before adding inventory.
+- ScryDex catalog imports now run as an enterprise full-game indexer from the
+  admin page: expansions are pulled first, cards are indexed by expansion, and
+  pagination continues until ScryDex returns fewer than the requested page size.
+  The plugin no longer enforces an artificial daily credit ceiling for this
+  manager-only catalog mirror flow.
+- ScryDex expansion-card indexing now preserves provider expansion IDs exactly
+  for card lookups and checkpoint resumes, and the HTTP provider maps friendly
+  game aliases such as `one-piece` and `magic-the-gathering` to official
+  ScryDex endpoint keys.
+- Production-facing admin copy no longer describes route or ScryDex gates as
+  staging-only workflow steps.
+- Offline app inventory search now hydrates from the central LAN sync server
+  while preserving device-cache fallback, and the LAN inventory search now
+  matches location, set code, card number, printed number, condition, provider
+  card ID, barcode, public ID, card name, and set name.
+- Square catalog/inventory request planners now use Square's current
+  inventory batch-create endpoint,
+  `/v2/inventory/changes/batch-create`, while keeping payment capture
+  delegated to the official WooCommerce Square extension.
+
+### Added
+
+- Added a Square barcode/SKU inventory-pull planner to the API client. It maps
+  WordPress serialized inventory rows to Square catalog variation IDs and
+  location IDs for deferred inventory-count reads while keeping payments
+  delegated to the official WooCommerce Square extension.
+- Added a contained The Pug rebrand plan and customer UI CSS foundation under
+  `docs/branding/` for the broader website/theme pass.
+- The read-only ScryDex live-smoke helper now exercises the real expansion-card
+  API path by fetching expansions, selecting an expansion, then pulling cards
+  with `include=prices` and reporting image, variant, and nested price-point
+  coverage without logging raw provider bodies.
+- Added a read-only production ScryDex catalog verification runner that checks
+  the deployed plugin version, ScryDex catalog status route, card counts, image
+  coverage, variant coverage, price coverage, and price-point totals after a
+  production upload/index run.
+- ScryDex Catalog status now includes a secret-free integrity summary showing
+  card image coverage, variant coverage, condition/variant price coverage, game
+  card counts, and latest imported card samples so production imports can be
+  verified from WordPress after each run.
+- Reference-card search responses now include real inventory stock summaries
+  from WordPress inventory rows, including available, reserved,
+  pending-intake, total, and available-by-condition counts for the card lookup
+  and local app surfaces.
+- ScryDex catalog admin now includes paginated JSON export links for reference
+  sets, cards, variants, price observations, price points, and checkpoints.
+- ScryDex catalog admin now includes a database browser with paginated table
+  previews plus single-table and full-catalog JSON downloads.
+- ScryDex reference variants now store provider-specific front/back image URLs
+  through migration `0014`, preserving alternate-art or finish-specific images
+  when the provider includes them.
+- Staff inventory intake can optionally create/update the serialized
+  WooCommerce product immediately while still delegating payments to the
+  official WooCommerce Square extension.
+- Local sync setup now has a secret-free `GET /setup/status` probe, and the
+  offline app stores one configurable website profile per installation while
+  preserving and validating the configured LAN server URL.
+- WooCommerce My Account now includes a read-only **Pug Portal** endpoint that
+  shows logged-in customers their store credit balance, safe recent credit
+  activity, and card-focused purchase history from serialized order metadata.
+- WordPress admin now includes a **ScryDex Catalog** workspace with secret-free
+  catalog counts, latest ScryDex checkpoints, and manager-only bounded import
+  controls that call the authenticated catalog status/index REST endpoints.
+- The production ScryDex index runner now supports the real catalog mirror
+  flow: expansion metadata first, then bounded card imports per stored
+  ScryDex set with checkpoint resume.
+- ScryDex reference-card persistence now keeps normalized expansion metadata
+  fields, including year, rarity code, language, language code, and release
+  date, so set/version searches keep the full provider context.
+- The read-only ScryDex live-smoke helper now loads ignored local env files
+  before checking credentials, keeping API keys out of shell history.
+- Added a placeholder-only `.env.example` template for production deploy,
+  ScryDex configuration, live smoke, and bounded catalog indexing.
+- Production-safe WordPress deployment helpers now cover the real ScryDex
+  catalog path: package install with production database/`wp-content` backup,
+  ScryDex settings configuration through a redacted WP-CLI runner, and bounded
+  production catalog indexing through the authenticated WordPress REST import
+  endpoint.
+- The ScryDex catalog index endpoint now supports bounded expansion pagination
+  through `expansions_page` and `max_expansion_pages`, allowing repeated
+  real-provider imports to fill the website-owned set/card database without
+  relying on fake tests.
+- Offline app PIN login now sends the configured session timeout to the LAN
+  server, stores the returned expiration, displays the auto-lock time, and
+  locks the app when the session expires.
+- Local sync server safety contract now names live credential blocking without
+  tripping the production-secret verifier, restoring the root no-secrets gate.
+- ScryDex reference-card persistence now uses provider-key idempotent upserts,
+  allowing repeated paginated staging imports to refresh cached card metadata
+  without duplicate-key failures.
+- WordPress now includes the ScryDex catalog database/import surface:
+  migration `0012` adds expansion and provider price-point tables, admin
+  `/scrydex/catalog/status` and `/scrydex/catalog/index` endpoints report
+  catalog counts/checkpoints and run bounded imports, ScryDex page sizes are
+  capped at the documented maximum of 100, and credentials stay redacted with
+  no production keys committed to the repository.
+- ScryDex card imports now persist provider set IDs, dimensional provider
+  price points, latest-price lookup indexes, expansion checkpoint keys, and
+  documented `totalCount` pagination, while cache-miss `/reference/search`
+  persistence skips ad hoc checkpoint writes.
+- WordPress now exposes a staff-only event check-in route that records
+  check-ins against existing event registrations, updates registration check-in
+  state, and treats duplicate local check-ins idempotently.
+- LAN sync server can now push queued `event_checkin` operations to WordPress
+  after queued event registrations in the same sync attempt, and the offline
+  app sync visibility panel now marks event check-ins as WordPress-capable when
+  configured.
+- WordPress now exposes a staff/system kiosk pickup route that reserves exact
+  inventory items for pickup without payment capture or WooCommerce order
+  creation.
+- LAN sync server can now push queued kiosk pickup orders to WordPress and
+  clear the matching local kiosk reservation queue rows when accepted.
+- Offline app sync visibility now marks kiosk pickup orders as WordPress-
+  capable when the LAN server has the kiosk push channel configured.
+- WordPress now exposes a staff-only customer upsert route for syncing locally
+  created customers into `tcg_customers`, with a dedicated `manage_customers`
+  capability and role installer version bump.
+- LAN sync server can now push queued `customer_upsert` operations before
+  queued credit ledger posts, allowing new in-store customers to receive a
+  WordPress customer ID and then sync credit adjustments/redemptions in the
+  same push attempt.
+- Offline app sync visibility now marks customer upsert as a WordPress-capable
+  push path when the LAN server is configured, and accepted credit ledger rows
+  are represented in the local app model.
+- LAN sync server can now push queued local event registrations and customer
+  credit ledger posts to WordPress using server-held credentials; credit writes
+  are limited to existing WordPress customers until customer upsert is live.
+- WordPress now exposes staff-only customer credit write endpoints for manager
+  adjustments and purchase redemptions, with idempotency headers, permission
+  callbacks, and existing ledger service validation.
+- Offline app Sync and Queue views now show an operation sync visibility panel
+  that separates WordPress-push-capable work from local-only queued work for
+  inventory, events, kiosk orders, customer upserts, credit ledger posts, and
+  PIN user access.
+- Added a guarded `staging:run-scrydex-sync` runner for bounded staging-only
+  ScryDex catalog imports through the existing WordPress worker, with explicit
+  confirmation, page/game limits, redacted output, and live staging verification.
+- LAN sync server `/sync/pull` now pulls available WordPress inventory search
+  rows into the shared local SQLite cache using server-held credentials, and
+  the offline app Sync Now action displays the latest LAN pull/push result in
+  the Sync workspace.
+- LAN sync server inventory pushes can now target a configured default
+  WordPress location, making accepted local inventory immediately `available`
+  on the website instead of staying in `pending_intake`, while WordPress intake
+  now preserves ScryDex provider IDs and card image URLs from the local app.
+- LAN sync server can now push queued local `inventory_intake` operations to
+  the WordPress `/inventory` route using server-held WordPress credentials;
+  the offline app Sync Now action calls this route, clears accepted inventory
+  queue rows, and keeps credentials out of clients.
+- Offline app Inventory intake now promotes the selected ScryDex/website
+  reference image into the main selected-card preview, leaves the physical-copy
+  barcode blank by default for safe auto-generation, and was browser-verified
+  through the PIN `1420` search -> Use Card -> Add Inventory flow against the
+  running LAN sync server.
+- Staging tooling can now enable inventory runtime gates, run pending plugin
+  migrations after creating a staging database export, and verify inventory
+  intake plus `/reference/search` card photo/version/price payloads through a
+  WP-CLI smoke test.
+- Local sync server WordPress catalog fallback now supports server-held
+  authorization headers or WordPress application-password credentials, allowing
+  company-specific website connectors without exposing ScryDex or WordPress
+  credentials to offline app clients.
+- ScryDex catalog sync now normalizes provider variants/versions into
+  reference-variant upserts, includes variant counts in worker/query/repository
+  audits, exposes variants from the WordPress `/reference/search` fallback
+  route, caches them in the LAN sync server, and shows version/finish labels in
+  the offline app lookup results.
+- WordPress inventory routes now include a connected `/reference/search`
+  handler under the staff-search read gate, returning catalog-safe ScryDex
+  reference card identity, images, latest provider price observation, and
+  secret-free metadata for local sync server fallback lookups.
+- Local sync server runtime can now create its missing-card WordPress catalog
+  fallback from `PUG_WORDPRESS_URL`, calling
+  `/wp-json/tcg-store/v1/reference/search` with bounded limits and secret-safe
+  error/status metadata.
+- Local sync server ScryDex lookup now searches the persisted local reference
+  card cache first, falls back to an injected WordPress catalog/ScryDex proxy
+  only when the card is missing, persists proxy results into `reference_cards`,
+  returns secret-free lookup-order/status metadata, and exposes reference-card
+  counts on `/sync/status`.
+- Local preview PIN `1420` is seeded as a manager user in the LAN sync server
+  and offline app fallback profile for easier review during active
+  development.
+- ScryDex daily refresh now has explicit local/development/staging-only
+  schedule settings, health/status visibility, and a daily runner that remains
+  blocked in production and requires separate network, database-write, and
+  execution confirmation gates before it can persist provider pages.
+- ScryDex sync is now feature-flag available in local/development/staging
+  environments while remaining unavailable in production, and the paginated
+  worker/page planner can explicitly request database execution through the
+  new persistence boundary instead of staying staged-only.
+- ScryDex persistence repository now has an explicit transaction-backed
+  execution path for accepted reference-card, provider-price observation, and
+  checkpoint SQL plans, with table-prefix validation, rollback-on-failure
+  behavior, and audit output that distinguishes staged/deferred plans from
+  executed writes.
+- ScryDex now has a gated cards sync worker shell that can call the configured
+  provider for bounded paginated pages in staging/tests, rehearse normalization
+  and persistence planning per page, expose continuation checkpoints, keep raw
+  provider bodies and credentials out of logs, and leave WordPress database
+  writes deferred behind the existing execution boundary.
+- Offline app now has a dedicated Status workspace for activity and sync status
+  panels, keeping detailed workflow messages off the main Inventory, Kiosk,
+  Queue, Events, Customers, Sync, and Settings workspaces.
+- ScryDex catalog intake now carries provider image URLs into WordPress
+  reference-card schema, persistence plans, local sync server catalog results,
+  and offline app intake rows; the offline app shows card art, market price,
+  local stock counts, condition selection, and quantity-to-add, while LAN
+  intake creates one provisional inventory row per physical copy.
+- Offline app Events now includes a Refresh LAN Events action and refreshes
+  cached event snapshots from the LAN sync server when staff open the Events
+  workspace.
+- Local sync server now persists cached event snapshots and supports shared LAN
+  event listing, registration, and check-in routes; the offline app Events
+  workflow now calls those LAN routes before staging its existing local queue
+  previews so multiple staff stations share event capacity/check-in state.
+- Offline app Inventory intake now includes a ScryDex card lookup panel backed
+  by the LAN sync server, allowing staff to fill intake fields from secret-free
+  reference-card results while ScryDex credentials remain in WordPress/server
+  settings and no live provider request is made by the local client.
+- Local sync server inventory intake now supports LAN-side card creation with
+  duplicate-barcode protection, `pending_intake` status, durable SQLite
+  persistence, queued WordPress acceptance operations, and an offline app
+  Inventory form that displays locally added cards as pending instead of
+  accepted stock.
+- Local sync server customer-credit runtime now supports customer search,
+  local customer creation, manager-approved credit adds/corrections, and
+  credit redemptions with Square POS handoff metadata; the offline app Customer
+  workspace now calls those LAN routes and shows pending local ledger rows.
+- Local sync server now persists staff PIN users, inventory locks, kiosk
+  orders, and queued operations in `store-sync.sqlite`, with restart
+  persistence tests and a configurable `PUG_LOCAL_SYNC_DB` runtime path.
+- Offline app setup profiles now include a configurable LAN sync server URL,
+  and the app has a typed local sync server client used for PIN auth,
+  manager user creation/access edits, inventory holds, kiosk pickup orders, and
+  sync status.
+- Local sync server now has a runnable Node HTTP scaffold with PIN session
+  verification, manager-only user/access policy endpoints, inventory search,
+  reservation locking, kiosk pickup orders, sync status, and runtime tests.
+- Offline app login now uses manager-issued 4-digit staff/manager PINs, with a
+  PIN keypad, session lock control, section-level access gating, and a
+  manager-only Users & Access panel for adding PIN users and assigning app
+  workspaces.
+- Local sync server contract now includes PIN auth, cached user/access policy,
+  manager-only user/access mutations, and hashed PIN credential requirements.
+- Staging deployment tooling now includes `npm run staging:install-package`,
+  a confirmed SSH/WP-CLI helper that uploads the runtime plugin ZIP, runs
+  `wp plugin install --force --activate`, verifies the active
+  `tcg-store-platform` plugin status, and keeps the existing upload-only
+  helper separate so staff can tell whether a package was merely transferred
+  or actually installed.
+- Staging offline sync now has `npm run staging:offline-sync-smoke`, a
+  redacted end-to-end proof that temporarily opens pairing, pull, and push
+  route gates, registers a smoke device, exercises public pull/push REST
+  routes, persists only temporary sync queue/conflict rows, cleans those rows
+  up, restores previous staging gates, and keeps canonical inventory, Square,
+  payment, POS, ScryDex, and production writes deferred.
+- Offline app product requirements now define the single-website setup model,
+  online/offline operating behavior, login/session/manager-lock expectations,
+  ScryDex-through-WordPress lookup, customer creation and credit-add needs,
+  page-based navigation goals, and the Square POS handoff model for store
+  credit.
+- Offline app website connection UI now presents the active website setup as
+  the user-facing connection control instead of a company/store dropdown.
+- Offline app customer credit now calculates a Square POS handoff plan showing
+  the Pug credit amount, remaining amount due in Square, `Pug Store Credit`
+  custom-payment/other-tender instruction, and the boundary that Pug remains
+  authoritative for the credit ledger.
+- WordPress admin visibility now defaults the plugin list name to **Pug Game
+  Shop Card Manager** and the admin sidebar/settings/status labels to the
+  configured company branding, defaulting to **Pug Cards**.
+- Staging offline pairing now has `npm run staging:offline-pairing-smoke`, a
+  redacted end-to-end proof that temporarily opens only the device-pairing
+  route, posts a generated pairing request, verifies one-time token issuance,
+  removes the smoke device row, and restores the previous staging gates.
+- Staging offline connector pairing now includes `npm run
+  staging:configure-offline-pairing`, a stdin-fed WP-CLI helper that stores
+  short-lived hashed pairing policy, can enable only the device-pairing route
+  by default, reports redacted status, and keeps pull/push/conflict sync routes,
+  device-token issuance, WordPress data writes, and network sync execution
+  disabled unless later staging gates explicitly allow them.
+- Staging ScryDex setup now includes `npm run staging:configure-scrydex`, a
+  WP-CLI/SFTP helper that reads keys from environment variables, streams them
+  to a temporary non-secret runner over stdin, saves server-side WordPress
+  settings, verifies redacted health/status output, and removes the runner.
+- Staging route checks now include a credential-free `npm run
+  staging:route-check` probe for the WordPress REST root, `tcg-store/v1`
+  namespace, authenticated health route registration, public offline connector
+  manifest, and public indexing controls.
+- Offline app queue management now adds a visible `Refresh Desktop Queue`
+  action for merging pending durable desktop SQLite rows and a
+  `Void Selected Operation` action for removing one queued operation while
+  marking the matching desktop row `rejected` when the Tauri queue adapter is
+  available.
+- Offline app desktop queue persistence now supports voiding selected pending
+  SQLite queue rows by marking them `rejected` for audit, removing them from
+  pending restore without deleting local history or touching website, Square,
+  ScryDex, payment, or production systems.
+- Offline app queue management now lets staff select queued operations, review
+  the selected operation payload summary, copy a single secret-safe operation
+  JSON payload with a manual preview fallback, export the current profile queue
+  as JSON, and clear the browser/session queue without website, Square,
+  ScryDex, payment, or production writes.
+- WordPress staging safety now enforces staging-only safeguards: noindex
+  headers/meta/robots output, a staff/admin `STAGING` banner, health status for
+  staging side-effect controls, and customer email suppression unless an
+  explicit sandbox override is enabled.
+- Public offline connector manifests now include a secret-free
+  `connector_identity` block with stable profile, company, site host,
+  environment, fingerprint, REST base, and manifest URL fields so the desktop
+  app can distinguish multiple company websites safely.
+- Offline app event queue review now renders queued registrations and check-ins
+  as staff-readable rows with event title, attendee, payment/check-in detail,
+  local queue source, timestamp, and payload summary instead of raw operation
+  IDs.
+- Offline app customer credit ledger review now shows cached website ledger
+  entries together with pending local queue redemptions, with pending-hold
+  totals derived from queued operations after browser/session restore.
+- Offline app customer credit now supports a local multi-customer credit
+  directory, active account selection, lookup display, and per-customer pending
+  holds so one offline redemption does not reduce another customer's balance.
+- Offline app label printing now prepares structured offline label jobs with
+  card, barcode, price, location, company, timestamp, and printable payload
+  text for future desktop printer adapter handoff.
+- Offline app inventory adjustments now accept staff-entered quantity deltas
+  and adjustment reasons, validate non-zero whole-number changes, and queue the
+  exact quantity payload for later website sync acceptance.
+- Offline app website connector testing now gives route-missing staging
+  guidance when the WordPress REST index is reachable but `tcg-store` offline
+  connector routes are not registered, pointing staff to install/activate the
+  staging plugin package before pairing.
+- Offline app event staging now captures staff-entered attendee labels,
+  pay-at-store/not-required payment status, and sanitized check-in public IDs
+  before queuing event registration or check-in operations.
+- Offline app customer-credit staging now includes a staff-entered redemption
+  amount, inline cached-balance validation, currency input normalization, and
+  exact minor-unit payloads for queued credit redemption operations.
+- Offline app scanner/search staging now resolves exact barcodes and public
+  inventory IDs before queuing `Add Scan`, supports Enter-to-stage from the
+  scanner field, and blocks unmatched scans with staff-facing guidance instead
+  of staging the previously selected card.
+- Staging SSH/SFTP scripts now share a GoDaddy-compatible SSH algorithm
+  configuration for upload-only package transfer, inventory smoke,
+  migration rehearsal, and search benchmark runners.
+- Offline app conflict review actions now attempt a guarded live desktop
+  `conflict_resolution` request for paired non-production connector profiles,
+  fall back to local queue staging when offline/deferred, and leave stale or
+  rejected conflicts open for retry without returning raw WordPress responses.
+- Offline conflict resolution now has guarded WordPress SQL planning and a
+  `$wpdb` repository adapter for applying manager decisions with
+  conflict-row version checks, mutable-status guards, redacted audits, and
+  applied/stale/rejected repository outcomes while live route registration
+  remains gated.
+- Offline conflict resolution routes now have an explicit handler factory,
+  current-row provider, manager-permission callback injection, and runtime
+  registration planning so the resolve route can apply guarded writeback when
+  the existing conflict route gate is enabled.
+- Tauri desktop queue restore now has a local `mark_offline_operations_synced`
+  command so accepted website push IDs are marked `synced` in `offline.sqlite`
+  and do not reappear as pending operations on the next restore.
+- Offline app desktop push summaries now carry sanitized accepted/conflict/
+  rejected operation IDs, and successful sync applies them locally by clearing
+  accepted operations from the visible queue while retaining conflict/rejected
+  items for staff review.
+- Offline app queue/session persistence is now scoped by connector profile, so
+  multiple company websites can share the same desktop app without mixing
+  locally queued operations or sync attempts. Legacy shared session storage is
+  still accepted as a one-time migration fallback for the active profile.
+- Offline event check-ins are now a first-class offline push operation:
+  WordPress parses, resolves, persists, and plans deferred canonical
+  `event_checkin` mutations, while the offline app can stage Check In actions
+  from cached events and queue them through the desktop/browser queue path.
+- Offline app now exposes cached event snapshots in an Events panel with
+  functional offline walk-in registration/waitlist staging, event queue
+  preview, local capacity updates, and `event_reservation` operation envelopes
+  aligned with the WordPress offline push contract.
+- Offline app desktop pull responses now expose bounded sanitized conflict
+  snapshots and apply newer conflict rows into the local conflict panel with
+  visible inserted/updated/stale counts in Sync Now.
+- Offline app desktop pull responses now expose bounded sanitized event
+  snapshots and apply newer event rows into the local event cache with visible
+  inserted/updated/stale counts in Sync Now.
+- Offline app desktop pull responses now expose bounded sanitized customer
+  credit account records and apply newer active-customer balances into the
+  local credit snapshot with visible updated/stale counts in Sync Now.
+- Offline app desktop pull responses now expose bounded sanitized inventory
+  records from the Tauri command and apply newer server rows into the local
+  inventory cache, with visible inserted/updated/stale counts in Sync Now.
+- Offline app desktop sync now has a guarded Tauri `run_offline_sync_request`
+  command and React adapter that attach the stored device token inside Rust,
+  POST sanitized pull/push bodies to the WordPress offline routes, and return
+  only status/count summaries to the UI with browser mode remaining preview-only.
+- Offline app now persists secret-free paired-device metadata per connector
+  profile, restores it across reloads, checks desktop secure-store token
+  presence when the Tauri shell is available, and reports paired-token
+  readiness in Sync Now without storing raw tokens in browser storage.
+- WordPress settings now expose offline pairing authorization policy fields for
+  pairing-code hashes, manager IDs, location IDs, per-mode scopes, and UTC
+  expiry; raw pairing codes submitted through the settings form are hashed on
+  save and never stored.
+- Offline app desktop pairing now has a Tauri-only
+  `pair_offline_device` command that POSTs the manager pairing request to the
+  WordPress device registration route, stores the one-time device token in the
+  Windows-native secure store, returns only secret-free metadata, and keeps
+  browser preview pairing blocked.
+- Offline app Tauri commands can now store, check, and delete offline device
+  tokens through the desktop secure store using the Windows-native `keyring`
+  backend, returning only secret-free metadata to the UI and contract-tested
+  against browser storage or network fallback.
+- Offline app pairing controls now include a credential-free WordPress REST
+  route-index check for `/offline/devices/register`, plus the exact future
+  WordPress pairing POST body shape, so staff can verify the website route
+  without transmitting raw manager codes or storing device tokens before
+  secure-store support is connected.
+- Offline app website connector testing now performs a live public
+  `/offline/connector-manifest` fetch with credential-free CORS requests,
+  imports accepted company/site profiles for reusable multi-company setup,
+  keeps a local preview validator for draft profiles, and reports blocked
+  manifest endpoints without syncing secrets.
+- Public-safe WordPress offline connector manifest route at
+  `/wp-json/tcg-store/v1/offline/connector-manifest`, exposing the existing
+  secret-free company/site route map for desktop connector validation without
+  registering device pairing, pull, push, or conflict routes.
+- Offline app Tauri command persistence now writes accepted offline operation
+  envelopes into the local `offline.sqlite` `operation_queue` table with an
+  idempotent `client_operation_id` primary key, while browser mode, queue
+  replay, network push, and canonical WordPress mutations remain guarded.
+- Offline app desktop startup can now restore pending operations from the
+  local SQLite queue through a guarded Tauri read command, merging them into
+  the visible queue without network writes or credential exposure.
+- Offline app Windows packaging now uses a PATH-aware Tauri build helper so
+  shells with Rustup installed outside the inherited PATH can still produce the
+  NSIS installer.
+- Upload-only staging package transfer script for the WordPress plugin zip,
+  gated by explicit staging SSH environment variables and confirmation, with a
+  contract test and dry-run mode that verifies no plugin activation, active
+  file overwrite, production deployment, or credential printing occurs.
+- Gated staging inventory smoke runner that uploads a temporary WP-CLI
+  `eval-file` script, executes the existing WordPress staging inventory smoke
+  coverage, removes only that temporary file, and contract-tests that it does
+  not activate plugins, overwrite active plugin files, deploy production, or
+  print credentials.
+- Gated staging migration rehearsal runner for the WordPress rollback/restore
+  script, requiring explicit staging confirmation plus a backup confirmation
+  and backup reference before WP-CLI can run the destructive rehearsal.
+- Gated staging inventory search benchmark runner for the 50,000-row WordPress
+  fixture, requiring explicit row-seed acknowledgement and cleaning benchmark
+  rows by default after public/staff/deep-pagination/barcode baselines run.
+- Offline app queue and sync-attempt state now persists in a versioned,
+  credential-free local session envelope, restoring staged operations and
+  deferred sync history after app reloads.
+- Offline push canonical inventory mutation execution now has an explicit
+  transaction executor for preflight-ready guarded inventory updates, with
+  begin/commit/rollback handling and zero-row guard failures for double-sell
+  prevention while default route wiring remains gated.
+- Route-connected offline push handling can now execute preflight-ready
+  canonical inventory guarded updates when both the route handler and canonical
+  mutation execution gates are explicitly enabled, exposing execution status,
+  rows affected, operation IDs, and deferral state in responses, meta, and
+  audit payloads.
+- Offline app connector profiles now expose route-connected guarded inventory
+  hold readiness per company/site, and `Hold Item` stages a WordPress public-ID
+  `inventory_reservation` operation while staging keeps canonical writes
+  deferred unless the selected non-production connector enables them.
+- Offline app website connector testing now creates a secret-free per-company
+  report covering manifest shape, route map, pairing readiness, guarded
+  inventory hold status, credential boundaries, and deferred network status.
+- Offline app `Sync Now` now builds a local pull-refresh preview that reports
+  refreshed inventory, customer-credit, event, and conflict rows while
+  preserving queued offline operations, and the root offline-app test script now
+  runs TypeScript typechecking before contract tests.
+- Root offline-app tests now run the Tauri Rust command tests through a
+  PATH-aware Cargo helper, allowing local Windows shells to use the installed
+  user Rustup toolchain.
+- Gated live ScryDex smoke helper for read-only card-search verification,
+  requiring explicit environment confirmation and reporting only sanitized
+  status/count/first-card metadata without writing WordPress data or printing
+  credentials.
+- Offline app local button behavior now distinguishes `Add Scan`, generic
+  inventory updates, and quantity adjustments with separate queue operation
+  IDs and payload intents, while `Sync Now` records a visible deferred sync
+  attempt for the active company/site connector.
+- Offline app connector-specific sync session planning for `Sync Now`, showing
+  the active website connector, pull and push endpoint URLs, queued operation
+  count, pairing readiness, desktop secure-token storage, and deferred network
+  status without exposing credentials.
+- Offline app prepared pairing requests now persist in a separate versioned,
+  redacted local-storage envelope, allowing sync sessions to remember
+  prepared-local pairing state after reloads without storing manager codes or
+  tokens.
+- Offline app prepared pairing request history for multi-company connector
+  setup. Preparing a device pairing now records the selected company, endpoint,
+  requested offline scopes, desktop secure-token storage, and a redacted
+  pairing-code fingerprint while clearing the raw manager code from the UI.
+- Offline app connector profiles now persist in a versioned, credential-free
+  local-storage envelope so saved company/site profiles and the active
+  connector survive desktop app reloads.
+- Root `CHANGELOG.md` pointer to the detailed docs changelog so repository
+  metadata satisfies the project operating rule while detailed release notes
+  remain in `docs/CHANGELOG.md`.
+- Offline route runtime settings and admin controls for staging-gated device
+  pairing, pull, push, and conflict routes. The offline feature flag remains
+  unavailable in production, while local/development/staging can opt in route
+  by route after policy and handler readiness checks pass.
+- Runtime-aware offline route bootstrap and health planning that uses the
+  configured route gates, pairing-code policy readiness, registered-device
+  permissions, and handler availability before registering any offline REST
+  route.
+- ScryDex HTTP provider alignment with the current live Pokémon cards endpoint
+  (`/pokemon/v1/cards`), including `q`/`pageSize` request parameters and game
+  context injection for live responses whose card rows omit an explicit game
+  field.
+- Local Tauri/Rust desktop-shell verification support, including a committed
+  Cargo lockfile, generated Windows icon, schema-compatible NSIS `installMode`,
+  and contract coverage for the Windows package metadata.
+- Root `npm run build` delegation to the offline app Vite build and generated
+  artifact exclusions for the production-secret scanner.
+- WordPress plugin packaging automation that creates a lean
+  `tcg-store-platform` zip from runtime files only, plus a package contract
+  test that rejects tests, vendor files, Composer dev config, and malformed
+  archive roots.
+- Offline app multi-company connector draft editing, allowing staff to add or
+  update company/site profiles by company name, website host/URL, environment,
+  and ScryDex display label while keeping credentials out of source and out of
+  the app profile.
+- Offline app local session state for previously static controls: staged
+  queue operations now appear in the sync queue, conflict review/approval
+  clears open conflicts into local history, customer-credit redemptions create
+  a pending hold and ledger preview, print-label actions create visible label
+  jobs, and compact navigation has explicit accessible labels.
+- WordPress offline pairing readiness now exposes a secret-free app pairing
+  contract for `/offline/devices/register`, including redacted pairing-code
+  handling, requested offline scopes, desktop secure token storage, and
+  deferred token/network execution; the offline app route preview now mirrors
+  the plugin's conflict list/resolve route contracts.
+- Offline app pairing-code request preview for selected website connector
+  profiles, including deferred `/offline/devices/register` planning, redacted
+  pairing-code fingerprinting, scoped offline permissions, and desktop secure
+  token storage boundaries without live token issuance.
+- Offline app customer-credit and conflict-review actions that stage
+  `credit_redemption` and conflict-review operation envelopes through the
+  local queue preview, keeping ledger replay, manager approval, website sync,
+  and canonical mutations deferred.
+- Offline app WordPress connector manifest ingestion and validation for
+  reusable multi-company website profiles, including route-count checks,
+  HTTPS/environment warnings, official WooCommerce Square payment authority,
+  ScryDex redaction requirements, and explicit no-credential-sync status.
+- Offline app functional controls for sidebar navigation, sync preview,
+  status filters, list/grid inventory views, scan staging, quantity staging,
+  print-label preview, conflict review/history selection, and reusable
+  company/site connector profiles that keep credentials outside source while
+  showing the active WordPress, Square, and ScryDex boundaries.
+- WordPress offline connector manifest diagnostics that expose the active
+  company/site profile, offline REST route map, device-token storage boundary,
+  Square inventory/payment authority split, ScryDex redaction status, and
+  staging/development HTTPS readiness through authenticated health and admin
+  System Status without syncing credentials to the offline app.
+- Offline app visual command-center refresh with a project-local Pug Game Shop
+  crest asset, desktop app-window chrome, queue/conflict nav badges, fuller
+  default cached inventory state, tighter selected-card inspection actions,
+  and desktop/mobile screenshot QA proving no horizontal overflow while local
+  queue staging remains deferred.
+- Square inventory batch sync readiness diagnostics exposed through
+  authenticated health output and admin System Status, reporting sandbox probe
+  row counts, Square operation-plan counts, aggregate SKUs/idempotency keys,
+  configuration issues, and explicit Square/payment deferrals without running
+  provider writes.
+- Square inventory batch sync planning that accepts multiple staged inventory
+  rows, aggregates sandbox Catalog/Inventory request plans, idempotency keys,
+  Square object IDs, SKUs, ready/skipped/blocked counts, and deferral metadata
+  without executing Square network or provider inventory writes.
+- Square inventory sync readiness diagnostics that run a sandbox probe through
+  projection planning, Square Catalog/Inventory request planning, and guarded
+  execution audit output, with authenticated health and admin System Status
+  summaries, while keeping Square network writes, production inventory
+  changes, payment capture, and custom gateway behavior deferred to the
+  official WooCommerce Square extension.
+- ScryDex cards sync worker orchestration planning that accepts injected/mock
+  provider results and stages page processing, persistence planning, SQL
+  building, and deferred repository audit output without live provider calls or
+  database writes.
+- ScryDex persistence repository readiness diagnostics in health and execution
+  gate output, deriving the persistence repository gate from staged query and
+  repository audit plans instead of manual overrides.
+- ScryDex persistence SQL staging that builds deferred reference-card
+  insert/update templates, provider price observation inserts, checkpoint
+  upserts, and repository audit results without executing `wpdb` writes.
+- ScryDex checkpoint repository planning that builds deferred read/upsert SQL
+  templates for `tcg_sync_checkpoints`, exposes checkpoint repository readiness
+  in health/execution-gate diagnostics, and keeps checkpoint reads/writes
+  disabled until worker staging acceptance.
+- Provider price observation schema migration `0010` with
+  `tcg_provider_price_observations`, giving ScryDex market-price pulls a
+  dedicated reversible persistence table instead of overloading inventory item
+  price-change history.
+- ScryDex usage-budget settings and cards-page budget planning, exposing
+  daily credit limits, remaining-credit reserve, estimated page cost, and
+  deferred `/account/v1/usage` checks through health/admin diagnostics before
+  any provider request or sync worker can run.
+- ScryDex sync execution gate health diagnostics that report whether cards
+  worker execution is blocked, gated, or future-ready across provider,
+  network, usage-budget, checkpoint, persistence, database-write, and scheduler
+  dependencies while keeping live network calls and writes deferred by default.
+- Official WooCommerce Square extension status detection for health/system/POS
+  diagnostics, keeping payment capture delegated to the official extension and
+  Square network writes, platform payment capture, refunds, and custom gateway
+  behavior disabled.
+- Offline app local SQLite queue insert planning for staged operations, with
+  bridge/app visibility, Tauri command response metadata, and contract tests
+  proving queue replay, canonical mutations, network writes, and direct MySQL
+  access remain deferred.
+- ScryDex sync dry-run planning that exposes the next cards-page request,
+  checkpoint row, provider readiness, and explicit deferrals through health
+  output without provider network calls, worker execution, image downloads, or
+  database writes.
+- ScryDex provider factory readiness that consumes staged WordPress settings,
+  builds the HTTP provider through an injectable transport for tests, and
+  exposes secret-free health/admin status while keeping provider requests,
+  workers, webhooks, and database writes deferred.
+- Secret-preserving ScryDex WordPress settings for staged provider access,
+  including blank secret fields, configured/missing readiness, health/system
+  status output, and tests proving public status never exposes saved provider
+  values.
+- Offline app reconnect push request planning and response summarization for
+  queued operation batches, keeping network execution, direct MySQL access,
+  production API keys, queue replay, and canonical mutations deferred.
+- Executable API-client WooCommerce product adapter contract that validates
+  non-production create/update/stockout request envelopes, rejects production
+  contexts and live-looking credentials, and keeps Square handoff delegated to
+  the official WooCommerce Square extension.
+- WooCommerce product write request readiness wiring across guarded projection
+  execution, staged inventory create metadata, dependency health/admin
+  summaries, and Staff Inventory workspace rows, including production-context
+  rejection before writer callbacks.
+- WooCommerce product write request planner that converts serialized-card
+  product projection operations into non-production create/update/stockout
+  request envelopes while keeping product writes and payment capture deferred.
+- Server-compatible offline `inventory_update` push envelopes with row-version
+  conflict planning, desktop command validation for supported offline operation
+  types, and offline app REST batch preview for reconnect sync.
+- Refined offline app command workspace visuals with grouped sync controls,
+  manual sync affordance, scanner beam, richer selected-card frame, detail
+  action cluster, empty-search state, responsive mobile title behavior, and
+  headless desktop/mobile screenshot QA.
+- Polished offline app inventory command workspace UI with scanner/search,
+  selected-card detail, sync queue, conflict review, customer credit snapshot,
+  responsive layout, local favicon, Vite build dependency refresh, and UI shell
+  contract coverage.
+- Typed offline app workspace state and SQLite-compatible staged inventory
+  operation envelope preview, with React type packages, package-level
+  typecheck, workspace-state contract coverage, and CI workflow installation
+  of nested offline app dependencies.
+- Browser-safe offline queue bridge contract for future Tauri/SQLite operation
+  persistence, with UI staging routed through the bridge and contract coverage
+  blocking direct network, storage, or database writes.
+- Tauri queue command scaffold and frontend Tauri adapter detection for staged
+  inventory operation envelopes, plus Windows workflow Rust test coverage for
+  the desktop command path.
+- Explicit reusable Square payment delegation policy proving the custom
+  platform keeps Square payment capture/refund/gateway ownership with the
+  official WooCommerce Square extension while allowing inventory
+  sync/reconciliation contracts to proceed, with health/admin visibility.
+- Executable API-client Square inventory adapter contract that turns plugin
+  projection payloads into sandbox-safe Square Catalog/Inventory request plans,
+  rejects production/live-looking credentials, and maps Square POS lines back
+  to serialized inventory IDs for reconciliation review.
+- WordPress Square inventory sync request planner that converts Square
+  projection plans into sandbox-only Catalog/Inventory request envelopes,
+  preserves idempotency/external IDs, rejects production-declared credentials,
+  and keeps network/provider writes deferred.
+- Square projection execution and inventory dependency/admin readiness now
+  surface Square sync request planner status, request envelopes, external IDs,
+  and production-context rejection before any Square writer can run.
 - Planned inventory and card-search REST route contracts for card management,
   serialized inventory operations, reference search, and public/staff search
   surfaces while keeping live route registration disabled by default.
 - Dependency-free inventory intake parsing for staff/offline/ScryDex-import
   card management payloads, including exact-item normalization, price floor
   checks, visibility normalization, and deferred WooCommerce projection flags.
+- Inventory intake repository collision guard that reports duplicate barcode
+  and SKU errors before insert while keeping database unique keys as the final
+  safety net.
+- Transactional inventory intake price-change logging that writes the initial
+  `tcg_price_change_log` row with each staged inventory create, rolls back the
+  create if the log cannot be written, and exposes persistence metadata in the
+  REST response.
+- Manager override reauthentication requirements plus staged
+  `tcg_manager_overrides` repository persistence for accepted below-minimum
+  sale approvals.
+- Plan-only inventory intake persistence for staged card creation, including
+  deterministic public IDs, fallback barcode/SKU generation for pending intake,
+  schema-aligned insert rows, prepared SQL templates, timestamp/date planning,
+  money normalization, and deferred database/write/projection metadata.
+- Explicit inventory intake repository adapter that can execute staged
+  inventory insert plans through injected `$wpdb`, with table-prefix mismatch
+  guards, exact insert-count handling, response payloads, and route/projection
+  deferral audit metadata.
+- Staged inventory intake route handler and factory that can explicitly compose
+  parser, persistence planner, and repository execution for `POST /inventory`
+  creation tests while default live route registration remains disabled.
+- Gated inventory REST controller, permission callbacks, registration planner,
+  and registrar for future `/inventory/search` reads and `POST /inventory`
+  writes, with public reads and route-connected writes disabled by default.
+- Public inventory read rate-limit policy wiring for future public search
+  routes, including transient-backed WordPress storage support, hashed bucket
+  audit data, fail-closed behavior when no limiter is configured, and staff
+  capability fallback for staging/admin reads.
+- Inventory route dependency factory and readiness presenter that compose
+  staged search/create handlers, permission callbacks, registration planner,
+  and registrar while keeping live inventory routes gated.
+- Authenticated health payload, admin System Status row, and WordPress smoke
+  assertions for blocked-by-default inventory route dependency readiness.
+- Inventory route bootstrap planner, status presenter, and `rest_api_init`
+  bootstrapper wiring that keep live inventory routes deferred until feature,
+  permission, handler, and route deferral gates are explicitly cleared.
+- Default inventory dependency graph composition for staged search and intake
+  handler factories, while route-connected reads and writes remain disabled.
+- Staff-facing WordPress Inventory admin workspace that surfaces readiness,
+  route contracts, and next checkpoints from the staged inventory route graph
+  while remaining read-only and route-safe by default.
+- Sanitized inventory route runtime settings and settings-aware route contract
+  configuration for enabling the staff `/inventory/search` route in staging
+  without enabling writes, public reads, Square writes, or WooCommerce writes
+  by default.
+- Environment-aware feature flag availability that allows inventory/pricing
+  only in local, development, and staging environments while production remains
+  unavailable by default.
+- WordPress integration staging smoke coverage that opens only the staff
+  `/inventory/search` route after staging feature/runtime gates are enabled and
+  verifies writes, public reads, WooCommerce projection, Square projection, and
+  POS ingestion stay closed.
+- Staging-only staff inventory create runtime gate for `POST /inventory`,
+  keeping production defaults locked while external WooCommerce, Square, POS,
+  and label side effects remain deferred.
+- WordPress integration staging smoke coverage that creates a disposable
+  Bulbasaur inventory row through REST and searches it back through the staff
+  inventory route.
+- Staged inventory create responses now include side-effect-free WooCommerce
+  product and Square inventory projection contracts after successful database
+  writes, proving external projection intent while keeping WooCommerce, Square,
+  labels, and network calls deferred.
+- Staff Inventory workspace readiness now separates side-effect-free
+  WooCommerce/Square projection planning from deferred external writes, with a
+  dedicated projection-contract checkpoint for staging review.
+- WordPress integration migration rehearsal that requires an explicit
+  destructive-test environment flag, refuses production, rolls the disposable
+  database from the current schema target back to version `1`, verifies Phase 2
+  inventory/pricing tables are dropped, migrates back to the target, and
+  verifies those tables return.
+- WordPress integration inventory search benchmark fixture that requires an
+  explicit non-production environment flag, seeds 50,000 deterministic
+  disposable inventory rows, exercises public search, staff deep pagination,
+  and staff barcode lookup through the staged search handler, and emits timing
+  baselines for later GoDaddy staging review.
+- Staff Inventory Workspace search panel with safe filter sanitization,
+  route-readiness lockout messaging, and a REST-backed read-only results table
+  for the staging staff inventory search route.
+- Staff Inventory Workspace intake panel with gated REST-backed card creation
+  for staging staff users while WooCommerce, Square, POS, and label actions
+  remain deferred.
+- Seeded WordPress staging inventory smoke data for a disposable Pokemon card
+  row so CI verifies staff inventory search against real table data.
 - Dependency-free inventory search query parsing for public/staff filters,
   pagination, sorting, status filters, and location scoping.
+- Inventory search query planning for public/staff/hidden card listings with
+  safe selected columns, visibility-aware filters, stable ordering, pagination,
+  and deferred WooCommerce/Square projection flags.
+- Inventory search response presentation with public redaction and staff-only
+  operational fields for barcode, SKU, cost, location, visibility, and row
+  version details.
+- Inventory search SQL-template planning for public/staff/hidden card listings,
+  including allowlisted selected columns, prepared `SELECT` and `COUNT`
+  templates, stable ordering, pagination arguments, tamper rejection, and
+  deferred repository execution metadata.
+- Inventory search repository adapter for explicitly injected `$wpdb` reads,
+  including prepared `SELECT` and `COUNT` execution, table-prefix validation,
+  normalized row envelopes, database failure and malformed-row rejection, and
+  deferred route/WooCommerce/Square write metadata.
+- Staged inventory search route handler and factory that can explicitly compose
+  parser, query planner, repository, and public/staff response presentation for
+  `/inventory/search` while default live route registration remains disabled.
+- WooCommerce product projection planning for exact serialized inventory rows,
+  including simple-product create/update payloads, stockout updates for mapped
+  unavailable cards, serialized metadata, currency/quantity validation, and
+  explicit deferred WooCommerce/Square write metadata.
+- Guarded WooCommerce product projection executor that blocks by default,
+  requires explicit staging execution plus an injected product writer, records
+  audit-safe execution results, and keeps Square inventory writes, payment
+  capture, network calls, and production writes deferred.
+- Square inventory projection planning for exact serialized cards, including
+  Square catalog variation payloads, physical-count payloads, scan-identity
+  validation, zero-count updates for unavailable mapped cards, and deferred
+  network/provider write metadata.
+- Guarded Square inventory projection executor for POS inventory sync that
+  blocks by default, requires explicit staging execution plus injected catalog
+  and inventory writers, records audit-safe results, and leaves payment capture
+  to the official WooCommerce Square extension.
 
 ### Changed
 
@@ -32,10 +1582,11 @@ All notable changes follow Semantic Versioning.
 
 ### Not Added
 
-- No live inventory route registration, inventory database writes,
+- No production live inventory route registration, production inventory
+  database writes,
   WooCommerce product projection, barcode label printing, Square/POS inventory
-  writes, external tournament-provider calls, or production provider calls were
-  added.
+  writes, Square network calls, payment capture, external tournament-provider
+  calls, or production provider calls were added.
 
 ## [0.155.0] - 2026-06-07
 

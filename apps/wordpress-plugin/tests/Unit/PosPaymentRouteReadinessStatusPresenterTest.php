@@ -23,6 +23,8 @@ final class PosPaymentRouteReadinessStatusPresenterTest extends TestCase {
 		$this->assert_false( $payload['permission_callbacks_configured'] );
 		$this->assert_false( $payload['route_transaction_executor_configured'] );
 		$this->assert_true( $payload['provider_capture_deferred'] );
+		$this->assert_same( 'blocked', $payload['official_woocommerce_square_extension_status'] );
+		$this->assert_false( $payload['official_woocommerce_square_extension_active'] );
 	}
 
 	public function test_admin_summary_reports_deferred_route_dependencies(): void {
@@ -35,5 +37,7 @@ final class PosPaymentRouteReadinessStatusPresenterTest extends TestCase {
 		$this->assert_contains( 'permissions not ready', $summary['value'] );
 		$this->assert_contains( 'transactions deferred', $summary['value'] );
 		$this->assert_contains( 'capture deferred', $summary['value'] );
+		$this->assert_contains( 'Square payments Delegated to WooCommerce Square', $summary['value'] );
+		$this->assert_contains( 'Square extension blocked', $summary['value'] );
 	}
 }

@@ -140,6 +140,12 @@ final class OfflinePushCanonicalMutationPlanner {
 				$operation_plan,
 				$server_time_utc
 			),
+			'event_checkin'         => $this->event_checkin_row(
+				$payload,
+				$operation,
+				$operation_plan,
+				$server_time_utc
+			),
 			'credit_redemption'     => $this->customer_credit_redemption_row(
 				$payload,
 				$operation,
@@ -223,6 +229,46 @@ final class OfflinePushCanonicalMutationPlanner {
 				'target_row_version'        => $row_version,
 				'ledger_write_deferred'     => true,
 				'negative_balance_guard'    => true,
+			)
+		);
+	}
+
+	private function event_checkin_row(
+		OfflinePushPayload $payload,
+		OfflineOperationEnvelope $operation,
+		OfflinePushOperationResolutionPlan $operation_plan,
+		string $server_time_utc
+	): array {
+		$this->assert_code( $operation, $operation_plan, array( 'event_checked_in' ) );
+
+		$details                = $operation_plan->details();
+		$operation_payload      = $operation->payload();
+		$registration_public_id = trim( (string) ( $operation_payload['registrationPublicId'] ?? ( $operation_payload['registration_public_id'] ?? '' ) ) );
+		$checkin_status         = $this->required_status( $operation, $details, 'checkinStatus', array( 'checked_in' ) );
+		$row_version            = $this->required_non_negative_int( $operation, $details, 'rowVersion' );
+		$checkin_method         = trim( (string) ( $operation_payload['checkinMethod'] ?? ( $operation_payload['checkin_method'] ?? 'offline_app' ) ) );
+
+		if ( '' === $registration_public_id ) {
+			throw new InvalidArgumentException(
+				"Accepted offline operation {$operation->client_operation_id()} must include registration public ID."
+			);
+		}
+
+		if ( '' === $checkin_method ) {
+			$checkin_method = 'offline_app';
+		}
+
+		return array_merge(
+			$this->base_row( $payload, $operation, $operation_plan, $server_time_utc ),
+			array(
+				'mutation_type'                => 'event_checkin',
+				'table_contract'               => 'tcg_event_checkins',
+				'registration_table_contract'  => 'tcg_event_registrations',
+				'registration_public_id'       => $registration_public_id,
+				'checkin_status'               => $checkin_status,
+				'checkin_method'               => $checkin_method,
+				'target_row_version'           => $row_version,
+				'event_checkin_write_deferred' => true,
 			)
 		);
 	}

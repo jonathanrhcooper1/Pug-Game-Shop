@@ -56,6 +56,23 @@ final class OfflinePushServerSnapshotQueryPlanner {
 				'seatsRemaining' => 'player_cap_minus_registered_count',
 			),
 		),
+		'event_checkin'         => array(
+			'domain'           => 'event',
+			'entity_type'      => 'event',
+			'table'            => 'tcg_events',
+			'snapshot_section' => 'event',
+			'selected_columns' => array(
+				'public_id',
+				'registration_status',
+				'row_version',
+				'updated_at',
+			),
+			'payload_fields'   => array(
+				'public_id',
+				'registration_status',
+				'row_version',
+			),
+		),
 		'credit_redemption'     => array(
 			'domain'           => 'customer_credit',
 			'entity_type'      => 'customer_credit',

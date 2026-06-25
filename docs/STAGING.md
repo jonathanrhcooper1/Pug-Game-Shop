@@ -29,11 +29,19 @@ Set these constants or environment variables in staging:
 ```php
 define( 'WP_ENVIRONMENT_TYPE', 'staging' );
 define( 'TCG_STORE_PLATFORM_ENVIRONMENT', 'staging' );
+define( 'TCG_STORE_PLATFORM_STAGING_MODE', true );
 define( 'TCG_STORE_PLATFORM_STAGING_BANNER', true );
-define( 'TCG_STORE_PLATFORM_DISABLE_REAL_EMAILS', true );
 define( 'TCG_STORE_PLATFORM_DISABLE_REAL_PAYMENTS', true );
 define( 'TCG_STORE_PLATFORM_DISABLE_REAL_POS_WRITES', true );
 ```
+
+When `wp_get_environment_type()` reports `staging`, or
+`TCG_STORE_PLATFORM_STAGING_MODE`/`TCG_STORE_PLATFORM_STAGING_BANNER` is true,
+the plugin adds `noindex,nofollow,noarchive` robots controls, renders a
+staff/admin staging banner, suppresses `wp_mail()` by default, and reports the
+state in authenticated `/wp-json/tcg-store/v1/health` under `staging_safety`.
+Use `TCG_STORE_PLATFORM_STAGING_ALLOW_EMAILS` or
+`TCG_STORE_PLATFORM_STAGING_ALLOW_INDEXING` only for explicit sandbox tests.
 
 ## Staging Plugin Support
 
@@ -46,6 +54,252 @@ Before major database migrations:
 2. Confirm the backup includes the database and `wp-content`.
 3. Run migration checks on staging.
 4. Record the backup reference in `REVISION_LOG.md` or the release notes.
+
+## Upload-Only Package Transfer
+
+Build and upload the runtime-only WordPress plugin zip to staging uploads:
+
+```bash
+npm run package:wordpress
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_UPLOAD=upload-to-staging \
+npm run staging:upload-package
+```
+
+The upload script writes a timestamped `tcg-store-platform` zip under
+`/html/wp-content/uploads` by default, verifies the remote byte size, and
+prints only non-secret metadata. It does not activate the plugin, overwrite
+active plugin files, run migrations, delete remote files, or deploy production.
+Staging SSH/SFTP scripts use a shared OpenSSH-compatible algorithm set for
+GoDaddy Managed WordPress hosts that negotiate `ssh-ed25519` host keys and
+modern curve/AES ciphers.
+
+## Install And Activate Staging Package
+
+After the package is ready to replace the active staging plugin, install it
+through WP-CLI:
+
+```bash
+npm run package:wordpress
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_INSTALL=install-to-staging \
+npm run staging:install-package
+```
+
+The install script uploads the same timestamped zip under
+`/html/wp-content/uploads`, runs `wp plugin install <zip> --force --activate`,
+then verifies `tcg-store-platform` is active with `wp plugin is-active` and a
+plugin-list readback. This is the command that makes **Pug Game Shop Card
+Manager** visible as an active plugin in WP Admin. The upload-only helper above
+will not create a waiting-for-activation plugin entry because it only transfers
+the zip file and never installs it.
+
+## Public Route Check
+
+After staging is created and the plugin package is expected to be active, run
+the public route checker before attempting authenticated smoke tests:
+
+```bash
+PUG_STAGING_SITE_URL=https://example-staging.test \
+npm run staging:route-check
+```
+
+The checker does not use WordPress, SSH, SFTP, Square, ScryDex, payment, or POS
+credentials. It verifies the WordPress REST root, the `tcg-store/v1` namespace,
+the authenticated health route registration signal, the public offline
+connector manifest, and staging noindex controls. A `404 rest_no_route` result
+for `/wp-json/tcg-store/v1/health` or
+`/wp-json/tcg-store/v1/offline/connector-manifest` means the **Pug Game Shop
+Card Manager** package is not installed/active on that staging site, or the
+active package is not registering this repo's routes.
+
+## ScryDex Staging Configuration
+
+Configure ScryDex only after the staging route check passes and the plugin
+health reports `environment = staging`:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+SCRYDEX_TEAM_ID=team-id \
+SCRYDEX_API_KEY=primary-key \
+SCRYDEX_SECONDARY_API_KEY=secondary-key \
+PUG_STAGING_CONFIRM_SCRYDEX_CONFIG=configure-staging-scrydex \
+npm run staging:configure-scrydex
+```
+
+The helper writes a temporary non-secret PHP runner under staging uploads,
+streams the credential payload to `wp eval-file` over stdin, saves the values
+inside WordPress settings, prints only redacted readiness fields, and removes
+the runner. It does not call ScryDex, write reference-card tables, enqueue
+workers, expose credentials to the offline app, or run production side effects.
+Use `npm run staging:configure-scrydex -- --status` for a redacted status check
+without changing settings.
+
+## Offline Pairing Staging Configuration
+
+Prepare staging for a standalone desktop connector only after the public route
+check passes and the plugin health reports `environment = staging`:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+TCG_OFFLINE_PAIRING_CODE=one-time-code \
+PUG_STAGING_CONFIRM_OFFLINE_PAIRING=configure-staging-offline-pairing \
+npm run staging:configure-offline-pairing
+```
+
+The helper writes a temporary non-secret PHP runner under staging uploads,
+streams the pairing payload to `wp eval-file` over stdin, stores only hashed
+pairing-code policy in WordPress settings, enables the device-pairing route
+gate by default, prints only redacted counts/status, and removes the runner.
+It does not issue device tokens, run pull/push/conflict sync, write inventory,
+customer credit, event, POS, payment, Square, ScryDex, or production data, or
+sync credentials to the offline app.
+
+Optional environment variables:
+
+- `TCG_OFFLINE_PAIRING_MODE`: `kiosk`, `staff`, or `admin`; defaults to
+  `staff`.
+- `TCG_OFFLINE_PAIRING_MANAGER_IDS`: comma-separated manager/admin user IDs.
+  When omitted, the staging runner falls back to the first administrator.
+- `TCG_OFFLINE_PAIRING_LOCATION_IDS`: comma-separated location IDs; defaults
+  to `1`.
+- `TCG_OFFLINE_PAIRING_SCOPES`: comma-separated scopes from `offline_pull`,
+  `offline_push`, `inventory`, `kiosk`, `customer_credit`, `events`,
+  `buylist`, and `conflicts`.
+- `TCG_OFFLINE_PAIRING_EXPIRES_HOURS` or
+  `TCG_OFFLINE_PAIRING_EXPIRES_AT_UTC`: defaults to 24 hours.
+- `TCG_OFFLINE_ENABLE_PULL_ROUTE`, `TCG_OFFLINE_ENABLE_PUSH_ROUTE`, and
+  `TCG_OFFLINE_ENABLE_CONFLICT_ROUTES`: remain false by default and should
+  only be enabled for explicit staging route tests.
+
+Use `npm run staging:configure-offline-pairing -- --status` for a redacted
+status check without changing settings.
+
+## Offline Pairing Smoke Runner
+
+After the staging plugin is active, run a temporary pairing proof before
+asking staff to pair the standalone app:
+
+```bash
+PUG_STAGING_SITE_URL=https://example-staging.test \
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_OFFLINE_PAIRING_SMOKE=run-staging-offline-pairing-smoke \
+npm run staging:offline-pairing-smoke
+```
+
+The smoke runner generates a one-time pairing code in memory, temporarily
+enables the `offline_sync` feature flag and only the device-pairing route gate,
+posts to `/wp-json/tcg-store/v1/offline/devices/register`, verifies a
+one-time device token was returned, deletes the smoke device row, restores the
+previous pairing/route/feature settings, removes the temporary runner, and
+prints only redacted status. It keeps pull, push, and conflict routes disabled
+by default and does not write inventory, customer credit, event, POS, payment,
+Square, ScryDex, or production data.
+
+## Offline Sync Smoke Runner
+
+After the staging plugin is active and a package with route-connected offline
+sync wiring has been installed, run the temporary sync proof:
+
+```bash
+PUG_STAGING_SITE_URL=https://example-staging.test \
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_OFFLINE_SYNC_SMOKE=run-staging-offline-sync-smoke \
+npm run staging:offline-sync-smoke
+```
+
+The smoke runner generates a one-time pairing code in memory, temporarily
+enables `offline_sync` plus the device-pairing, pull, and push route gates,
+registers a smoke device through the public REST route, posts a bounded pull
+request, posts one synthetic inventory-reservation push operation, verifies
+queue persistence while canonical inventory writes remain deferred, deletes
+the smoke device/queue/conflict rows, restores previous staging gates, removes
+the temporary runner, and prints only redacted status. It does not perform
+Square writes, payment capture, POS inventory changes, ScryDex sync writes, or
+production deployment.
+
+## Gated Inventory Smoke Runner
+
+Run the staged inventory route smoke test through WP-CLI after staging has the
+plugin installed and the required staging gates are intentionally enabled:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_CONFIRM_SMOKE=run-staging-inventory-smoke \
+npm run staging:inventory-smoke
+```
+
+The smoke runner uploads a temporary
+`wordpress-staging-inventory-smoke-*.php` file under
+`/html/wp-content/uploads`, runs `wp eval-file` against `/html` by default,
+then removes only that temporary smoke file through SFTP. It prints only
+non-secret metadata and WP-CLI output tails. It does not activate the plugin,
+overwrite active plugin files, run production deployment, or perform external
+WooCommerce, Square, ScryDex, POS, email, or payment side effects.
+
+## Gated Migration Rehearsal
+
+Run the migration rollback/restore rehearsal only after creating a staging
+database backup or staging clone:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_BACKUP_CONFIRMED=backup-complete \
+PUG_STAGING_BACKUP_REFERENCE=godaddy-backup-or-clone-id \
+PUG_STAGING_CONFIRM_MIGRATION_REHEARSAL=run-staging-migration-rehearsal \
+npm run staging:migration-rehearsal
+```
+
+The rehearsal runner uploads a temporary
+`wordpress-migration-rehearsal-*.php` file under `/html/wp-content/uploads`,
+runs WP-CLI `eval-file` with
+`TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL=1`, and removes only that temporary
+file through SFTP. The PHP rehearsal refuses production and rolls the staging
+database from the current schema target back to version `1`, then migrates
+back to the current target and verifies the inventory/pricing and provider
+price observation tables. It does not activate the plugin, overwrite active
+plugin files, deploy production, or print credentials.
+
+## Gated Search Benchmark
+
+Run the 50,000-row inventory search benchmark on staging after migration
+acceptance and before approving search/pagination baselines:
+
+```bash
+PUG_STAGING_SSH_HOST=example.com \
+PUG_STAGING_SSH_USER=staging-user \
+PUG_STAGING_SSH_PASSWORD=staging-password \
+PUG_STAGING_BENCHMARK_ROW_ACK=seed-50000-staging-rows \
+PUG_STAGING_CONFIRM_SEARCH_BENCHMARK=run-staging-search-benchmark \
+npm run staging:search-benchmark
+```
+
+The benchmark runner uploads a temporary
+`wordpress-inventory-search-benchmark-*.php` file under
+`/html/wp-content/uploads`, runs WP-CLI `eval-file` with
+`TCG_ALLOW_INVENTORY_SEARCH_BENCHMARK=1`, and removes only that temporary file
+through SFTP. It seeds 50,000 deterministic disposable inventory rows, runs
+public/staff/deep-pagination/barcode lookup baselines, and sets
+`TCG_INVENTORY_SEARCH_BENCHMARK_CLEANUP=1` by default so the fixture rows are
+removed after the benchmark. It refuses production through the PHP fixture and
+does not activate the plugin, overwrite active plugin files, deploy
+production, or print credentials.
 
 ## Staging Smoke Checks
 
@@ -164,6 +418,14 @@ Before major database migrations:
   `tcg_pos_sync_log` and `tcg_payment_provider_log` rows through `$wpdb`;
   route-connected writes, provider capture, provider inventory writes, and
   WooCommerce gateway capture remain disabled.
+- Staged inventory create responses expose side-effect-free WooCommerce product
+  and Square inventory projection contracts after successful database writes;
+  WooCommerce writes, Square writes, label printing, and network calls remain
+  deferred.
+- Square projection execution audit payloads expose sandbox sync request
+  envelopes, idempotency keys, external IDs, and request-planner readiness for
+  staging review; production-context request planning rejects before any Square
+  writer callback can run.
 - Staged POS/payment transaction execution can wrap those explicit log writes
   in begin/commit/rollback handling for tests only. Route-connected writes,
   provider capture, provider inventory writes, webhook routes, POS

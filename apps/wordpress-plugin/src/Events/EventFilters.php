@@ -64,6 +64,10 @@ final class EventFilters {
 			$values['featured'] = true;
 		}
 
+		if ( self::is_truthy( $raw['include_past'] ?? false ) ) {
+			$values['include_past'] = true;
+		}
+
 		return new self( $values );
 	}
 

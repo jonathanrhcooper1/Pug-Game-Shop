@@ -9,6 +9,7 @@ namespace TCGStorePlatform\Tests\Unit;
 
 use TCGStorePlatform\Api\V1\EventsController;
 use TCGStorePlatform\Api\V1\HealthController;
+use TCGStorePlatform\Api\V1\OfflineConnectorManifestController;
 use TCGStorePlatform\Tests\TestCase;
 
 final class ApiRouteContractTest extends TestCase {
@@ -23,7 +24,7 @@ final class ApiRouteContractTest extends TestCase {
 			$seen[ $key ] = true;
 		}
 
-		$this->assert_same( 4, count( $seen ) );
+		$this->assert_same( 7, count( $seen ) );
 	}
 
 	public function test_health_route_requires_authenticated_access(): void {
@@ -45,6 +46,14 @@ final class ApiRouteContractTest extends TestCase {
 		);
 		$this->assert_same(
 			array(
+				'method'     => 'POST',
+				'callback'   => 'create_event',
+				'permission' => 'manage_events',
+			),
+			$this->route_summary_by_method( '/events', 'POST' )
+		);
+		$this->assert_same(
+			array(
 				'method'     => 'GET',
 				'callback'   => 'get_event',
 				'permission' => 'public',
@@ -59,6 +68,25 @@ final class ApiRouteContractTest extends TestCase {
 			),
 			$this->route_summary( '/events/(?P<slug>[a-zA-Z0-9_-]+)/register' )
 		);
+		$this->assert_same(
+			array(
+				'method'     => 'POST',
+				'callback'   => 'check_in_event_attendee',
+				'permission' => 'manage_events',
+			),
+			$this->route_summary( '/events/(?P<slug>[a-zA-Z0-9_-]+)/check-ins' )
+		);
+	}
+
+	public function test_public_connector_manifest_route_is_read_only_and_secret_free(): void {
+		$this->assert_same(
+			array(
+				'method'     => 'GET',
+				'callback'   => 'get_manifest',
+				'permission' => 'public_safe_manifest',
+			),
+			$this->route_summary( '/offline/connector-manifest' )
+		);
 	}
 
 	public function test_unimplemented_write_modules_do_not_register_routes_yet(): void {
@@ -71,7 +99,10 @@ final class ApiRouteContractTest extends TestCase {
 		$this->assert_not_contains( '/customers', $body );
 		$this->assert_not_contains( '/buylist', $body );
 		$this->assert_not_contains( '/inventory', $body );
-		$this->assert_not_contains( '/offline', $body );
+		$this->assert_not_contains( '/offline/devices/register', $body );
+		$this->assert_not_contains( '/offline/pull', $body );
+		$this->assert_not_contains( '/offline/push', $body );
+		$this->assert_not_contains( '/offline/conflicts', $body );
 		$this->assert_not_contains( '/pos', $body );
 	}
 
@@ -81,6 +112,7 @@ final class ApiRouteContractTest extends TestCase {
 	private function routes(): array {
 		return array_merge(
 			HealthController::route_contracts(),
+			OfflineConnectorManifestController::route_contracts(),
 			EventsController::route_contracts()
 		);
 	}
@@ -109,5 +141,22 @@ final class ApiRouteContractTest extends TestCase {
 			'callback'   => $route['callback'],
 			'permission' => $route['permission'],
 		);
+	}
+
+	/**
+	 * @return array{method:string,callback:string,permission:string}
+	 */
+	private function route_summary_by_method( string $path, string $method ): array {
+		foreach ( $this->routes() as $route ) {
+			if ( $path === $route['path'] && $method === $route['method'] ) {
+				return array(
+					'method'     => $route['method'],
+					'callback'   => $route['callback'],
+					'permission' => $route['permission'],
+				);
+			}
+		}
+
+		$this->fail( "Route {$method} {$path} not found." );
 	}
 }

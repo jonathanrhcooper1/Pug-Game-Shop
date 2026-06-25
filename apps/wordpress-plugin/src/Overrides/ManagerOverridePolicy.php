@@ -54,6 +54,20 @@ final class ManagerOverridePolicy {
 			);
 		}
 
+		if ( ! $request->manager_reauthenticated() ) {
+			return ManagerOverrideDecision::rejected(
+				'manager_reauthentication_required',
+				'Manager approval requires recent manager reauthentication.'
+			);
+		}
+
+		if ( '' === $request->manager_reauthenticated_at() ) {
+			return ManagerOverrideDecision::rejected(
+				'manager_reauthentication_timestamp_required',
+				'Manager approval requires a reauthentication timestamp.'
+			);
+		}
+
 		return ManagerOverrideDecision::accepted(
 			'manager_override_approved',
 			'Below-minimum sale was approved by a manager.',

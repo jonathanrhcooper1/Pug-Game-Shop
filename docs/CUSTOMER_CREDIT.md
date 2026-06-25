@@ -9,7 +9,10 @@ rejection. A transaction-backed posting service and `wpdb` repository now
 support idempotency-key replay, customer row locking, immutable ledger inserts,
 and cached balance/version updates. Planned REST route contracts, posting
 payload validation, and safe response presentation now cover balance, ledger,
-adjustment, and redemption surfaces before live route registration. REST
+adjustment, and redemption surfaces before live route registration. Logged-in
+WooCommerce customers now have a read-only My Account portal that matches the
+WordPress account email to `tcg_customers`, displays customer-safe store credit
+balance/activity, and keeps internal ledger metadata hidden. REST read
 endpoints, WooCommerce redemption hooks, offline credit conflict processing,
 and staff UI remain disabled until staging acceptance.
 
@@ -67,6 +70,24 @@ when staff and WooCommerce write surfaces are enabled.
 Customer identity must be verified through login and/or configured phone/email
 verification. Credit is authorized against the cart, then posted only after the
 Woo payment/order transition succeeds. Failed checkout releases authorization.
+
+## Customer Account Portal
+
+The WooCommerce My Account menu includes a `pug-portal` endpoint for signed-in
+customers. The portal:
+
+- Resolves the platform customer by the logged-in WordPress user's normalized
+  email address.
+- Displays the current credit balance, currency, and recent ledger activity
+  with customer-safe labels only.
+- Hides contact fields, idempotency keys, offline operation IDs, actor IDs,
+  manager IDs, and raw metadata from the customer view.
+- Shows recent WooCommerce card purchase history using serialized line metadata
+  such as card name, set name, card number, condition, and inventory ID.
+
+The portal is read-only. Store credit redemption remains part of a later
+WooCommerce checkout hook so credit is posted only after order/payment state is
+known.
 
 ## In-Store And Offline
 

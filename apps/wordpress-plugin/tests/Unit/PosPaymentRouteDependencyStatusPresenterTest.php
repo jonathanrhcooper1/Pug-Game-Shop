@@ -26,6 +26,8 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 		$this->assert_true( $payload['route_registration_deferred'] );
 		$this->assert_true( $payload['route_connected_reads_deferred'] );
 		$this->assert_true( $payload['route_connected_writes_deferred'] );
+		$this->assert_same( 'blocked', $payload['official_woocommerce_square_extension_status'] );
+		$this->assert_false( $payload['official_woocommerce_square_extension_active'] );
 		$this->assert_false( $payload['route_connected_reads_ready'] );
 	}
 
@@ -42,6 +44,7 @@ final class PosPaymentRouteDependencyStatusPresenterTest extends TestCase {
 		$this->assert_contains( 'routes deferred', $summary['value'] );
 		$this->assert_contains( 'reads deferred', $summary['value'] );
 		$this->assert_contains( 'writes deferred', $summary['value'] );
+		$this->assert_contains( 'Square extension blocked', $summary['value'] );
 	}
 
 	public function test_health_payload_reports_ready_when_every_dependency_is_injected(): void {

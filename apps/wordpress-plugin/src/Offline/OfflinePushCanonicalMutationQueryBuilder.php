@@ -15,11 +15,13 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 	private const INVENTORY_TABLE     = 'tcg_inventory_items';
 	private const EVENTS_TABLE        = 'tcg_events';
 	private const REGISTRATIONS_TABLE = 'tcg_event_registrations';
+	private const CHECKINS_TABLE      = 'tcg_event_checkins';
 	private const CUSTOMERS_TABLE     = 'tcg_customers';
 	private const CREDIT_LEDGER_TABLE = 'tcg_customer_credit_ledger';
 	private const MUTATION_TYPES      = array(
 		'inventory_reservation',
 		'event_registration',
+		'event_checkin',
 		'customer_credit_redemption',
 	);
 
@@ -71,6 +73,7 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 			'inventory_items'        => $table_prefix . self::INVENTORY_TABLE,
 			'events'                 => $table_prefix . self::EVENTS_TABLE,
 			'event_registrations'    => $table_prefix . self::REGISTRATIONS_TABLE,
+			'event_checkins'         => $table_prefix . self::CHECKINS_TABLE,
 			'customers'              => $table_prefix . self::CUSTOMERS_TABLE,
 			'customer_credit_ledger' => $table_prefix . self::CREDIT_LEDGER_TABLE,
 		);
@@ -135,6 +138,7 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 		return match ( $mutation_type ) {
 			'inventory_reservation'       => $this->validate_inventory_row( $row, $index ),
 			'event_registration'         => $this->validate_event_row( $row, $index ),
+			'event_checkin'              => $this->validate_event_checkin_row( $row, $index ),
 			'customer_credit_redemption' => $this->validate_credit_row( $row, $index ),
 			default                      => array(),
 		};
@@ -212,6 +216,40 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 
 	/**
 	 * @param array<string, mixed> $row Canonical mutation row.
+	 * @return list<string>
+	 */
+	private function validate_event_checkin_row( array $row, int $index ): array {
+		$errors = array();
+
+		if ( self::CHECKINS_TABLE !== ( $row['table_contract'] ?? '' ) ) {
+			$errors[] = 'mutation_row_' . $index . '_table_contract_invalid';
+		}
+
+		if ( self::REGISTRATIONS_TABLE !== ( $row['registration_table_contract'] ?? '' ) ) {
+			$errors[] = 'mutation_row_' . $index . '_registration_table_contract_invalid';
+		}
+
+		if ( ! $this->is_identifier( (string) ( $row['registration_public_id'] ?? '' ), 1, 191 ) ) {
+			$errors[] = 'mutation_row_' . $index . '_registration_public_id_invalid';
+		}
+
+		if ( 'checked_in' !== ( $row['checkin_status'] ?? '' ) ) {
+			$errors[] = 'mutation_row_' . $index . '_checkin_status_invalid';
+		}
+
+		if ( ! $this->is_slug( (string) ( $row['checkin_method'] ?? '' ), 1, 64 ) ) {
+			$errors[] = 'mutation_row_' . $index . '_checkin_method_invalid';
+		}
+
+		if ( true !== ( $row['event_checkin_write_deferred'] ?? null ) ) {
+			$errors[] = 'mutation_row_' . $index . '_event_checkin_write_deferred_invalid';
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * @param array<string, mixed> $row Canonical mutation row.
 	 * @param array<string, string> $table_names Canonical table names.
 	 * @return array<string, mixed>
 	 */
@@ -219,6 +257,7 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 		return match ( $row['mutation_type'] ) {
 			'inventory_reservation'       => $this->inventory_query( $row, $table_names ),
 			'event_registration'         => $this->event_query( $row, $table_names ),
+			'event_checkin'              => $this->event_checkin_query( $row, $table_names ),
 			'customer_credit_redemption' => $this->credit_query( $row, $table_names ),
 		};
 	}
@@ -309,6 +348,37 @@ final class OfflinePushCanonicalMutationQueryBuilder {
 			'customer_credit_ledger_write_deferred' => true,
 			'negative_balance_guard'                => true,
 			'route_connected_writes_deferred'       => true,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $row Canonical mutation row.
+	 * @param array<string, string> $table_names Canonical table names.
+	 * @return array<string, mixed>
+	 */
+	private function event_checkin_query( array $row, array $table_names ): array {
+		$sql_template = sprintf(
+			'SELECT `event_id`, `row_version` FROM `%s` WHERE `public_id` = %%s AND `row_version` = %%d LIMIT 1',
+			$table_names['events']
+		);
+
+		return array(
+			'client_operation_id'             => $row['client_operation_id'],
+			'mutation_type'                   => $row['mutation_type'],
+			'query_kind'                      => 'event_checkin_guard_lookup',
+			'table_name'                      => $table_names['events'],
+			'registration_table_name'         => $table_names['event_registrations'],
+			'checkin_table_name'              => $table_names['event_checkins'],
+			'sql_template'                    => $sql_template,
+			'prepare_args'                    => array(
+				(string) $row['entity_id'],
+				(int) $row['expected_base_row_version'],
+			),
+			'registration_public_id'          => (string) $row['registration_public_id'],
+			'checkin_status'                  => (string) $row['checkin_status'],
+			'checkin_method'                  => (string) $row['checkin_method'],
+			'event_checkin_write_deferred'    => true,
+			'route_connected_writes_deferred' => true,
 		);
 	}
 

@@ -35,6 +35,7 @@ final class OfflinePushOperationResolverTest extends TestCase {
 	}
 
 	public function test_inventory_reservation_creates_manager_conflict_when_item_is_sold(): void {
+
 		$plan = ( new OfflinePushOperationResolver() )->resolve(
 			$this->operation(
 				'inventory_reservation',
@@ -67,7 +68,79 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		$this->assert_same( $conflict['conflict_id'], $plan->details()['conflict_id'] );
 	}
 
+	public function test_inventory_update_accepts_matching_row_version_without_canonical_write(): void {
+
+			$plan = ( new OfflinePushOperationResolver() )->resolve(
+				$this->operation(
+					'inventory_update',
+					'inventory',
+					'inv-1001',
+					array(
+						'barcode'           => 'PKM-BASE-004-HOLO',
+						'status'            => 'available',
+						'location'          => 'Case A3',
+						'price_minor_units' => 12500,
+					),
+					4
+				),
+				array(
+					'inventory' => array(
+						'status'     => 'available',
+						'location'   => 'Case A2',
+						'rowVersion' => 4,
+					),
+				),
+				'2026-06-06T19:00:00Z'
+			);
+
+		$this->assert_same( 'accepted', $plan->status() );
+		$this->assert_same( 'inventory_update_accepted', $plan->code() );
+		$this->assert_true( $plan->details()['canonicalMutationDeferred'] );
+			$this->assert_same( 'available', $plan->details()['canonicalStatus'] );
+		$this->assert_same( 'Case A3', $plan->details()['canonicalLocation'] );
+		$this->assert_same( 12500, $plan->details()['canonicalPriceMinorUnits'] );
+		$this->assert_same( 5, $plan->details()['rowVersion'] );
+			$this->assert_same( null, $plan->conflict_row() );
+	}
+
+	public function test_inventory_update_conflicts_when_server_row_version_changed(): void {
+
+		$plan = ( new OfflinePushOperationResolver() )->resolve(
+			$this->operation(
+				'inventory_update',
+				'inventory',
+				'inv-1001',
+				array(
+					'status'   => 'available',
+					'location' => 'Case A3',
+				),
+				4
+			),
+			array(
+				'inventory' => array(
+					'status'     => 'reserved',
+					'location'   => 'Online hold',
+					'rowVersion' => 6,
+				),
+			),
+			'2026-06-06T19:00:00Z'
+		);
+
+		$conflict = $plan->conflict_row();
+
+		$this->assert_true( null !== $conflict );
+		$this->assert_same( 'conflict', $plan->status() );
+		$this->assert_same( 'inventory_update_stale', $plan->code() );
+		$this->assert_same( true, $plan->details()['requiresManagerReview'] );
+		$this->assert_same( 'reserved', $plan->details()['serverStatus'] );
+		$this->assert_same( 'available', $plan->details()['deviceStatus'] );
+			$this->assert_same( 6, $conflict['server_row_version'] );
+		$this->assert_same( 4, $conflict['device_row_version'] );
+		$this->assert_same( array( 'accept_server', 'accept_device', 'manager_adjust' ), $conflict['resolution_options'] );
+	}
+
 	public function test_event_reservation_accepts_local_event_without_provider_queue(): void {
+
 		$plan = ( new OfflinePushOperationResolver() )->resolve(
 			$this->operation( 'event_reservation', 'event', 'event-100' ),
 			array(
@@ -102,6 +175,80 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		$this->assert_same( 'event_waitlisted', $plan->code() );
 		$this->assert_same( 'waitlist', $plan->details()['canonicalStatus'] );
 		$this->assert_false( array_key_exists( 'queueTopDeck', $plan->details() ) );
+	}
+
+	public function test_event_checkin_accepts_current_event_with_registration_identity(): void {
+		$plan = ( new OfflinePushOperationResolver() )->resolve(
+			$this->operation(
+				'event_checkin',
+				'event',
+				'event-100',
+				array(
+					'registration_public_id' => 'registration-event-100-walkin',
+					'checkin_method'         => 'manual_lookup',
+				),
+				9
+			),
+			array(
+				'event' => array(
+					'registrationStatus' => 'open',
+					'rowVersion'         => 9,
+				),
+			),
+			'2026-06-06T19:00:00Z'
+		);
+
+		$this->assert_same( 'accepted', $plan->status() );
+		$this->assert_same( 'event_checked_in', $plan->code() );
+		$this->assert_same( 'checked_in', $plan->details()['checkinStatus'] );
+		$this->assert_same( 'registration-event-100-walkin', $plan->details()['registrationPublicId'] );
+		$this->assert_same( 10, $plan->details()['rowVersion'] );
+		$this->assert_same( null, $plan->conflict_row() );
+	}
+
+	public function test_event_checkin_rejects_missing_registration_identity(): void {
+		$plan = ( new OfflinePushOperationResolver() )->resolve(
+			$this->operation( 'event_checkin', 'event', 'event-100', array(), 9 ),
+			array(
+				'event' => array(
+					'rowVersion' => 9,
+				),
+			),
+			'2026-06-06T19:00:00Z'
+		);
+
+		$this->assert_same( 'rejected', $plan->status() );
+		$this->assert_same( 'event_checkin_registration_missing', $plan->code() );
+		$this->assert_same( false, $plan->details()['retryable'] );
+	}
+
+	public function test_event_checkin_conflicts_when_event_snapshot_changed(): void {
+		$plan = ( new OfflinePushOperationResolver() )->resolve(
+			$this->operation(
+				'event_checkin',
+				'event',
+				'event-100',
+				array( 'registration_public_id' => 'registration-event-100-walkin' ),
+				9
+			),
+			array(
+				'event' => array(
+					'registrationStatus' => 'closed',
+					'rowVersion'         => 11,
+				),
+			),
+			'2026-06-06T19:00:00Z'
+		);
+
+		$conflict = $plan->conflict_row();
+
+		$this->assert_true( null !== $conflict );
+		$this->assert_same( 'conflict', $plan->status() );
+		$this->assert_same( 'event_checkin_stale', $plan->code() );
+		$this->assert_same( 'closed', $plan->details()['serverStatus'] );
+		$this->assert_same( 11, $conflict['server_row_version'] );
+		$this->assert_same( 9, $conflict['device_row_version'] );
+		$this->assert_same( array( 'accept_server', 'manager_adjust', 'dismiss' ), $conflict['resolution_options'] );
 	}
 
 	public function test_credit_redemption_accepts_within_cached_and_server_balance(): void {
@@ -212,9 +359,9 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		);
 	}
 
-	/**
-	 * @param array<string, mixed> $payload Operation payload.
-	 */
+		/**
+		 * @param array<string, mixed> $payload Operation payload.
+		 */
 	private function operation(
 		string $operation_type,
 		string $entity_type,
@@ -239,9 +386,9 @@ final class OfflinePushOperationResolverTest extends TestCase {
 		);
 	}
 
-	/**
-	 * @param callable(): void $callback Callback expected to throw.
-	 */
+		/**
+		 * @param callable(): void $callback Callback expected to throw.
+		 */
 	private function assert_throws_invalid_argument( callable $callback ): void {
 		try {
 			$callback();

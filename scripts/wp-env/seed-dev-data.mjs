@@ -42,9 +42,10 @@ const payload = JSON.stringify({
 
 maybeRunWp(['option', 'update', 'tcg_store_platform_dev_seed_manifest', payload, '--format=json']);
 maybeRunWp(['option', 'update', 'blog_public', '0']);
-maybeRunWp(['theme', 'activate', 'twentytwentyfive']);
+maybeRunWp(['theme', 'activate', 'pug-arcade-commerce-v2']);
 
 for (const page of [
+  ['Shop Singles', 'shop-singles', '[tcg_inventory_search limit="24"]'],
   ['Events', 'events'],
   ['Kiosk', 'kiosk'],
   ['Customer Credit', 'customer-credit']
@@ -55,6 +56,7 @@ for (const page of [
     '--post_type=page',
     `--post_title=${page[0]}`,
     `--post_name=${page[1]}`,
+    page[2] ? `--post_content=${page[2]}` : '--post_content=',
     '--post_status=publish',
     '--porcelain'
   ]);

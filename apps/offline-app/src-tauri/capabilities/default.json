@@ -3,5 +3,7 @@
   "identifier": "default",
   "description": "Default offline app permissions for the initial shell.",
   "windows": ["main"],
-  "permissions": ["shell:default"]
+  "permissions": [
+    "shell:default"
+  ]
 }

@@ -13,6 +13,7 @@ use TCGStorePlatform\Offline\OfflinePushCanonicalMutationPlanner;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationQueryBuilder;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepository;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationRepositoryExecutionGate;
+use TCGStorePlatform\Offline\OfflinePushCanonicalMutationTransactionExecutor;
 use TCGStorePlatform\Offline\OfflinePushCanonicalMutationTransactionPreflight;
 use TCGStorePlatform\Offline\OfflinePushPayload;
 use TCGStorePlatform\Offline\OfflinePushPersistencePlanner;
@@ -29,6 +30,7 @@ final class OfflinePushRoutePersistenceProvider {
 	private OfflinePushCanonicalMutationRepository $canonical_mutation_repository;
 	private OfflinePushCanonicalMutationRepositoryExecutionGate $canonical_mutation_execution_gate;
 	private OfflinePushCanonicalMutationTransactionPreflight $canonical_mutation_transaction_preflight;
+	private ?OfflinePushCanonicalMutationTransactionExecutor $canonical_mutation_transaction_executor;
 	private string $table_prefix;
 
 	/**
@@ -65,6 +67,7 @@ final class OfflinePushRoutePersistenceProvider {
 		?OfflinePushCanonicalMutationRepository $canonical_mutation_repository = null,
 		?OfflinePushCanonicalMutationRepositoryExecutionGate $canonical_mutation_execution_gate = null,
 		?OfflinePushCanonicalMutationTransactionPreflight $canonical_mutation_transaction_preflight = null,
+		?OfflinePushCanonicalMutationTransactionExecutor $canonical_mutation_transaction_executor = null,
 		string $table_prefix = ''
 	) {
 		$this->permission_resolver                      = $permission_resolver;
@@ -76,6 +79,7 @@ final class OfflinePushRoutePersistenceProvider {
 		$this->canonical_mutation_repository            = $canonical_mutation_repository ?? new OfflinePushCanonicalMutationRepository();
 		$this->canonical_mutation_execution_gate        = $canonical_mutation_execution_gate ?? new OfflinePushCanonicalMutationRepositoryExecutionGate();
 		$this->canonical_mutation_transaction_preflight = $canonical_mutation_transaction_preflight ?? new OfflinePushCanonicalMutationTransactionPreflight();
+		$this->canonical_mutation_transaction_executor  = $canonical_mutation_transaction_executor;
 		$this->table_prefix                             = trim( $table_prefix );
 		$this->server_time_provider                     = $server_time_provider;
 		$this->server_snapshots_provider                = $server_snapshots_provider;
@@ -156,6 +160,14 @@ final class OfflinePushRoutePersistenceProvider {
 			$canonical_repository,
 			$canonical_execution
 		);
+		$canonical_transaction_execution = null;
+
+		if ( null !== $this->canonical_mutation_transaction_executor ) {
+			$canonical_transaction_execution = $this->canonical_mutation_transaction_executor->execute(
+				$canonical_sql,
+				$canonical_preflight
+			);
+		}
 
 		return new OfflinePushRouteProcessingResult(
 			$resolution,
@@ -166,7 +178,8 @@ final class OfflinePushRoutePersistenceProvider {
 			$canonical_sql,
 			$canonical_repository,
 			$canonical_execution,
-			$canonical_preflight
+			$canonical_preflight,
+			$canonical_transaction_execution
 		);
 	}
 
@@ -174,6 +187,8 @@ final class OfflinePushRoutePersistenceProvider {
 	 * @return array<string, mixed>
 	 */
 	public function readiness_summary(): array {
+		$canonical_transaction_executor_configured = null !== $this->canonical_mutation_transaction_executor;
+
 		return array(
 			'action'                                      => 'offline_push_route_persistence_provider_ready',
 			'provider_ready'                              => $this->provider_ready(),
@@ -187,6 +202,9 @@ final class OfflinePushRoutePersistenceProvider {
 			'canonical_mutation_repository_ready'         => method_exists( $this->canonical_mutation_repository, 'stage' ),
 			'canonical_mutation_repository_execution_gate_ready' => method_exists( $this->canonical_mutation_execution_gate, 'evaluate' ),
 			'canonical_mutation_transaction_preflight_ready' => method_exists( $this->canonical_mutation_transaction_preflight, 'evaluate' ),
+			'canonical_mutation_transaction_executor_configured' => $canonical_transaction_executor_configured,
+			'canonical_mutation_transaction_executor_ready' => $canonical_transaction_executor_configured
+				&& method_exists( $this->canonical_mutation_transaction_executor, 'execute' ),
 			'server_snapshot_provider_configured'         => is_callable( $this->server_snapshots_provider ),
 			'operation_options_provider_configured'       => is_callable( $this->operation_options_provider ),
 			'existing_operation_rows_provider_configured' => is_callable( $this->existing_operation_rows_provider ),
@@ -196,15 +214,16 @@ final class OfflinePushRoutePersistenceProvider {
 			'queue_replay_deferred'                       => true,
 			'canonical_mutation_planning_deferred'        => false,
 			'canonical_mutation_sql_planning_deferred'    => false,
-			'canonical_mutation_sql_execution_deferred'   => true,
+			'canonical_mutation_sql_execution_deferred'   => ! $canonical_transaction_executor_configured,
 			'canonical_mutation_repository_planning_deferred' => false,
-			'canonical_mutation_repository_execution_deferred' => true,
-			'canonical_mutation_repository_execution_gate_deferred' => true,
-			'canonical_mutation_repository_transaction_deferred' => true,
-			'canonical_mutation_transaction_preflight_deferred' => true,
-			'canonical_mutation_transaction_execution_deferred' => true,
-			'canonical_mutation_repository_deferred'      => true,
-			'canonical_mutations_deferred'                => true,
+			'canonical_mutation_repository_execution_deferred' => ! $canonical_transaction_executor_configured,
+			'canonical_mutation_repository_execution_gate_deferred' => ! $canonical_transaction_executor_configured,
+			'canonical_mutation_repository_transaction_deferred' => ! $canonical_transaction_executor_configured,
+			'canonical_mutation_transaction_preflight_deferred' => ! $canonical_transaction_executor_configured,
+			'canonical_mutation_transaction_executor_deferred' => ! $canonical_transaction_executor_configured,
+			'canonical_mutation_transaction_execution_deferred' => ! $canonical_transaction_executor_configured,
+			'canonical_mutation_repository_deferred'      => ! $canonical_transaction_executor_configured,
+			'canonical_mutations_deferred'                => ! $canonical_transaction_executor_configured,
 		);
 	}
 

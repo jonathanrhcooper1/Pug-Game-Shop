@@ -8,6 +8,7 @@
  * @package TCGStorePlatform
  */
 
+use TCGStorePlatform\Api\V1\InventoryRouteBootstrapper;
 use TCGStorePlatform\Api\V1\OfflineRouteBootstrapper;
 use TCGStorePlatform\Api\V1\PosPaymentRouteBootstrapper;
 use TCGStorePlatform\Auth\RoleManager;
@@ -19,6 +20,7 @@ use TCGStorePlatform\Migrations\InventoryPricingSchema;
 use TCGStorePlatform\Migrations\MigrationRunner;
 use TCGStorePlatform\Migrations\OfflineSyncSchema;
 use TCGStorePlatform\Migrations\PosPaymentSchema;
+use TCGStorePlatform\Migrations\ProviderPriceObservationSchema;
 use TCGStorePlatform\Migrations\ReservationSchema;
 use TCGStorePlatform\Migrations\SyncSchema;
 use TCGStorePlatform\Version;
@@ -89,10 +91,10 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.155.0' === Version::PLUGIN, 'Unexpected plugin version.' );
-$assert( 9 === Version::DATABASE, 'Unexpected database target version.' );
-$assert( 9 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
-$assert( 2 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
+$assert( '0.156.0' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( Version::DATABASE >= 14, 'Unexpected database target version.' );
+$assert( 10 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
+$assert( 3 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
 
 $tables = array_merge(
 	FoundationSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
@@ -103,7 +105,8 @@ $tables = array_merge(
 	SyncSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	ReservationSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
 	OfflineSyncSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
-	PosPaymentSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() )
+	PosPaymentSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() ),
+	ProviderPriceObservationSchema::tables( $wpdb->prefix, $wpdb->get_charset_collate() )
 );
 
 foreach ( array_keys( $tables ) as $table_name ) {
@@ -134,6 +137,10 @@ $assert(
 	$has_hook_callback( 'rest_api_init', PosPaymentRouteBootstrapper::class, 'bootstrap_current_routes', 21 ),
 	'POS/payment route bootstrapper was not registered on rest_api_init.'
 );
+$assert(
+	$has_hook_callback( 'rest_api_init', InventoryRouteBootstrapper::class, 'bootstrap_current_routes', 22 ),
+	'Inventory route bootstrapper was not registered on rest_api_init.'
+);
 
 wp_set_current_user( 1 );
 do_action( 'rest_api_init' );
@@ -143,22 +150,30 @@ $assert( isset( $routes['/tcg-store/v1/health'] ), 'Health REST route was not re
 $assert( isset( $routes['/tcg-store/v1/events'] ), 'Events REST list route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)'] ), 'Events REST detail route was not registered.' );
 $assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)/register'] ), 'Events REST registration route was not registered.' );
+$assert( isset( $routes['/tcg-store/v1/events/(?P<slug>[a-zA-Z0-9_-]+)/check-ins'] ), 'Events REST check-in route was not registered.' );
 $assert( ! isset( $routes['/tcg-store/v1/offline/pull'] ), 'Offline pull route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/offline/push'] ), 'Offline push route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/pos/events'] ), 'POS event route should remain unregistered.' );
 $assert( ! isset( $routes['/tcg-store/v1/payments/fee-snapshots'] ), 'Payment fee snapshot route should remain unregistered.' );
-
+$assert( ! isset( $routes['/tcg-store/v1/inventory/search'] ), 'Inventory search route should remain unregistered.' );
+$assert( ! isset( $routes['/tcg-store/v1/inventory'] ), 'Inventory create route should remain unregistered.' );
 $response = rest_do_request( '/tcg-store/v1/health' );
 $assert( ! $response->is_error(), 'Health REST route returned an error.' );
 $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP 200.' );
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.155.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
-$assert( 9 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
-$assert( 9 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
+$assert( '0.156.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( 10 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
+$assert( 10 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
 $assert( false === ( $data['features']['inventory_pricing']['enabled'] ?? null ), 'Inventory feature flag should remain disabled.' );
+$assert( is_array( $data['staging_safety'] ?? null ), 'Health response should expose staging safety status.' );
+$assert( 'inactive' === ( $data['staging_safety']['status'] ?? null ), 'Default staging safety status should be inactive.' );
+$assert( false === ( $data['staging_safety']['public_indexing_blocked'] ?? null ), 'Default integration smoke should not block indexing outside staging.' );
+$assert( false === ( $data['staging_safety']['real_customer_emails_disabled'] ?? null ), 'Default integration smoke should not suppress email outside staging.' );
+$assert( true === ( $data['staging_safety']['payment_capture_deferred'] ?? null ), 'Health staging safety should keep payment capture deferred.' );
+$assert( true === ( $data['staging_safety']['provider_inventory_deferred'] ?? null ), 'Health staging safety should keep provider inventory writes deferred.' );
 $assert( 'blocked' === ( $data['offline_route_bootstrap']['status'] ?? null ), 'Offline route bootstrap should remain blocked.' );
 $assert( false === ( $data['offline_route_bootstrap']['feature_enabled'] ?? null ), 'Offline route feature should remain disabled.' );
 $assert( 5 === (int) ( $data['offline_route_bootstrap']['planned_route_count'] ?? 0 ), 'Offline route bootstrap should report planned routes.' );
@@ -173,6 +188,12 @@ $assert( true === ( $route_summary['POST /offline/pull']['controller_callback_re
 $assert( true === ( $route_summary['POST /offline/push']['controller_callback_ready'] ?? null ), 'Offline push controller callback should be staged ready.' );
 $assert( false === ( $route_summary['POST /offline/pull']['should_register'] ?? null ), 'Offline pull route should remain unregistered.' );
 $assert( false === ( $route_summary['POST /offline/push']['should_register'] ?? null ), 'Offline push route should remain unregistered.' );
+$assert( true === ( $data['offline_connector_manifest']['profile_manifest_ready'] ?? null ), 'Offline connector manifest should be staged ready.' );
+$assert( 5 === (int) ( $data['offline_connector_manifest']['offline_route_count'] ?? 0 ), 'Offline connector manifest should report every offline route.' );
+$assert( false === ( $data['offline_connector_manifest']['credentials_synced_to_app'] ?? null ), 'Offline connector manifest should not sync credentials to the app.' );
+$assert( 'offline_device_token' === ( $data['offline_connector_manifest']['wordpress']['auth_mode'] ?? null ), 'Offline connector manifest should require offline device-token auth.' );
+$assert( 'desktop_secure_store' === ( $data['offline_connector_manifest']['wordpress']['credential_storage'] ?? null ), 'Offline connector manifest should keep device credentials in desktop secure storage.' );
+$assert( 'official_woocommerce_square_extension' === ( $data['offline_connector_manifest']['square']['payment_authority'] ?? null ), 'Offline connector manifest should delegate Square payments to the official extension.' );
 $assert( 'ready' === ( $data['offline_registered_device_permissions']['status'] ?? null ), 'Offline registered-device permissions should be staged ready.' );
 $assert( true === ( $data['offline_registered_device_permissions']['database_configured'] ?? null ), 'Offline registered-device permissions should report database readiness.' );
 $assert( 2 === (int) ( $data['offline_registered_device_permissions']['registered_device_route_count'] ?? 0 ), 'Offline registered-device permissions should report pull/push scope count.' );
@@ -279,6 +300,10 @@ $assert( true === ( $data['offline_registered_device_sync_handlers']['push_canon
 $assert( false === ( $data['offline_registered_device_sync_handlers']['route_connected_writes_ready'] ?? null ), 'Offline sync handlers should keep writes deferred.' );
 $assert( 'blocked' === ( $data['offline_device_pairing_route_readiness']['status'] ?? null ), 'Offline pairing readiness should remain blocked.' );
 $assert( 'POST /offline/devices/register' === ( $data['offline_device_pairing_route_readiness']['route_key'] ?? null ), 'Offline pairing readiness should report the pairing route.' );
+$assert( 'offline_device_pairing_request' === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['action'] ?? null ), 'Offline pairing app contract should report the pairing request action.' );
+$assert( '/wp-json/tcg-store/v1/offline/devices/register' === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['rest_path'] ?? null ), 'Offline pairing app contract should report the device register route.' );
+$assert( 'desktop_secure_store' === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['device_token_storage'] ?? null ), 'Offline pairing app contract should require desktop secure token storage.' );
+$assert( false === ( $data['offline_device_pairing_route_readiness']['app_pairing_contract']['credential_values_synced_to_app'] ?? null ), 'Offline pairing app contract should not sync credential values to the app.' );
 $assert( false === ( $data['offline_device_pairing_route_readiness']['handler_injected'] ?? null ), 'Offline pairing readiness should not report a default handler.' );
 $assert( false === ( $data['offline_device_pairing_route_readiness']['permission_callback_ready'] ?? null ), 'Offline pairing readiness permission should remain locked.' );
 $assert( true === ( $data['offline_device_pairing_route_readiness']['registration_deferred'] ?? null ), 'Offline pairing route registration should remain deferred.' );
@@ -319,5 +344,39 @@ $assert( true === ( $data['pos_payment_route_dependencies']['route_registration_
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_reads_deferred'] ?? null ), 'POS/payment dependency route reads should remain deferred.' );
 $assert( false === ( $data['pos_payment_route_dependencies']['route_connected_reads_ready'] ?? null ), 'POS/payment dependency route reads should not be ready by default.' );
 $assert( true === ( $data['pos_payment_route_dependencies']['route_connected_writes_deferred'] ?? null ), 'POS/payment dependency route writes should remain deferred.' );
-
+$assert( 'blocked' === ( $data['woocommerce_square_extension']['status'] ?? null ), 'WooCommerce Square extension should report blocked when the official extension is not active.' );
+$assert( false === ( $data['woocommerce_square_extension']['extension_active'] ?? null ), 'WooCommerce Square extension should report inactive by default.' );
+$assert( true === ( $data['woocommerce_square_extension']['square_network_writes_deferred'] ?? null ), 'WooCommerce Square extension status should not enable Square network writes.' );
+$assert( 'ready' === ( $data['square_inventory_batch_sync']['status'] ?? null ), 'Square inventory batch sync should report ready sandbox planning.' );
+$assert( true === ( $data['square_inventory_batch_sync']['batch_sync_planning_ready'] ?? null ), 'Square inventory batch sync readiness should report staged planning ready.' );
+$assert( 2 === (int) ( $data['square_inventory_batch_sync']['ready_count'] ?? 0 ), 'Square inventory batch sync should report two ready probe rows.' );
+$assert( 4 === (int) ( $data['square_inventory_batch_sync']['operation_count'] ?? 0 ), 'Square inventory batch sync should report catalog and inventory operation plans.' );
+$assert( true === ( $data['square_inventory_batch_sync']['network_request_deferred'] ?? null ), 'Square inventory batch sync should defer Square network writes.' );
+$assert( true === ( $data['square_inventory_batch_sync']['payment_capture_deferred'] ?? null ), 'Square inventory batch sync should defer payment capture.' );
+$assert( 'blocked' === ( $data['inventory_route_bootstrap']['status'] ?? null ), 'Inventory route bootstrap should remain blocked.' );
+$assert( false === ( $data['inventory_route_bootstrap']['feature_enabled'] ?? null ), 'Inventory route bootstrap feature should remain disabled.' );
+$assert( 16 === (int) ( $data['inventory_route_bootstrap']['planned_route_count'] ?? 0 ), 'Inventory route bootstrap should report planned routes.' );
+$assert( 0 === (int) ( $data['inventory_route_bootstrap']['registerable_route_count'] ?? -1 ), 'Inventory route bootstrap should report zero registerable routes.' );
+$assert( false === ( $data['inventory_route_bootstrap']['should_register_routes'] ?? null ), 'Inventory route bootstrap should not register routes.' );
+$assert( true === ( $data['inventory_route_bootstrap']['registration_deferred'] ?? null ), 'Inventory route bootstrap should remain deferred.' );
+$inventory_routes = $data['inventory_route_bootstrap']['route_registration_summary'] ?? array();
+$assert( is_array( $inventory_routes ), 'Inventory route summary should be present.' );
+$assert( false === ( $inventory_routes['GET /inventory/search']['should_register'] ?? null ), 'Inventory search route should remain unregistered.' );
+$assert( true === ( $inventory_routes['GET /inventory/search']['route_connected_reads_deferred'] ?? null ), 'Inventory search route reads should remain deferred.' );
+$assert( false === ( $inventory_routes['POST /inventory']['should_register'] ?? null ), 'Inventory create route should remain unregistered.' );
+$assert( true === ( $inventory_routes['POST /inventory']['route_connected_writes_deferred'] ?? null ), 'Inventory create route writes should remain deferred.' );
+$assert( 'blocked' === ( $data['inventory_route_dependencies']['status'] ?? null ), 'Inventory route dependencies should remain blocked.' );
+$assert( false === ( $data['inventory_route_dependencies']['configured'] ?? null ), 'Inventory route dependencies should not be fully configured by default.' );
+$assert( 16 === (int) ( $data['inventory_route_dependencies']['route_contract_count'] ?? 0 ), 'Inventory route dependencies should report planned route contracts.' );
+$assert( 2 === (int) ( $data['inventory_route_dependencies']['staged_handler_route_count'] ?? 0 ), 'Inventory route dependencies should report staged search/create handlers.' );
+$assert( 0 === (int) ( $data['inventory_route_dependencies']['controller_handler_count'] ?? -1 ), 'Inventory route handlers should remain uninjected by default.' );
+$assert( false === ( $data['inventory_route_dependencies']['controller_handlers_configured'] ?? null ), 'Inventory route handlers should not be configured by default.' );
+$assert( false === ( $data['inventory_route_dependencies']['capability_permission_callbacks_configured'] ?? null ), 'Inventory capability callbacks should remain unconfigured outside explicit route setup.' );
+$assert( false === ( $data['inventory_route_dependencies']['public_read_routes_enabled'] ?? null ), 'Inventory public reads should remain disabled by default.' );
+$assert( true === ( $data['inventory_route_dependencies']['registrar_ready'] ?? null ), 'Inventory registrar dependency should be staged ready.' );
+$assert( 0 === (int) ( $data['inventory_route_dependencies']['registerable_route_count'] ?? -1 ), 'Inventory dependencies should not report registerable routes by default.' );
+$assert( true === ( $data['inventory_route_dependencies']['route_registration_deferred'] ?? null ), 'Inventory dependency route registration should remain deferred.' );
+$assert( true === ( $data['inventory_route_dependencies']['route_connected_reads_deferred'] ?? null ), 'Inventory dependency route reads should remain deferred.' );
+$assert( false === ( $data['inventory_route_dependencies']['route_connected_reads_ready'] ?? null ), 'Inventory dependency route reads should not be ready by default.' );
+$assert( true === ( $data['inventory_route_dependencies']['route_connected_writes_deferred'] ?? null ), 'Inventory dependency route writes should remain deferred.' );
 echo "PASS WordPress integration smoke test\n";

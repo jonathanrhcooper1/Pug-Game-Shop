@@ -15,10 +15,11 @@ final class OfflinePushOperationResolver {
 	private const STATUS_REJECTED             = 'rejected';
 	private const CONFLICT_RESOLUTION_OPTIONS = array(
 		'inventory_unavailable'     => array( 'accept_server', 'accept_device', 'manager_adjust' ),
+		'inventory_update_stale'    => array( 'accept_server', 'accept_device', 'manager_adjust' ),
 		'event_capacity_conflict'   => array( 'accept_server', 'manager_adjust', 'dismiss' ),
+		'event_checkin_stale'       => array( 'accept_server', 'manager_adjust', 'dismiss' ),
 		'credit_overspend_conflict' => array( 'accept_server', 'manager_adjust', 'dismiss' ),
 	);
-
 	/**
 	 * @param array<string, mixed> $server_state Canonical server snapshot for the operation entity.
 	 * @param array<string, mixed> $options Runtime options such as payment status.
@@ -52,7 +53,9 @@ final class OfflinePushOperationResolver {
 
 		return match ( $operation->operation_type() ) {
 			'inventory_reservation' => $this->resolve_inventory_reservation( $operation, $server_state, $server_time_utc ),
+			'inventory_update'      => $this->resolve_inventory_update( $operation, $server_state, $server_time_utc ),
 			'event_reservation'     => $this->resolve_event_reservation( $operation, $server_state, $server_time_utc ),
+			'event_checkin'         => $this->resolve_event_checkin( $operation, $server_state, $server_time_utc ),
 			'credit_redemption'     => $this->resolve_credit_redemption( $operation, $server_state, $server_time_utc ),
 			default                 => $this->outcome(
 				$operation,
@@ -111,6 +114,54 @@ final class OfflinePushOperationResolver {
 	/**
 	 * @param array<string, mixed> $server_state Canonical server snapshot.
 	 */
+	private function resolve_inventory_update(
+		OfflineOperationEnvelope $operation,
+		array $server_state,
+		string $server_time_utc
+	): OfflinePushOperationResolutionPlan {
+
+		$inventory          = $this->section( $server_state, 'inventory' );
+		$server_row_version = $this->optional_non_negative_int( $this->value( $inventory, 'rowVersion', 'row_version', null ) );
+		$device_row_version = $operation->base_row_version();
+		$payload            = $operation->payload();
+
+		if ( null === $server_row_version || null === $device_row_version || $server_row_version !== $device_row_version ) {
+			return $this->conflict_outcome(
+				$operation,
+				'inventory_update_stale',
+				array(
+					'requiresManagerReview' => true,
+					'serverStatus'          => (string) ( $inventory['status'] ?? 'unknown' ),
+					'deviceStatus'          => (string) $this->value( $payload, 'status', 'status', 'unknown' ),
+				),
+				'Inventory changed on the server before the offline update synced.',
+				$inventory,
+				$payload,
+				$server_row_version,
+				$device_row_version,
+				$server_time_utc
+			);
+		}
+
+		return $this->outcome(
+			$operation,
+			self::STATUS_ACCEPTED,
+			'inventory_update_accepted',
+			array(
+				'requiresManagerReview'     => false,
+				'canonicalMutationDeferred' => true,
+				'canonicalStatus'           => (string) $this->value( $payload, 'status', 'status', (string) ( $inventory['status'] ?? '' ) ),
+				'canonicalLocation'         => (string) $this->value( $payload, 'location', 'location', (string) ( $inventory['location'] ?? '' ) ),
+				'canonicalPriceMinorUnits'  => $this->optional_non_negative_int( $this->value( $payload, 'priceMinorUnits', 'price_minor_units', null ) ),
+				'rowVersion'                => $this->next_version( $server_row_version ),
+			),
+			$server_time_utc
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $server_state Canonical server snapshot.
+	 */
 	private function resolve_event_reservation(
 		OfflineOperationEnvelope $operation,
 		array $server_state,
@@ -157,6 +208,66 @@ final class OfflinePushOperationResolver {
 			$operation->payload(),
 			$this->optional_non_negative_int( $this->value( $event, 'rowVersion', 'row_version', null ) ),
 			$operation->base_row_version(),
+			$server_time_utc
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $server_state Canonical server snapshot.
+	 */
+	private function resolve_event_checkin(
+		OfflineOperationEnvelope $operation,
+		array $server_state,
+		string $server_time_utc
+	): OfflinePushOperationResolutionPlan {
+		$event                    = $this->section( $server_state, 'event' );
+		$payload                  = $operation->payload();
+		$registration_public_id   = trim( (string) ( $payload['registrationPublicId'] ?? ( $payload['registration_public_id'] ?? '' ) ) );
+		$server_row_version       = $this->optional_non_negative_int( $this->value( $event, 'rowVersion', 'row_version', null ) );
+		$device_row_version       = $operation->base_row_version();
+		$server_registration_stat = (string) $this->value( $event, 'registrationStatus', 'registration_status', 'unknown' );
+
+		if ( '' === $registration_public_id ) {
+			return $this->outcome(
+				$operation,
+				self::STATUS_REJECTED,
+				'event_checkin_registration_missing',
+				array(
+					'requiresManagerReview' => true,
+					'retryable'             => false,
+				),
+				$server_time_utc
+			);
+		}
+
+		if ( null === $server_row_version || null === $device_row_version || $server_row_version !== $device_row_version ) {
+			return $this->conflict_outcome(
+				$operation,
+				'event_checkin_stale',
+				array(
+					'requiresManagerReview' => true,
+					'serverStatus'          => $server_registration_stat,
+					'registrationPublicId'  => $registration_public_id,
+				),
+				'Event changed before the offline check-in synced.',
+				$event,
+				$payload,
+				$server_row_version,
+				$device_row_version,
+				$server_time_utc
+			);
+		}
+
+		return $this->outcome(
+			$operation,
+			self::STATUS_ACCEPTED,
+			'event_checked_in',
+			array(
+				'checkinStatus'        => 'checked_in',
+				'canonicalStatus'      => 'checked_in',
+				'registrationPublicId' => $registration_public_id,
+				'rowVersion'           => $this->next_version( $server_row_version ),
+			),
 			$server_time_utc
 		);
 	}

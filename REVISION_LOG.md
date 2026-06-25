@@ -1,7 +1,20612 @@
 # Revision Log
 
+## 2026-06-25 - 0.202.14 Middleman Diagnostics And User Controls
+
+### What Changed
+
+- Bumped release metadata from `0.202.13` to `0.202.14`.
+- Added a guarded LAN middleman ScryDex catalog/price worker that schedules a
+  daily authenticated WordPress catalog index run and records the latest
+  system-job result.
+- Added `last_scrydex_catalog_sync` to `/sync/status` so the Store App can show
+  ScryDex worker status, card rows, variants, price rows, and failure detail.
+- Expanded the Store App Status screen into a system/API health console for
+  WordPress, Square, ScryDex daily worker, manual queues, and latest response
+  summaries.
+- Fixed the inventory location selectors so saved location-tab entries and
+  locations already attached to inventory rows both appear in intake/update
+  dropdowns.
+- Added intake-side label printing with `Add + Print Label` and `Print Last
+  Label`, using the same local DYMO first and LAN fallback print path as the
+  inventory update panel.
+- Added LAN-backed manager controls to rename PIN users, change 4-digit PINs,
+  and remove users while preserving hashed PIN storage and last-manager
+  protection.
+
+### Why
+
+The middleman should be the operational hub for sync and diagnostics, while
+WordPress remains the public source of truth and credential holder for the
+catalog index route. Staff also needed a single app screen that explains API
+health and queues in plain English, plus day-to-day controls for labels,
+locations, and employee PINs.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-users-health.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+- `scripts/tests/production-release-package-contract.mjs`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `apps/local-sync-server/tests/local-sync-server-users-health.mjs`.
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:users-health`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Set `PUG_SCRYDEX_DAILY_SYNC_DISABLED=true` or
+  `LOCAL_SYNC_SCRYDEX_DAILY_SYNC_DISABLED=true` to pause the new middleman
+  ScryDex daily worker without rolling back the release.
+- Set `PUG_SCRYDEX_DAILY_SYNC_HOUR` or `LOCAL_SYNC_SCRYDEX_DAILY_SYNC_HOUR`
+  to move the daily refresh window.
+- No database rollback is required. User PIN changes remain hashed in the
+  local SQLite user table; restore from the middleman SQLite backup if a user
+  policy change must be reversed wholesale.
+
+## 2026-06-25 - 0.202.13 Full Inventory Bootstrap Sync
+
+### What Changed
+
+- Bumped release metadata from `0.202.12` to `0.202.13`.
+- Changed LAN server WordPress inventory polling so first startup runs in
+  bootstrap mode and pages through all existing website inventory rows before
+  switching to changed-since polling.
+- Preserved the bootstrap start timestamp as the first changed-since cursor so
+  inventory edits made during the bootstrap are pulled again after seeding
+  completes.
+- Added progress logging for paused bootstrap cycles and bootstrap completion.
+- Updated the full release and LAN server install prompts to explain how the
+  existing 830-card inventory will seed into the middleman and Square.
+
+### Why
+
+The changed-since poller was safe for ongoing edits, but an initial store with
+more inventory rows than the per-cycle page cap could seed only the first pages
+and then advance the cursor. The release needs to seed all current cards once,
+then switch to lower-load live changed-row polling.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `package.json`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md`
+- `docs/runbooks/LAN_SERVER_CODEX_INSTALL.md`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `scripts/tests/square-pos-singles-layout-contract.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `node scripts/tests/square-pos-singles-layout-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-square-sync`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd run package:production-release`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd run release:copy-usb`
+
+### Rollback Notes
+
+- Set `PUG_WORDPRESS_INVENTORY_POLL_DISABLED=true` or
+  `LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_DISABLED=true` to pause automatic
+  WordPress inventory bootstrap/polling without rolling back the release.
+- If the bootstrap is putting too much load on WordPress or Square, increase
+  `PUG_WORDPRESS_INVENTORY_POLL_SECONDS` or lower
+  `PUG_WORDPRESS_INVENTORY_POLL_MAX_PAGES`.
+- No database rollback is required.
+
+## 2026-06-25 - 0.202.12 WordPress/Square Live Sync Hardening
+
+### What Changed
+
+- Added LAN server WordPress inventory polling with an `updated_after` cursor,
+  a configurable poll interval, and a configurable max-page cap per cycle.
+- Added `updated_after` support to the WordPress staff inventory search API so
+  the middleman can pull only changed inventory rows.
+- Added a system-level website inventory pull path for the LAN service so
+  automatic polling does not require an app PIN session.
+- Propagated changed WordPress inventory rows to Square catalog/inventory sync
+  using the same barcode/SKU, price, image, visibility, and absolute quantity
+  path used by Store App inventory updates.
+- Added no-op detection so unchanged WordPress rows do not rewrite local cache
+  state or make repeated Square calls.
+- Added `last_website_inventory_pull` to `/sync/status`.
+- Updated the full release Codex USB prompt to verify WordPress polling,
+  Square polling, and one-card bidirectional sync after install.
+
+### Why
+
+The store needs all three inventory authorities to stay aligned: Store App,
+WordPress/WooCommerce, and Square POS. App-originated and Square-originated
+changes already had automatic paths; WordPress-originated changes needed the
+same production-safe changed-row polling path.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPull.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/local-sync-server-wordpress-inventory-square-sync.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequestParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryBuilderTest.php`
+- `docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md`
+- Release/package contract scripts.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-square-sync`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-pull`
+- `npm.cmd --prefix apps/local-sync-server run test:square-inventory-reconciliation`
+- `npm.cmd --prefix apps/local-sync-server run test:square-catalog-inventory-syncer`
+- `cd apps/wordpress-plugin; php tests/run.php --filter InventorySearch`
+- `node scripts/tests/square-pos-singles-layout-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd run package:production-release`
+- `npm.cmd run release:copy-usb`
+
+### Rollback Notes
+
+- Set `PUG_WORDPRESS_INVENTORY_POLL_DISABLED=true` or
+  `LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_DISABLED=true` to pause automatic
+  WordPress inventory polling without rolling back the release.
+- Existing Square polling can still be paused separately with
+  `PUG_SQUARE_INVENTORY_POLL_DISABLED=true`.
+- Roll back to the earlier `0.202.12` package if the changed-since WordPress
+  poll causes unexpected load. No database rollback is required.
+
+## 2026-06-25 - 0.202.12 Square POS Singles Layout Seed
+
+### What Changed
+
+- Bumped release metadata from `0.202.11` to `0.202.12`.
+- Added a dedicated Square POS `Singles` layout seed script and package command.
+- Wired LAN middleman startup to ensure the Square category tree exists when
+  Square catalog sync is configured.
+- Fixed Square item category payloads to send category IDs only, without ordinal
+  metadata, after the live Square API rejected the ordinal shape during item
+  upsert.
+- Seeded/reused this production Square category tree:
+  `Singles`, `Singles / MTG`, `Singles / Lorcana`, `Singles / Riftbound`, and
+  `Singles / Pokemon`.
+- Created one live production Square test card in `Singles / MTG` with SKU
+  `PUG-CODEX-POS-SINGLES-MTG-20260625T185622Z`, item ID
+  `QUVGPLOWKRSVGIRTMFGBQRJT`, variation ID `BMKUDW452WICEEBNKYEDV342`, and
+  quantity `1`.
+- Updated the USB copy script to remove older versioned Pug Store/Kiosk
+  installers and old deliverable zips/folders so the deployment USB does not
+  show stale builds beside the current release.
+
+### Why
+
+The store wants the Square POS flow itself to expose a permanent `Singles`
+category that drills into game categories before showing synced cards. This
+belongs in Square POS/catalog, not as another Store App page.
+
+### Files Affected
+
+- `apps/local-sync-server/src/squareCatalogInventorySyncer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `scripts/square-seed-pos-singles-layout.mjs`
+- `scripts/tests/square-pos-singles-layout-contract.mjs`
+- `scripts/square-one-card-standalone-probe.mjs`
+- `scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- Release/version metadata files.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `node scripts/tests/square-pos-singles-layout-contract.mjs`
+- `node scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `npm.cmd run square:seed-pos-singles-layout -- --dry-run --location LB1B9Z4GVG1BH`
+- `npm.cmd run square:seed-pos-singles-layout -- --execute --location LB1B9Z4GVG1BH`
+
+### Rollback Notes
+
+- Roll back to `0.202.11` if Square POS category seeding needs to be paused.
+- The live Square test item can be deleted from Square after validation:
+  `PUG-CODEX-POS-SINGLES-MTG-20260625T185622Z`.
+- No database rollback is required for this revision.
+
+## 2026-06-25 - 0.202.11 Square Category/Image Sync And Manual Intake Hardening
+
+### What Changed
+
+- Bumped release metadata from `0.202.10` to `0.202.11`.
+- Updated the standalone Square one-card probe to find or create the `Singles`
+  category, assign the direct test item to it, set quantity `1`, and record the
+  Square category ID in the sanitized report.
+- Updated the LAN server Square catalog/inventory syncer to create/reuse Square
+  categories and place new Square items under `Singles` or `Graded` plus a game
+  category such as `MTG`, `Pokemon`, `Lorcana`, `One Piece`, or `Riftbound`.
+- Added Square catalog image upload for new Square items when the inventory row
+  includes a supported card image URL.
+- Added manual product image URL support to Store App inventory intake for
+  card-not-found/manual entries.
+- Required manual intake to choose a concrete game instead of silently falling
+  back to Pokemon when the game selector is left on `All games`.
+- Added barcode editing to the Store App inventory update panel so the selected
+  LP/NM/graded row can have the exact barcode corrected before sync or label
+  print.
+- Updated Square inventory poll logging to say quantity adjustments instead of
+  implying every Square count decrease removes a whole item row.
+
+### Why
+
+Square POS needs the same category path, product image, barcode/SKU, and
+quantity that staff see in the Store App and customers see on the website.
+Manual intake also needs a clean fallback for cards missing from ScryDex.
+
+### Files Affected
+
+- `scripts/square-one-card-standalone-probe.mjs`
+- `scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `apps/local-sync-server/src/squareCatalogInventorySyncer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `apps/offline-app/src/App.tsx`
+- Release/version metadata files.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Live standalone Square one-card probe into category `Singles` at location
+  `LB1B9Z4GVG1BH`.
+- `node scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `node apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+
+### Rollback Notes
+
+- Roll back to `0.202.10` if Square category/image writes need to be paused.
+- The live direct Square probe created a real test item in `Singles` with SKU
+  `PUG-CODEX-SQ-20260625T180117Z`; it can be deleted from Square after
+  validation.
+- No database rollback is required for this revision.
+
+## 2026-06-25 - 0.202.10 Middleman-Owned Square Catalog Inventory Sync
+
+### What Changed
+
+- Bumped release metadata from `0.202.9` to `0.202.10`.
+- Added a standalone Square one-card probe script for safe direct API response
+  testing before LAN server package deployment.
+- Added a LAN server Square catalog/inventory syncer that creates or updates
+  Square item variations with the local barcode/SKU, sale price, location, and
+  absolute physical inventory count.
+- Wired inventory intake and inventory update queue pushes to sync Square first
+  when configured, then push the same Square mapping fields to WordPress.
+- Added `square_location_id` to the LAN SQLite inventory cache and WordPress
+  inventory schema.
+- Updated WordPress inventory create/update/search responses to accept and
+  return Square catalog item, variation, and location mappings.
+- Fixed Square count reconciliation to compare summed local quantities against
+  Square location counts and update quantities instead of assuming one row is
+  always one copy.
+
+### Why
+
+The store architecture now has the LAN middleman server owning Square sync.
+The website and Square report back to the server, while the server keeps the
+barcode, Square variation ID, website product, and local app inventory aligned.
+
+### Files Affected
+
+- `apps/local-sync-server/src/squareCatalogInventorySyncer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `apps/wordpress-plugin/src/Api/V1/InventoryUpdateRouteHandler.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakePersistencePlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepositoryResult.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchResponsePresenter.php`
+- `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0017SquareLocationMapping.php`
+- Release/version metadata files.
+
+### Migrations Added
+
+- WordPress database migration `17`: adds `square_location_id` to
+  `tcg_inventory_items` with a `square_location` index.
+- LAN SQLite auto-migration: adds `inventory_items.square_location_id`.
+
+### Tests Added Or Run
+
+- Live standalone Square one-card probe against location `LB1B9Z4GVG1BH`.
+- `node apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `php apps/wordpress-plugin/tests/run.php`
+- `node scripts/tests/square-one-card-standalone-probe-contract.mjs`
+- `npm.cmd run verify:no-production-secrets`
+- `node scripts/tests/production-release-package-contract.mjs`
+
+### Rollback Notes
+
+- Roll back to `0.202.9` if Square catalog/inventory writes need to be paused.
+- The WordPress migration adds only a nullable mapping column and index. If
+  rolling back database schema manually, drop the `square_location` index and
+  `square_location_id` column after confirming no release newer than `0.202.10`
+  is using it.
+- The standalone Square probe created one real Square test item; it can be
+  removed from Square Dashboard after validation.
+
+## 2026-06-25 - 0.202.9 ScryDex Catalog Index Diagnostics
+
+### What Changed
+
+- Bumped release metadata from `0.202.8` to `0.202.9`.
+- Added sanitized ScryDex provider diagnostics to failed catalog index requests.
+- The WordPress ScryDex Catalog admin table now surfaces HTTP status, error
+  code, provider message, request path, response message, and short non-JSON
+  response excerpts for expansion/card page failures.
+- Hardened the admin JavaScript so non-JSON responses from WordPress, ScryDex,
+  or the host are displayed as readable errors instead of being swallowed by
+  `response.json()`.
+- Kept credentials and full provider bodies redacted.
+
+### Why
+
+Pokemon indexing was stopping partway through, but the admin screen only showed
+a generic failure. Staff need the exact failed page, expansion, HTTP status, and
+provider message so we can tell whether the cause is a ScryDex rate/timeout,
+host/proxy failure, bad payload, or database write issue.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexResult.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- Release/version metadata files.
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `php -l` on changed WordPress plugin PHP files.
+- `php apps/wordpress-plugin/tests/run.php --filter ScryDex`
+- `php apps/wordpress-plugin/tests/run.php --filter ScryDexCatalog`
+
+### Rollback Notes
+
+- Roll back to the prior `0.202.8` WordPress plugin package if the admin
+  catalog page has unexpected display issues.
+- No database migration was added, so rollback is a plugin-code rollback only.
+
+## 2026-06-25 - 0.202.8 LAN Install Prompt And Workstation Heartbeat Labels
+
+### What Changed
+
+- Bumped release metadata from `0.202.7` to `0.202.8`.
+- Added a `This workstation name` field to the Store/Kiosk app pre-launch
+  connection screen.
+- Added the same workstation name field to Settings -> Website connector.
+- The app continues to keep a stable generated local device ID, while the
+  friendly workstation name is sent as the `/devices/heartbeat` label.
+- Added `LAN_SERVER_CODEX_INSTALL.md`, a shorter Codex copy/paste guide with
+  direct PowerShell install, credential apply, server health, device heartbeat,
+  app install, and DYMO diagnostic commands.
+- Updated release packaging and USB copy scripts so the new install guide is
+  included at the release root, USB root, and inside `LAN Server + Pug Store
+  App`.
+- Updated the longer middleman prompt to reference the workstation name and
+  device heartbeat verification.
+
+### Why
+
+Each installed app needs to be individually visible on the LAN server, but the
+server device list also needs a human-readable label. The generated device ID
+solves uniqueness; the workstation name solves day-to-day support and store
+operations.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/runbooks/LAN_SERVER_CODEX_INSTALL.md`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `scripts/package-production-release.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `node scripts/tests/production-release-package-contract.mjs`
+
+### Rollback Notes
+
+- If a workstation label is set incorrectly, edit `This workstation name` on
+  the pre-login connection screen or in Settings. The generated device ID does
+  not need to be reset.
+- If an app does not appear separately in `/devices/status`, confirm the
+  workstation is running `0.202.8` or newer and has opened the app long enough
+  to send a heartbeat.
+
+## 2026-06-24 - 0.202.7 DYMO XML And Inventory Quantity Sync Repair
+
+### What Changed
+
+- Bumped release metadata from `0.202.6` to `0.202.7`.
+- Folded the newest remote DYMO findings into source: browser and native Tauri
+  DYMO label XML now include `BorderColor` before `BorderThickness`.
+- Updated `Diagnose-Pug-Dymo-Printing.ps1` so its direct test print uses the
+  accepted 30336 label XML shape.
+- Preserved LAN inventory quantities during WordPress pull refreshes when the
+  website row does not explicitly include quantity data.
+- Added a stable per-workstation fallback device ID for app heartbeats when a
+  machine is not paired yet, preventing several PCs from sharing
+  `front-counter-install`.
+- Added an immediate LAN inventory re-read after Store App inventory saves so
+  the selected row reflects the server's final stock count.
+- Added contract coverage for DYMO XML ordering, quantity-preserving WordPress
+  pulls, stable device heartbeat fallback, and post-save inventory refresh.
+
+### Why
+
+The newest remote diagnostics showed the local DYMO service and LabelWriter were
+healthy, but the app's embedded XML was rejected because `BorderColor` was
+missing. The inventory findings also showed the LAN server database/API had the
+correct count while one workstation displayed stale or overwritten stock. The
+release now addresses both the root XML rejection and the quantity-refresh path
+that could reset or display outdated counts.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `scripts/Diagnose-Pug-Dymo-Printing.ps1`
+- `scripts/tests/production-release-package-contract.mjs`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `cargo test`
+- `node scripts/tests/wordpress-package-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+
+### Rollback Notes
+
+- If local label printing still fails on a workstation, run the bundled
+  diagnostic with `-TestPrint` and use the generated report. The app target
+  setting should remain `Auto` or `This PC only` for local DYMO-first printing.
+- If inventory counts still differ by workstation, open
+  `http://10.1.10.116:8787/inventory/search?q=<barcode>` on that workstation.
+  If the browser shows the correct count, reinstall the `0.202.7` Store App so
+  the client refresh and unique heartbeat changes are active.
+
+## 2026-06-24 - 0.202.6 DYMO Diagnostic Collector
+
+### What Changed
+
+- Added `Diagnose-Pug-Dymo-Printing.ps1`, a standalone workstation diagnostic
+  tool for local DYMO print failures.
+- The diagnostic checks Windows printers, Print Spooler, DYMO services,
+  DYMO processes, DYMO install records, app printer-target storage hints,
+  local DYMO endpoints, optional LAN server reachability, and optional direct
+  DYMO test print behavior.
+- The tool writes a text summary, JSON report, and ZIP report that can be sent
+  back to Codex without connector credentials.
+- Bundled the tool into the production release root, Pug Store App package,
+  LAN Server + Pug Store App package, and USB root.
+- Bumped release metadata from `0.202.5` to `0.202.6`.
+
+### Why
+
+The `0.202.5` routing fix still did not resolve local DYMO printing on the
+store workstation. The next useful step is a repeatable report that shows
+exactly where the chain breaks: Windows printer registration, DYMO Connect
+local API, app target setting, LAN fallback, or the actual direct `PrintLabel`
+request.
+
+### Files Affected
+
+- `scripts/Diagnose-Pug-Dymo-Printing.ps1`
+- `scripts/package-production-release.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Pending diagnostic dry run, package contract, production package rebuild, and
+  USB copy verification for `0.202.6`.
+
+### Rollback Notes
+
+- If the diagnostic package causes confusion, keep using the `0.202.5` app
+  installers and copy only `Diagnose-Pug-Dymo-Printing.ps1` to the affected
+  workstation as a support utility.
+
+## 2026-06-24 - 0.202.5 DYMO Local Printer Routing Repair
+
+### What Changed
+
+- Bumped release metadata from `0.202.4` to `0.202.5` across the root package,
+  Store App, Tauri shell, LAN sync server, WordPress plugin headers, and the
+  middleman deployment prompt.
+- Confirmed the Store App local DYMO route uses
+  `https://127.0.0.1:41951/DYMO/DLS/Printing` and
+  `https://localhost:41951/DYMO/DLS/Printing`, not the configured LAN server
+  URL. The LAN server route is only fallback or explicit LAN-only mode.
+- Updated browser and native DYMO printer selection to attempt a listed local
+  LabelWriter, including the 550 Turbo, even when DYMO Connect reports a stale
+  `IsConnected=False` flag. If DYMO rejects the print request, the app can still
+  fall back to the LAN server printer in Auto mode.
+- Updated app status copy and the middleman deployment prompt to make the
+  local-first route and fallback behavior explicit.
+
+### Why
+
+The live DYMO probe on this PC returned `GetPrinters` successfully on
+`127.0.0.1`, but DYMO reported the LabelWriter 550 Turbo as `IsConnected=False`.
+The old app logic treated that as no usable local printer and moved directly to
+LAN fallback. That made it look like the launch-time LAN server IP was
+intercepting local printing, even though the local route itself was correctly
+loopback-only.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Pending focused Store App, Tauri command, Rust, and packaging verification.
+
+### Rollback Notes
+
+- If local DYMO printing regresses, reinstall the previous `0.202.4` Store/Kiosk
+  apps and set Label print target to `LAN server only` as a temporary fallback.
+
+## 2026-06-24 - 0.202.4 Middleman Square Credential Handoff
+
+### What Changed
+
+- Bumped the production release metadata from `0.202.3` to `0.202.4` across the
+  root package, Store App, Tauri app shell, LAN sync server, and WordPress
+  plugin headers.
+- Added `Apply-Pug-Middleman-Credentials.ps1`, a middleman-only helper that
+  merges a USB-only connector secret file into
+  `C:\PugGameShop\LANServer\local-sync.env`, backs up the previous env file,
+  restarts the LAN server, and reports only safe Square configured flags.
+- Updated the release package builder and USB copy script so the middleman
+  Codex prompt and credential applier are included automatically in the
+  `0.202.4` package.
+- Updated `MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md` so Codex on the server PC
+  applies connector credentials, installs the fresh `0.202.4` Store/Kiosk apps,
+  and verifies Square inventory polling and sales reports.
+
+### Why
+
+The middleman PC saw the prior installer as already applied because the release
+artifact name and app version still said `0.202.3`. A new revision number makes
+the update obvious and forces a clean install/patch path for the Square
+credential handoff.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/package.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+- `scripts/Apply-Pug-Middleman-Credentials.ps1`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/package-production-release.mjs`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Pending packaging rebuild and release-copy verification for `0.202.4`.
+
+### Rollback Notes
+
+- If the `0.202.4` middleman patch fails, reinstall the previous `0.202.3`
+  Store/Kiosk apps and restore the backed-up
+  `C:\PugGameShop\LANServer\local-sync.env.before-credentials-*` file.
+
+## 2026-06-24 - PriceCharting Graded Primary And DYMO Endpoint Repair
+
+### What Changed
+
+- Switched graded-card trade-in valuation priority to PriceCharting first, with
+  ScryDex/reference card pricing as the fallback.
+- Updated Store App trade-in copy so staff can see whether the value came from
+  PriceCharting or the ScryDex fallback.
+- Updated the LAN server setup/status contract to report
+  `graded_pricing_primary_source: pricecharting` and
+  `graded_pricing_fallback_source: scrydex_reference_cache`.
+- Fixed the Inventory edit form so draft quantity, price, floor, visibility,
+  and location edits are not reset to the selected card's previous value while
+  staff is typing.
+- Updated native and browser DYMO local printing to use newer DYMO Connect
+  behavior: probe `StatusConnected`, read printers through `GetPrinters`, try
+  both `127.0.0.1` and `localhost`, and fall back from `PrintLabel` to
+  `PrintLabel2`.
+- Updated the middleman Codex deployment prompt so it does not treat `/Check`
+  returning 404 as a failure when `GetPrinters` works.
+
+### Why
+
+The business rule changed: graded-card pricing should trust PriceCharting first.
+ScryDex is still valuable as a fallback and for card/set reference data, but
+staff needs to see the active value source clearly before approving trade-ins.
+
+The remote DYMO report showed DYMO Connect was installed, running on
+`127.0.0.1:41951`, and able to host the web API, but the legacy `/Check`
+endpoint returned 404. That points to endpoint compatibility, not a dead printer
+service, so the app now uses the endpoints that newer DYMO Connect exposes.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:graded-pricing`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/tauri-command-contract.mjs`
+- `node apps/offline-app/tests/windows-package-contract.mjs`
+- `cargo test` in `apps/offline-app/src-tauri`
+
+### Rollback Notes
+
+- If PriceCharting is unavailable, the Store App will continue to use the
+  ScryDex/reference fallback or require a manual offer value.
+- If local DYMO printing still fails on a workstation, the app still falls back
+  to LAN server printing and then browser print preview.
+- Reinstall the prior Store/Kiosk app installer if a workstation-specific DYMO
+  regression appears.
+
+## 2026-06-24 - DYMO Local Printing And Hands-Off LAN Package
+
+### What Changed
+
+- Added a native Tauri `print_dymo_label` command that talks to the DYMO
+  Connect local web service from the Windows app shell.
+- Updated label printing to try the local PC's attached DYMO printer first,
+  then browser local printing, then LAN server fallback, then browser print
+  preview as the last resort.
+- Packaged `Start-Pug-Dymo-Local-Service.ps1` beside the Store App and LAN
+  server deliverables so each workstation can start/check its local DYMO
+  service.
+- Added release packaging support for a bundled `local-sync.env` production
+  connector config from `.local/local-sync.env.production`, with BOM stripping
+  and without committing the secret file.
+- Updated `Deploy-Pug-LAN-Server-Patch.ps1` so first install can be hands-off:
+  it installs bundled connector config automatically, preserves an existing
+  server config by default, and supports `-ReplaceLocalEnv` when an intentional
+  credential refresh is needed.
+- Expanded graded-card selection and secondary-provider pricing handling for
+  CGC Gem Mint/Pristine 10 and Beckett/BGS 10, Perfect 10, and Black Label 10.
+  When a secondary source only has a generic grade-10 bucket, the app keeps the
+  value but lowers confidence and shows a verify-premium warning.
+- Rebuilt the production deliverables and copied the cleaned package to
+  `D:\The Pug Installers`.
+
+### Why
+
+Printing had regressed into server-only behavior on some workstations. DYMO
+Connect exposes a local HTTPS print service, but browser/webview certificate and
+CORS behavior can make pure frontend printing unreliable. Moving the first print
+attempt into the native app shell lets each employee PC use its own attached
+DYMO first, while preserving the LAN server printer as a fallback.
+
+The LAN server installer also needed a no-touch install path for the current
+production credentials. The bundled env support solves that for this local
+release package without placing secrets in source control.
+
+Graded pricing needed clearer handling for premium grade-10 labels. Secondary
+sources often expose generic grade buckets rather than distinct Perfect/Black
+Label/Pristine buckets, so the system now keeps those grades separate in the UI
+and warns when the fallback price is not an exact premium-grade match.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/tauriDymoPrinterAdapter.ts`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/tests/graded-pricing-providers.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/Deploy-Pug-LAN-Server-Patch.ps1`
+- `scripts/copy-production-release-to-usb.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- `TEST_RESULTS.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node apps/offline-app/tests/windows-package-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `node apps/offline-app/tests/tauri-command-contract.mjs`
+- `cargo test` in `apps/offline-app/src-tauri`
+- `npm.cmd run verify:no-production-secrets`
+- `php tests/run.php; php tests/lint.php` in `apps/wordpress-plugin`
+- `npm.cmd run package:production-release`
+- `npm.cmd run release:copy-usb`
+
+### Rollback Notes
+
+- If native DYMO printing fails on a workstation, the app still falls through to
+  browser local DYMO, LAN server print, then browser print preview.
+- Reinstall the previous `0.202.3` Store/Kiosk installer if the native command
+  causes a workstation-specific issue.
+- The LAN patch script preserves existing `C:\PugGameShop\LANServer\local-sync.env`
+  by default. Use the automatic backup created by `-ReplaceLocalEnv` if a config
+  refresh needs to be undone.
+
+## 2026-06-24 - Production Inventory Quantity Route Repair
+
+### What Changed
+
+- Verified the LAN server at `10.1.10.116:8787` is reachable, healthy, and
+  running contract version 5.
+- Enabled the production WordPress inventory update REST route so the LAN server
+  can call `PUT /wp-json/tcg-store/v1/inventory/{inventory_id}`.
+- Added migration 16 to ensure the production inventory table has
+  `quantity_on_hand`.
+- Reinstalled the production WordPress plugin package and ran migrations from
+  database version 15 to 16.
+- Retried the LAN sync push and cleared the pending inventory update queue.
+
+### Why
+
+The LAN server and app were online, but pending inventory updates could not
+reach the site. WordPress first rejected the update route as missing, then after
+enabling the route the handler failed because the live inventory table did not
+have the quantity column expected by the app/server payload.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0016InventoryQuantityOnHand.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- `dist/tcg-store-platform-0.202.3.zip`
+
+### Migrations Added
+
+- `Version0016InventoryQuantityOnHand` adds
+  `quantity_on_hand int(10) unsigned NOT NULL DEFAULT 1` to
+  `tcg_inventory_items`.
+
+### Tests Added Or Run
+
+- `npm.cmd run test:local`
+- `npm.cmd run production:install-package`
+- LAN server ping, `/health`, `/setup/status`, `/sync/status`, and `/sync/push`
+  verification against `10.1.10.116:8787`.
+
+### Rollback Notes
+
+- The production installer created backups in `$HOME/tcg-production-backups/`
+  before applying the plugin update.
+- Roll back to the backup SQL and prior plugin package if the quantity column
+  causes an unexpected issue. The migration rollback removes only
+  `quantity_on_hand`.
+
+## 2026-06-24 - LAN Server Maintenance And Production Plugin Refresh
+
+### What Changed
+
+- Added manager-only LAN Server Maintenance controls to the Store App Settings
+  page.
+- Added LAN server HTTP routes for status, SQLite backup, SQLite checkpoint,
+  website pull, server patch upload/apply, and restart scheduling.
+- Updated `/health` to report the shared local sync contract version instead of
+  a hardcoded value.
+- Added the inventory item update route to the published LAN server contract so
+  remote installs can verify they support live inventory saves.
+- Added typed Store App client methods for the new maintenance routes.
+- Updated the USB copy readme to mention the maintenance panel and contract
+  version 5.
+- Applied the production WordPress plugin package
+  `tcg-store-platform-0.202.3.zip`; the installer created database and
+  `wp-content` backups first, verified plugin version `0.202.3` active, and
+  confirmed migrations at version 15.
+
+### Why
+
+The app UI patch alone can show the new inventory editor, but live save logic
+still depends on the LAN server and WordPress plugin accepting the matching
+inventory update contract. Adding a manager maintenance panel lets the Store App
+back up, update, pull, and restart the LAN server from the counter PC instead of
+requiring manual file-copy troubleshooting for every patch.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-maintenance.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `scripts/copy-production-release-to-usb.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- Release ZIPs under `dist/`
+
+### Migrations Added
+
+- None. The production plugin installer verified the existing WordPress database
+  target version remains 15.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:maintenance`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node apps/offline-app/tests/windows-package-contract.mjs`
+- `npm.cmd run package:production-release`
+- `npm.cmd run release:copy-usb -- 'D:\The Pug Installers'`
+- `npm.cmd run production:install-package -- --dry-run`
+- `npm.cmd run production:install-package`
+
+### Rollback Notes
+
+- Restore the previous Store App installer and LAN server package from the prior
+  USB/release bundle if the maintenance UI causes workstation issues.
+- On the WordPress site, the production install created backups in
+  `$HOME/tcg-production-backups/` before updating the plugin. Use the backup SQL
+  and `wp-content` archive from the install timestamp if a site rollback is
+  required.
+- No database rollback is required for the LAN maintenance routes because they
+  add operational controls and do not alter schema.
+
+## 2026-06-24 - ScryDex Missing Set And Card Recovery
+
+### What Changed
+
+- Added a LAN-server WordPress catalog index bridge for
+  `POST /scrydex/catalog/index`, keeping WordPress/ScryDex credentials on the
+  LAN server side.
+- Added Inventory Intake `Set Not Found` and `Card Not Found` actions.
+- `Set Not Found` resolves the entered set/code through live ScryDex search,
+  requests WordPress full-set indexing when an expansion id is available, then
+  pulls the catalog back into the local app cache.
+- `Card Not Found` searches the entered card across Pokemon, MTG, Lorcana, and
+  One Piece, imports any live ScryDex matches, and leaves the results visible
+  for exact printing/version selection.
+- Bumped release metadata to `0.202.3` for the rebuilt installers/packages.
+
+### Why
+
+Staff needed a plain-English recovery path when a card or special printing, such
+as MTG List-style printings, does not appear in the normal local catalog search.
+The app should be able to ask ScryDex/WordPress to repair the catalog without
+giving every workstation WordPress or ScryDex credentials.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressCatalogIndex.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- Package/version metadata files
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/wordpressCatalogIndex.mjs`
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Revert this revision to remove the new missing set/card recovery buttons and
+  the LAN catalog index bridge.
+- No database rollback is required. The feature only triggers existing
+  WordPress ScryDex catalog indexing/export behavior and local cache refreshes.
+
+## 2026-06-24 - Inventory Quantity Adjustment Live Sync
+
+### What Changed
+
+- Reworked the employee app Inventory `Adjust Qty` action so it no longer stages
+  a generic queued inventory update that redirects staff to the Queue/Sync
+  screen.
+- Positive quantity adjustments now create additional inventory copies through
+  the authenticated LAN inventory intake route and preserve the
+  `staff_quantity_adjustment` sync intent for audit/reporting.
+- Negative quantity adjustments now remove the requested number of saleable
+  copies through the same authenticated exact-inventory removal path used by
+  `Remove from Inventory`.
+- Added a LAN intake payload `sync_intent` override so quantity corrections can
+  be distinguished from normal intake.
+
+### Why
+
+Staff reported that adjusting quantity did not actually change visible stock and
+still redirected to the sync page. The old flow only queued metadata; it did not
+perform a concrete inventory add/remove mutation that WordPress, WooCommerce,
+and Square sync can understand.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-catalog`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-push`
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+
+### Rollback Notes
+
+- Revert this revision to restore the previous queued-only quantity adjustment
+  behavior.
+- No database rollback is required. New quantity additions use the existing
+  inventory intake queue/table shape and removals use the existing sale/removal
+  path.
+
+## 2026-06-23 - Selected Card ScryDex Force Refresh
+
+### What Changed
+
+- Added `force_live=1` support to the WordPress reference search route so a
+  selected card can deliberately refresh ScryDex provider pricing even when a
+  cached WordPress catalog row already exists.
+- Threaded the forced refresh flag through the LAN WordPress catalog fallback,
+  LAN ScryDex search route, and employee app local-sync client.
+- Added `Force ScryDex Pricing` actions to the selected Inventory card preview
+  and the selected Trade-In market-value panel.
+- Added selected-card reference links: TCGplayer for singles, and graded comp
+  links for graded cards.
+- Expanded ScryDex low/mid/high price parsing to accept common alias fields
+  such as `market_low`, `market_high`, `low_value`, and `high_value`.
+
+### Why
+
+Some cards were stuck at `$0.00` or only displayed a low value because the app
+trusted stale cached catalog rows and the parser did not preserve every provider
+price-field alias. Staff needed an explicit one-card refresh to repair the
+selected record without running a full catalog sync.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-catalog`
+- `npm.cmd --prefix apps/local-sync-server run test:scrydex-reference-search`
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert this revision to remove selected-card forced ScryDex refresh and the
+  new reference-link rows.
+- No database rollback is required. The refresh reuses the existing ScryDex
+  catalog persistence tables and LAN reference-card cache.
+
+## 2026-06-23 - Inventory Zero/Delete Controls
+
+### What Changed
+
+- Added Inventory screen staff actions to set the selected card/version group
+  stock to zero and to remove the exact selected copy from active inventory.
+- Routed both actions through the authenticated LAN exact-inventory removal
+  path so the local item is marked out of saleable stock and WordPress/WooCommerce
+  receives the sold/zero-state update for Square sync.
+- Added distinct queue sync intents for staff inventory zero-outs and staff
+  inventory removals so they are auditable separately from normal Square POS
+  sale finalization.
+- Updated the employee app contract checks and local sync server runtime checks
+  for the new controls and sync-intent payload.
+
+### Why
+
+Staff needed a direct way to remove a card from stock or set a card group to
+zero without using the separate Square sale completion workflow. The website is
+still the inventory authority, and Square receives stock changes through the
+WooCommerce Square inventory sync.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `npm.cmd --prefix apps/offline-app run build`
+- Browser QA at `http://127.0.0.1:1420/`: verified the Inventory screen renders
+  `Set Stock to 0` and `Remove from Inventory` with no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to remove the two Inventory screen actions and the custom
+  staff inventory sync intents.
+- No database rollback is required because the changes reuse the existing
+  exact-inventory sold/zero-state queue path.
+
+## 2026-06-23 - USB Patch Installer And LAN Audit Fixes
+
+### What Changed
+
+- Added `release:copy-usb` and `scripts/copy-production-release-to-usb.mjs`
+  so the rebuilt release package can be copied to the attached USB installer
+  folder with one command.
+- Updated the production release package LAN env template to leave
+  `LOCAL_SYNC_SERVER_URL` blank by default, allowing the LAN server to advertise
+  the host computer's real LAN IP automatically.
+- Added non-fatal Windows Firewall setup to the generated LAN startup script for
+  TCP 8787 and UDP 8788.
+- Added trade-in acceptance DL number/state capture. The server requires those
+  fields before approving an offer, logs who recorded them, and only returns a
+  masked ID to the app.
+- Updated the trade-in UI to prompt for DL number/state on accepted offers and
+  show the masked ID in trade-in/customer history.
+- Fixed active event selection so past cached/staged events are not shown as
+  active after their start date.
+
+### Why
+
+Store deployment needed a repeatable USB copy step and fewer manual LAN setup
+steps. Trade-in acceptance also needed an auditable ID record attached to the
+customer/trade history without exposing the full DL number in normal app views.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/lanServerUrl.mjs`
+- `apps/local-sync-server/src/localSyncDiscovery.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-discovery.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/tauriLocalSyncDiscoveryAdapter.ts`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `package.json`
+- `scripts/copy-production-release-to-usb.mjs`
+- `scripts/generate-release-documentation.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md`
+- `release-package/KIOSK_AND_OFFLINE_APP_GUIDE.md`
+- `release-package/env/local-sync.env.example`
+- `release-package/env/offline-app.env.example`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added safe local SQLite columns to `trade_in_orders`:
+  `customer_id_number`, `customer_id_state`,
+  `customer_id_recorded_at_utc`, and
+  `customer_id_recorded_by_user_id`.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`
+- `npm.cmd --prefix apps/local-sync-server run test:discovery`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/offline-app/tests/tauri-command-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the USB copy command, LAN IP auto-advertise
+  package changes, firewall helper, and trade-in ID acceptance requirement.
+- Existing SQLite databases can keep the added nullable/defaulted audit columns;
+  older code will ignore them.
+
+## 2026-06-23 - LAN Inventory Dump And Website Pull Tools
+
+### What Changed
+
+- Added packaged LAN-server operator scripts for inventory/catalog support:
+  `ops:dump-inventory`, `ops:force-pull-website`, and
+  `ops:daily-price-sync`.
+- Added root npm aliases for the same commands:
+  `local-sync:dump-inventory`, `local-sync:force-pull-website`, and
+  `local-sync:daily-price-sync`.
+- The dump script exports local app inventory, local reference cards, local
+  queue rows, website inventory, website reference cards, website price points,
+  website price observations, full Square inventory counts, and mapped Square
+  counts to timestamped JSON/CSV files.
+- The force-pull and daily refresh scripts page through WordPress data and use
+  the existing LAN store merge logic so local inventory/reference-card updates
+  follow the same dedupe and persistence path as the live server.
+- Updated release docs and the LAN package contract so these tools ship inside
+  `dist/pug-lan-server.zip`.
+
+### Why
+
+Operations needed repeatable scripts to compare all three inventory views,
+rebuild the local app cache from the website database, and refresh local prices
+from the website without manually stepping through app screens.
+
+### Files Affected
+
+- `apps/local-sync-server/tools/lib/ops-common.mjs`
+- `apps/local-sync-server/tools/dump-inventory-snapshots.mjs`
+- `apps/local-sync-server/tools/force-pull-website.mjs`
+- `apps/local-sync-server/tools/daily-price-sync.mjs`
+- `apps/local-sync-server/package.json`
+- `package.json`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `release-package/OWNER_OPERATIONS_GUIDE.md`
+- `release-package/SYNC_ENGINE_GUIDE.md`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+- `dist/pug-lan-server.zip`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/tools/lib/ops-common.mjs`
+- `node --check apps/local-sync-server/tools/dump-inventory-snapshots.mjs`
+- `node --check apps/local-sync-server/tools/force-pull-website.mjs`
+- `node --check apps/local-sync-server/tools/daily-price-sync.mjs`
+- Safe fake-credential force-pull check against `https://127.0.0.1:9`.
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the operator scripts and npm aliases.
+- Existing SQLite databases are unaffected unless an operator intentionally runs
+  `ops:force-pull-website -- --replace-local`; that command creates a SQLite
+  backup before clearing local inventory/reference cache tables.
+
+## 2026-06-23 - Production Domain Sync Package Patch
+
+### What Changed
+
+- Rebuilt the production deliverables so the LAN server contract, staff app
+  seed profile, kiosk app, Tauri sync tests, release docs, and package tests
+  point to `https://thepuggaming.com`.
+- Removed exact old GoDaddy preview-host literals from the packaged app/runtime
+  paths and added a package scan/contract guard against those hosts returning.
+- Added a `local-sync.env.example` file directly beside the packaged LAN server
+  startup scripts.
+- Updated `Start-Pug-LAN-Server.ps1` to load `local-sync.env` before launching
+  the LAN server, so `PUG_WORDPRESS_USERNAME`,
+  `PUG_WORDPRESS_APP_PASSWORD`, Square, and SQLite settings work without
+  separate Windows environment-variable setup.
+- Updated the desktop install credential note with the required WordPress
+  Application Password creation steps.
+
+### Why
+
+The installer/signoff check correctly reported that authenticated WordPress
+inventory, catalog, fulfillment, event, customer, credit, and kiosk sync cannot
+run until a WordPress Application Password is configured. It also caught that
+the packaged app still defaulted to the production preview host instead of the
+canonical production domain.
+
+### Files Affected
+
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php`
+- `release-package/env/local-sync.env.example`
+- `scripts/generate-release-documentation.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `dist/the-pug-store-deliverables-0.202.0.zip`
+- `dist/the-pug-store-deliverables-0.202.0/**`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node scripts/tests/production-release-package-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `git diff --check`
+- `npm.cmd run package:production-release`
+- Rebuilt package scan confirmed no `myftpupload.com` strings in the release
+  directory or release ZIP.
+
+### Rollback Notes
+
+- Revert this revision if the store intentionally needs to package a GoDaddy
+  preview-domain build again.
+- Delete `local-sync.env` from the LAN server folder to disable locally entered
+  credentials without deleting the packaged example template.
+- No database rollback is required.
+
+## 2026-06-23 - Small-Screen App Fix And Three-App Release Package
+
+### What Changed
+
+- Fixed the employee app Inventory page breakpoint so compact desktop/small
+  laptop widths stack Inventory and Selected Card Detail instead of preserving
+  the two-column desktop layout.
+- Removed the fake in-app minimize/maximize/close controls and switched the
+  packaged Tauri window contract to fullscreen, decorationless operation.
+- Added Store and Kiosk Windows build profiles that emit separate `Pug Store
+  App` and `Pug Kiosk App` NSIS installers.
+- Updated the production release package to include exactly three installable
+  handoff folders: `Pug Store App`, `LAN Server + Pug Store App`, and `Kiosk
+  Page`.
+- Added hidden/startup helper scripts for the LAN server package.
+- Fixed the LAN server ZIP layout so `apps/local-sync-server` ships with the
+  shared `packages/api-client` source it imports at runtime.
+- Updated the production active-sync inventory smoke verifier so a verified
+  WordPress inventory search match counts as proof of a successful push when
+  the accepted result does not echo the original local entity id.
+
+### Why
+
+The live app was visually broken at smaller screen widths, the packaged app
+still had decorative window buttons that were not functional, and the requested
+release shape is three concrete app/server/kiosk deliverables. The active-sync
+verifier also needed to reflect the real production proof path: the hidden test
+row reached WordPress and was searchable even when the local accepted-result
+echo was incomplete.
+
+### Files Affected
+
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/main.tsx`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/capabilities/default.json`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `scripts/run-offline-app-windows-build.mjs`
+- `scripts/package-local-sync-server.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `scripts/generate-release-documentation.mjs`
+- `release-package/KIOSK_AND_OFFLINE_APP_GUIDE.md`
+- `release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md`
+- `docs/CHANGELOG.md`
+- `docs/RELEASE_NOTES.md`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `node scripts/tests/local-sync-server-package-contract.mjs`
+- `node scripts/tests/production-release-package-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:scrydex-reference-search`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd run package:production-release`
+- `npm.cmd run production:verify-active-syncs`
+- In-app browser visual check at `http://127.0.0.1:1420/` with a 1050x768
+  compact viewport.
+
+### Rollback Notes
+
+- Revert the app CSS breakpoint if the Inventory detail panel should return to
+  desktop two-column layout at compact widths.
+- Revert the Tauri config/build profile changes if installers should return to
+  decorated/resizable windows.
+- Revert `scripts/package-local-sync-server.mjs` if the LAN server package is
+  intentionally built without shared package source.
+- Revert the production inventory smoke verifier change if local accepted-result
+  echo is made mandatory again.
+
+## 2026-06-23 - Live ScryDex Vision Card Scanner
+
+### What Changed
+
+- Added a LAN-server ScryDex Vision wrapper for live card image identification.
+- Added `POST /scrydex/cards/identify-image` to the local sync server.
+- Added `identifyScryDexCardImage()` to the offline app local sync client.
+- Added Scan Card buttons to the Inventory ScryDex lookup panel and Trade-In
+  card search panel.
+- Added a shared live camera modal with a card-shaped guide, automatic centered
+  card crop, JPEG frame cleanup, and result handoff back into the normal
+  ScryDex/reference catalog selection flow.
+- Added ScryDex Vision env placeholders to local sync templates.
+
+### Why
+
+Staff need a fast live scanner similar to TCGplayer scanning so inventory and
+trade-in intake can identify cards without typing. The scanner still requires
+staff confirmation against the normal catalog results before adding inventory or
+trade-in lines, so camera recognition cannot silently mutate inventory.
+
+### Files Affected
+
+- `apps/local-sync-server/src/scrydexVisionIdentifier.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `.env.example`
+- `release-package/env/local-sync.env.example`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/local-sync-server run test:runtime`
+- `npm --prefix apps/offline-app run typecheck`
+- `npm --prefix apps/offline-app run build`
+- In-app browser visual check at `http://127.0.0.1:1420/`
+
+### Rollback Notes
+
+- Remove or disable the Scan Card buttons in the offline app if staff should
+  return to typed lookup only.
+- Clear `SCRYDEX_VISION_API_KEY` and `SCRYDEX_VISION_TEAM_ID` from the LAN
+  server environment to block Vision requests without affecting typed ScryDex
+  catalog search.
+- Revert the `/scrydex/cards/identify-image` route if the LAN server should not
+  accept camera-frame identification requests.
+
+## 2026-06-23 - Production ScryDex Webhook Secret Configuration
+
+### What Changed
+
+- Added webhook-only support to the production ScryDex configuration helper.
+- Enabled the live ScryDex webhook receiver on production and installed the
+  signing secret without printing the secret value.
+- Verified unsigned webhook delivery is rejected and correctly signed delivery
+  reaches payload validation.
+- Updated webhook-triggered expansion refreshes to run all available ScryDex
+  pages for the notified expansion rather than stopping at the daily sync page
+  limit.
+
+### Why
+
+ScryDex now requires a webhook destination and signing secret so price/catalog
+change notifications can trigger targeted syncs instead of relying only on
+polling. The webhook path also needs full expansion pagination so a price
+notification cannot leave later pages stale.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexWebhookRefreshRunner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexWebhookRefreshRunnerSourceTest.php`
+- `scripts/production-configure-scrydex.mjs`
+- `CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node scripts/production-configure-scrydex.mjs --webhook-only`
+- Signed and unsigned production webhook smoke requests.
+- `php -l apps/wordpress-plugin/src/ScryDex/ScryDexWebhookRefreshRunner.php`
+- `php -l apps/wordpress-plugin/tests/Unit/ScryDexWebhookRefreshRunnerSourceTest.php`
+- `php apps/wordpress-plugin/tests/run.php --filter ScryDexWebhookRefreshRunnerSourceTest`
+
+### Rollback Notes
+
+- Disable the ScryDex webhook receiver in the WordPress plugin settings or
+  clear the webhook secret if ScryDex deliveries should stop being accepted.
+- Revert the webhook runner max-pages override if webhook-triggered updates
+  should again be capped to the scheduled sync page limit.
+
+## 2026-06-22 - Woo Stock Reconciliation And Trade-In Line Reset
+
+### What Changed
+
+- Added WooCommerce grouped-card stock hooks that reconcile Woo/Square stock
+  reductions back into the custom `tcg_inventory_items` table.
+- When the official Square/WooCommerce flow lowers a grouped product's stock,
+  the plugin now marks the matching extra available custom inventory rows sold,
+  stamps `date_sold`, updates `last_external_sync_at`, and increments
+  `row_version` so the local app can pull the corrected status.
+- Updated the employee trade-in screen so Add Card to Offer clears the selected
+  card, search results, set filter, variant selection, and manual offer value
+  before the next scan.
+- Gave each trade-in offer line unique percentage, payout, and manual-value
+  field IDs/names so one line's cash/credit selector cannot bleed into another
+  line.
+
+### Why
+
+The Square connector test card showed as sold out in WooCommerce/Square but
+still appeared as one available copy in the app because the custom inventory row
+remained `available`. Trade-in line controls also needed to behave like a POS
+cart, where each added line is independent and the next item starts cleanly.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/local-sync-server/src/wordpressInventoryPull.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `php -l apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `php -l apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `php tests/run.php` from `apps/wordpress-plugin` passed the grouped inventory
+  hook tests but still reports six existing offline/POS readiness-policy
+  failures outside this change.
+- `node apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `node apps/local-sync-server/tests/square-inventory-counts-puller.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Revert the WooCommerce stock hooks if Woo/Square stock updates should stop
+  updating custom inventory rows.
+- Revert the trade-in UI reset if staff should keep the previous selected card
+  after adding it to an offer.
+
+## 2026-06-22 - Live Square Inventory Polling And Mobile/Kiosk Holds
+
+### What Changed
+
+- Added a Square inventory count puller for the LAN sync server using Square's
+  batch inventory counts API.
+- Added manager/manual and background reconciliation paths that compare mapped
+  Square variation counts with local POS-visible inventory, mark missing local
+  copies sold, and push sold states back to WordPress.
+- Expanded the reconciliation test to cover partial count drops, proving a
+  Square count change such as 5 local copies to 3 Square copies marks two local
+  rows sold instead of only acting when Square reaches zero.
+- Added Square location auto-discovery so inventory count polling can use the
+  active Square location when `PUG_SQUARE_LOCATION_ID` is blank and only the
+  access token is configured.
+- Renamed staff-facing Checkout text in the employee app to Sale Completion so
+  the app records local credit, sale history, and Square receipts without
+  presenting itself as the primary POS/payment system.
+- Simplified selected-inventory label printing so one Print Barcode Label click
+  sends the selected card directly to DYMO, falling back to the browser print
+  window only when direct DYMO printing is unavailable.
+- Updated the employee-app label workflow to try DYMO Connect on the current
+  workstation first, then the authenticated LAN middleman printer route, and
+  only open the browser print fallback if both direct routes are unavailable.
+- Restarted the local sync server so the 15-minute hold setting is active.
+- Changed card holds from 30 minutes to 15 minutes in local inventory
+  reservations, WooCommerce cart reservations, and kiosk pickup orders.
+- Fixed mobile WooCommerce card product layout so the card image renders in its
+  own top container before product text.
+- Fixed kiosk scrolling by letting the kiosk shell scroll and constraining the
+  customer gallery/selected-card panes on smaller screens.
+- Added Square inventory polling placeholders to committed environment
+  templates.
+
+### Why
+
+Square POS sales were only updating WooCommerce after a manual Square sync, and
+the local app still showed sold cards as available. The LAN server now has a
+read-only Square count reconciliation path that can close that gap once the
+local Square access token and location are configured.
+
+### Files Affected
+
+- `apps/local-sync-server/src/squareInventoryCountsPuller.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/square-inventory-counts-puller.mjs`
+- `apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/.env.example`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/App.tsx`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/Api/V1/KioskOrderController.php`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/tests/Unit/KioskOrderRouteContractTest.php`
+- `.env.example`
+- `release-package/env/local-sync.env.example`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node apps/local-sync-server/tests/square-inventory-counts-puller.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/local-sync-server/tests/local-sync-server-hold-expiry.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/squareInventoryCountsPuller.mjs`
+- Browser check: local app loaded at `http://127.0.0.1:1420/`; kiosk mode
+  loaded at `http://127.0.0.1:1420/?mode=kiosk`; mobile kiosk shell now
+  reports scrollable shell and constrained gallery height.
+
+### Known Issues
+
+- The restarted local server currently reports
+  `square_inventory_count_poller_connected: false` because the ignored local
+  environment does not yet include `PUG_SQUARE_ACCESS_TOKEN` and
+  `PUG_SQUARE_LOCATION_ID`.
+- `php apps/wordpress-plugin/tests/run.php --filter ...` ran the full PHP suite
+  instead of filtering and reported six pre-existing offline/fee readiness
+  failures outside this change. The hold-related tests passed in that run.
+
+### Rollback Notes
+
+- Set `PUG_SQUARE_INVENTORY_POLL_DISABLED=true` and restart the LAN server to
+  disable live Square count polling without reverting code.
+- Revert the Square puller/server changes if Square count reconciliation should
+  return to manual-only checks.
+- Revert the hold constants if the business chooses to return cart/kiosk holds
+  to 30 minutes.
+
+## 2026-06-22 - Local Inventory Dedupe And Square Connector Verification
+
+### What Changed
+
+- Fixed local website-inventory pull reconciliation so accepted local rows keep
+  their local public ID while storing the WordPress public ID separately.
+- Added duplicate-shadow cleanup during WordPress inventory pulls so the local
+  cache does not keep both the original local row and the website copy for the
+  same physical barcode.
+- Cleaned the live local inventory cache after backing it up:
+  `apps/local-sync-server/store-sync.before-dedupe-20260622-193333.sqlite`.
+- Verified the production connector path for the Square test card:
+  local inventory, production WordPress inventory, and WooCommerce product
+  projection.
+
+### Why
+
+The strict Square catalog import pushed accepted rows to WordPress correctly,
+but pulling those website rows back into the local cache created duplicate
+barcode shadows. That made the Square POS readiness check report thousands of
+duplicate scan identities even though the real inventory was valid.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The live cleanup was a local SQLite data repair only, with a backup
+  created before deleting duplicate shadow rows.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- Live local sync status check confirmed 2,106 real inventory rows, zero queue
+  backlog, and zero duplicate barcode groups after cleanup.
+
+### Rollback Notes
+
+- Restore
+  `apps/local-sync-server/store-sync.before-dedupe-20260622-193333.sqlite` over
+  the active local sync database if the live local inventory cleanup needs to be
+  reversed.
+- Revert the WordPress inventory pull merge change if local rows should again
+  be replaced by website cache rows, though that would reintroduce duplicate
+  barcode risk.
+
+## 2026-06-22 - DYMO Direct Label Printing And Strict CSV Import Completion
+
+### What Changed
+
+- Added direct DYMO Connect printing behind the local sync server so employee
+  app label buttons can print to the DYMO LabelWriter 550 Turbo without the
+  browser print dialog.
+- Added authenticated LAN routes for DYMO printer discovery and card inventory
+  label printing.
+- Updated employee app label printing to try direct DYMO printing first and use
+  the existing browser print popup only as a fallback.
+- Updated the local sync server contract and app client contract to include the
+  DYMO routes.
+- Completed the strict Square catalog import from column AH using the current
+  CSV file: 1,471 card rows, 2,105 physical units, zero failed rows, and zero
+  LAN queue backlog.
+
+### Why
+
+Browser printing did not fit the DYMO 30336 1 x 2 1/8 inch labels cleanly, and
+the store needs barcodes that can be scanned by Square and the local app. Direct
+DYMO Connect printing lets the local server target the exact 30336 roll and use
+Code 128 barcodes without exposing printer control to unauthenticated clients.
+
+### Files Affected
+
+- `apps/local-sync-server/src/dymoLabelPrinter.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `node --check apps/local-sync-server/src/dymoLabelPrinter.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncServerContract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- Authenticated live LAN route test for `/labels/dymo/printers`.
+- Authenticated live direct-print test for one 30336 DYMO label using
+  `PUG-TEST-001`.
+
+### Rollback Notes
+
+- Revert the DYMO helper, server routes, app client methods, and app print
+  handler to return to browser print-dialog-only behavior.
+- If the strict CSV import needs to be reversed, restore the local SQLite
+  backup from before import or run the production/local cleanup tool before a
+  corrected re-import.
+
+## 2026-06-22 - Square Catalog Live Inventory Import
+
+### What Changed
+
+- Added a repeatable local Square catalog importer that can dry-run or execute
+  against the LAN sync server `/inventory/intake` route.
+- Imported the 2026-06-22 Square catalog using column AH, `Current Quantity The
+  PUG`, as the quantity source.
+- Included MTG Singles, Pokemon, One Piece, and graded Pokemon card rows while
+  skipping One Piece supplies/events.
+- Preserved Square item IDs and variation/SKU IDs on every imported inventory
+  unit for later POS reconciliation.
+- Reconciled the two duplicate-key WordPress retry leftovers by pulling their
+  canonical WordPress inventory rows back into the local cache and clearing the
+  exact pending operations.
+
+### Why
+
+The live inventory import needs to use the store's Square export as the source
+file while keeping the website as the inventory authority and preserving enough
+Square metadata for barcode/POS workflows.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `package.json`
+- `scripts/README.md`
+- `scripts/import-square-catalog-local-inventory.mjs`
+- `scripts/tests/square-local-inventory-import-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `scripts/tests/square-local-inventory-import-contract.mjs`.
+- Dry-run import summary: `dist/imports/square-local-inventory-import-2026-06-22-dry-run.json`.
+- Executed import summaries:
+  `dist/imports/square-local-inventory-import-2026-06-22-executed.json` and
+  `dist/imports/square-local-inventory-import-2026-06-22-resume-line-1620.json`.
+- Verified local database totals after import: 3,278 available inventory units,
+  3,278 rows with Square IDs, and zero pending LAN queue operations.
+
+### Rollback Notes
+
+- Restore the local SQLite backup from before the import if the live catalog
+  load needs to be reversed locally.
+- Run the production inventory cleanup script before re-importing if the
+  website inventory needs to be reset and loaded again from a corrected Square
+  catalog export.
+
+## 2026-06-22 - Employee Audio, Event Check-In Handoff, And Singles Import Prep
+
+### What Changed
+
+- Moved pickup-order notification sound selection into the employee app with a
+  station-local MP3/MP4 picker, test button, default-tone fallback, file-size
+  guard, and local persistence.
+- Updated event creation so the app selects the created event, clears stale
+  check-in lookup fields, and scrolls staff to the player check-in workflow.
+- Added a repeatable Square catalog conversion script for importing MTG and
+  Pokemon singles into the `Pug Grading Singles` category while excluding
+  graded rows and flagging Square `variable` prices for ScryDex pricing.
+- Added a contract test for the singles import converter and documented the
+  importer command.
+
+### Why
+
+Pickup alert audio should play from the employee app, not from a website
+settings screen. Staff also need event check-in immediately after creating a
+registration product. The live Square catalog export needs a safe normalization
+step before singles are imported into the Pug grading inventory flow.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `package.json`
+- `scripts/README.md`
+- `scripts/prepare-pug-grading-singles-import.mjs`
+- `scripts/tests/pug-grading-singles-import-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `scripts/tests/pug-grading-singles-import-contract.mjs`.
+- `node scripts/tests/pug-grading-singles-import-contract.mjs`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/offline-app run build`
+- Browser checked the employee Fulfillment sound card for local MP3/MP4
+  selection, default tone, and test/enable controls.
+
+### Rollback Notes
+
+- Revert the employee app audio changes to return pickup alert sound selection
+  to server-provided notification metadata.
+- Revert the event handoff helper if event creation should leave staff at the
+  top of the Events screen.
+- Delete the singles import script and generated `dist/imports/` output if the
+  Square CSV import approach changes before live inventory load.
+
+## 2026-06-22 - Empty Inventory App Startup Fix
+
+### What Changed
+
+- Added an empty-inventory fallback for the employee app selected-card detail
+  state.
+- Disabled inventory update, hold, Square sale, quantity adjustment, and label
+  actions when no live inventory row is selected.
+
+### Why
+
+After the live inventory cleanup, the employee app could load with zero
+inventory rows. The Inventory view still expected a selected card and crashed
+before the login/app shell could render.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- `npm --prefix apps/offline-app run typecheck`
+- `npm --prefix apps/offline-app run build`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+
+### Rollback Notes
+
+- Revert this entry and the matching employee app selected-card fallback if
+  demo inventory seeding is restored, though keeping the fallback is safer for
+  real live-inventory cutovers.
+
+## 2026-06-22 - Live Inventory Cutover Cleanup
+
+### What Changed
+
+- Added production cleanup tooling that creates a database backup, deletes
+  generated card WooCommerce products, clears serialized card inventory rows,
+  reservations, price logs, inventory movement/barcode rows, pending LAN queue
+  rows, and open sync conflicts.
+- Added local LAN SQLite cleanup tooling that backs up the local database and
+  clears demo inventory, queued operations, kiosk-order cache, and fulfillment
+  cache while preserving ScryDex reference cards, customers, credit ledger, and
+  events.
+- Added a generated `pug-order-notification.mp3` chime and a production upload
+  command that registers it in WordPress Media Library, enables employee-only
+  fulfillment sound notifications, and keeps credentials out of output.
+- Removed demo inventory, queued-write, and open-conflict seed rows from the
+  local app so a clean live database no longer shows sample cards or stale
+  conflict counts after restart.
+
+### Why
+
+The store is moving to live inventory CSV import, so production and the LAN app
+need a clean inventory/queue state without losing ScryDex catalog data,
+customer history, order history, or local credit records.
+
+### Files Affected
+
+- `.gitignore`
+- `assets/audio/pug-order-notification.mp3`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `package.json`
+- `scripts/local-clear-card-inventory-and-queues.mjs`
+- `scripts/production-clear-card-inventory.mjs`
+- `scripts/production-upload-notification-sound.mjs`
+- `scripts/tests/local-clear-demo-data-contract.mjs`
+- `scripts/tests/production-clear-card-inventory-contract.mjs`
+- `scripts/tests/production-notification-sound-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added contract tests for local cleanup, production inventory cleanup, and
+  production notification-sound upload scripts.
+
+### Rollback Notes
+
+- Restore the production database from the backup created by
+  `production:clear-card-inventory` if cleared inventory must be restored.
+- Restore the local SQLite backup under `.local/backups/` if local demo rows or
+  queued operations need to be recovered.
+- Re-run the notification sound upload with a different MP3/MP4 or clear the
+  WordPress fulfillment notification sound URL in settings to remove the sound.
+
+## 2026-06-22 - Employee Pickup Order Audio Notifications
+
+### What Changed
+
+- Added employee-only order sound notification settings to the WordPress plugin
+  fulfillment settings, including media-library upload/select support for MP3
+  and MP4 files plus a test-sound button.
+- Exposed sanitized fulfillment notification metadata in the WordPress local
+  pickup fulfillment API response.
+- Added an authenticated LAN sync endpoint,
+  `GET /notifications/fulfillment`, that returns only safe notification
+  metadata through the local PIN-session Bearer token flow.
+- Updated kiosk and WooCommerce pickup queue pulls so new active pickup orders
+  can trigger an employee-app sound/visual alert.
+- Added a Fulfillment-screen control in the employee app for enabling/testing
+  order sounds on that station, with a browser-autoplay fallback message.
+- Verified the app warning sources: the rendered app had no console warnings on
+  login or Fulfillment; remaining non-failing warnings are Vite bundle size and
+  Node SQLite experimental runtime notices.
+
+### Why
+
+Staff need an audible employee-system alert when kiosk pickup orders or paid
+website local-pickup orders arrive, while keeping WordPress and Square
+credentials out of local browser clients.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/FulfillmentNotificationSettings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressFulfillmentPull.mjs`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-fulfillment.mjs`
+- `apps/wordpress-plugin/tests/Unit/FulfillmentOrderControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsPageSourceTest.php`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added local-sync contract coverage for
+  `GET /notifications/fulfillment`.
+- Added local-sync fulfillment coverage proving notification settings flow from
+  WordPress pickup pulls into the employee-safe notification endpoint without
+  credential leakage.
+- Ran `npm.cmd --prefix apps/offline-app run typecheck`.
+- Ran `npm.cmd --prefix apps/offline-app run build`.
+- Ran `npm.cmd --prefix apps/local-sync-server run test`.
+- Ran `php apps/wordpress-plugin/tests/run.php`.
+- Ran `php apps/wordpress-plugin/tests/lint.php`.
+- Render-checked the local app login and Fulfillment screens in the in-app
+  browser; no console warnings or errors appeared.
+
+### Rollback Notes
+
+- Revert this revision to remove the employee audio notification endpoint,
+  app UI, and WordPress media-setting enhancements.
+- Existing fulfillment email settings remain safe to keep, and no database
+  rollback is required.
+
+## 2026-06-17 - Client Handover Documentation Package
+
+### What Changed
+
+- Added the complete `release-package/` documentation set for client handover,
+  owner operations, admin/staff use, kiosk/offline app operation, architecture,
+  install/deploy, APIs/connectors, database schema, sync engine, pricing,
+  customer credit/buylist, events, POS/payments, security, troubleshooting,
+  backup/restore, QA/release checklist, credentials, environment variables,
+  source code map, source code index, and commenting report.
+- Added support documentation under `docs/` for API routes, database tables,
+  background jobs, connector status, release notes, and the refreshed system
+  map.
+- Added client-safe environment placeholder templates under
+  `release-package/env/`.
+- Updated `.env.example` and `apps/local-sync-server/.env.example` to use
+  explicit placeholder credential values.
+- Added `scripts/generate-release-documentation.mjs` so the documentation set
+  can be regenerated consistently.
+- Updated the production release packager to include the handover
+  documentation inside the full-product release ZIP.
+
+### Why
+
+The project needed a complete professional release, owner guide, admin guide,
+support guide, source-code map, and secure credential handoff package that can
+be delivered with the production source and installers.
+
+### Files Affected
+
+- `release-package/*`
+- `release-package/env/*`
+- `docs/SYSTEM_MAP.md`
+- `docs/API_ROUTES.md`
+- `docs/DATABASE_TABLES.md`
+- `docs/BACKGROUND_JOBS.md`
+- `docs/CONNECTOR_STATUS.md`
+- `docs/RELEASE_NOTES.md`
+- `.env.example`
+- `apps/local-sync-server/.env.example`
+- `scripts/generate-release-documentation.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Documentation generation script run.
+- Production release package contract updated to require documentation bundle
+  markers.
+- Final quality searches run for restricted vendor references and obvious
+  credential leakage in generated client-facing documentation.
+
+### Rollback Notes
+
+- Revert this revision to remove the documentation package and documentation
+  bundling behavior.
+- No WordPress database rollback is required.
+
+## 2026-06-17 - Complete GitHub Release Package
+
+### What Changed
+
+- Updated the production release packager to include the storefront theme ZIP in
+  the full production bundle.
+- Added a tracked `releases/0.202.0` handoff folder with the complete
+  production release ZIP, checksum file, and install-order README.
+- Updated the packaging contract so future production bundles must include the
+  theme marker.
+
+### Why
+
+The repository needed to contain the full product handoff, not only source code,
+so GitHub has a complete downloadable package with the WordPress plugin, theme,
+LAN middleman, employee app, and customer kiosk app.
+
+### Files Affected
+
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
+- `releases/0.202.0/README.md`
+- `releases/0.202.0/SHA256SUMS.txt`
+- `releases/0.202.0/the-pug-production-release-0.202.0.zip`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Ran `npm.cmd run package:production-release`.
+- Ran `node scripts/tests/production-release-package-contract.mjs`.
+
+### Rollback Notes
+
+- Remove `releases/0.202.0` and revert the release packager changes to return
+  to source-only GitHub handoffs.
+- No WordPress database rollback is required.
+
+## 2026-06-17 - Contact Page and Event Registration Email
+
+### What Changed
+
+- Replaced the storefront footer `Powered by WooCommerce` text with `Created
+  by JC Electronics`.
+- Added The Pug address, phone number, and directions link to the Contact page.
+- Added event registration confirmation emails with event title, status,
+  date/time, game, format, entry/payment details, player details, and The Pug
+  address.
+- Added unit coverage for event-registration email content.
+
+### Why
+
+The live storefront needs branded footer credit, visible contact-page store
+location details, and customer registration confirmation emails that tell
+players where and when to arrive.
+
+### Files Affected
+
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/footer.php`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/page-contact.php`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/main.css`
+- `apps/wordpress-plugin/src/Events/EventRegistrationService.php`
+- `apps/wordpress-plugin/src/Events/EventRegistrationNotificationMailer.php`
+- `apps/wordpress-plugin/tests/Unit/EventRegistrationNotificationMailerTest.php`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `EventRegistrationNotificationMailerTest`.
+
+### Rollback Notes
+
+- Revert the footer/contact template and CSS changes to restore prior
+  storefront copy.
+- Revert `EventRegistrationService` and remove
+  `EventRegistrationNotificationMailer` to disable registration confirmations.
+- No database rollback is required.
+
+## 2026-06-17 - Production Readiness Audit
+
+### What Changed
+
+- Added the required production audit report set, connector status report,
+  queue report, UI review report, bug summary, open blocker list, and system map.
+- Added public production smoke coverage for public WordPress pages, forbidden
+  production phrases, raw shortcodes, local/staging links, event listing
+  behavior, and expected 404 behavior.
+- Ran the full automated test/build/package/security suite and guarded
+  production active-sync verification.
+- Documented live production findings that need manual approval or hardware,
+  including HTTPS nav/menu deployment, one local queue conflict, Square reader
+  validation, SMTP validation, Dymo printing, and placeholder product images.
+
+### Why
+
+The project needed a production-readiness checkpoint that separates verified
+system behavior from items that require human approval, payment hardware,
+printer hardware, or live admin configuration.
+
+### Files Affected
+
+- `PRODUCTION_AUDIT_REPORT.md`
+- `TEST_RESULTS.md`
+- `CONNECTOR_STATUS_REPORT.md`
+- `SYNC_QUEUE_REPORT.md`
+- `UI_REVIEW_REPORT.md`
+- `BUG_FIX_SUMMARY.md`
+- `OPEN_BLOCKERS.md`
+- `docs/SYSTEM_MAP.md`
+- `tests/e2e/public-production-smoke.spec.ts`
+- `CHANGELOG.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for this audit documentation/test checkpoint.
+
+### Tests Added Or Run
+
+- Added `tests/e2e/public-production-smoke.spec.ts`.
+- Ran `npm run test:local`.
+- Ran `npm run test:sync-engine`.
+- Ran `npm run test:pos-payments`.
+- Ran `npm run test:api-client`.
+- Ran `npm run test:offline-app`.
+- Ran `npm run test:packaging`.
+- Ran `npm run test:required-matrix`.
+- Ran `npm run build`.
+- Ran `npm run verify:no-production-secrets`.
+- Ran `npm run package:production-release`.
+- Ran production public shortcode, reference search, ScryDex catalog, public
+  Playwright, and active sync verifiers.
+
+### Rollback Notes
+
+- The report files and smoke test can be reverted without database impact.
+- No production deployment was performed by this audit pass.
+- Production smoke data created by guarded sync verification was cleaned up by
+  the verifier.
+
+## 2026-06-16 - POS Checkout and Customer Profile Split
+
+### What Changed
+
+- Added a dedicated `Checkout` workspace to the local app for guest/customer
+  checkout, barcode/product lookup, kiosk order import, misc sale lines, local
+  store-credit use, Square receipt capture, receipt delivery choice, Square
+  reader handoff, and Dymo label prep.
+- Simplified the `Customers` workspace into customer lookup/profile, credit
+  balance, issue-credit, ledger history, trade-in history, kiosk/order history,
+  and checkout receipt history.
+- Added LAN checkout transaction storage and `POST /checkout/transactions`.
+  Receipts save staff user/name, customer or guest checkout, Square receipt,
+  receipt delivery choice, sale totals, credit used, Square amount due, and line
+  items.
+- Added customer profile/search receipt visibility so POS and kiosk checkout
+  transactions stay searchable under the customer account.
+- Prevented paid/closed kiosk orders from being loaded back into Checkout and
+  reset Square/credit fields when starting a new checkout.
+- Replaced visible app staging wording with production/plain-English staff
+  language and fixed mobile overflow on `Checkout` and `Customers`.
+
+### Why
+
+The local app needed to behave more like a normal store POS: customer records
+should hold identity, credit, and history, while all selling actions happen in a
+separate checkout screen with receipt and label handling.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-checkout.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- LAN SQLite additive migration for `checkout_transactions`, including customer,
+  receipt, staff, totals, and item-line JSON fields.
+
+### Tests Added
+
+- Added `local-sync-server-checkout.mjs` coverage for customer-linked receipts,
+  guest receipts, email receipt validation, staff attribution, customer search,
+  and customer profile checkout history.
+- Extended offline app client/UI/workspace contract tests for the Checkout tab,
+  checkout receipt routes/types, Dymo label prep, and the current customer
+  display path.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server test`
+- Browser clickthrough on `http://127.0.0.1:1420/`: Inventory, Trade-Ins,
+  Checkout, Fulfillment, Queue, Events, Reports, Customers, and Settings all
+  loaded without console errors or visible staging text.
+- Browser responsive check at `390x844`: `Checkout` and `Customers` had zero
+  horizontal overflow.
+
+### Rollback Notes
+
+- Revert the affected local sync server, offline app, tests, and docs files.
+  The SQLite migration is additive; older code can ignore the
+  `checkout_transactions` table if rollback is needed.
+
+## 2026-06-16 - Customer Kiosk Checkout and Square Terminal Connector
+
+### What Changed
+
+- Added customer-linked kiosk order history to the LAN sync server. Kiosk
+  orders now store a customer public ID and lookup snapshot, and customer
+  profile/search responses include matching kiosk orders and summary counts.
+- Added a Customers workspace kiosk checkout panel in the local app. Staff can
+  search/select kiosk orders, load order totals/cards into checkout, attach the
+  order to the selected customer, open fulfillment, and complete a picked order
+  with a Square receipt reference.
+- Hid new-customer fields until staff click `Create New Customer`; the default
+  customer screen now focuses on lookup, selected profile, kiosk checkout,
+  local credit, ledger history, and Square receipt flow.
+- Added a server-side Square Terminal connector adapter plus LAN routes for
+  secret-safe reader status, manager device-code activation, and reader
+  checkout requests.
+- Added Square Terminal controls to the Customers workspace. The app reports
+  manual receipt mode until the LAN server has Square token, location, and
+  terminal device ID configured.
+
+### Why
+
+The customer screen needed to behave like the local checkout counter: kiosk
+orders should flow into staff checkout/profile history, new customer creation
+should not be noisy by default, and Square reader support must keep credentials
+server-side while preserving manual receipt fallback.
+
+### Files Affected
+
+- `.env.example`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/squareTerminalConnector.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-square-terminal.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- LAN SQLite additive migration for `kiosk_orders.customer_public_id` and
+  `kiosk_orders.customer_lookup`. Existing kiosk rows keep blank values until
+  staff attach them to a customer or name matching resolves them.
+
+### Tests Added
+
+- Added `local-sync-server-square-terminal.mjs` coverage for Square Terminal
+  status, activation-code, checkout, and customer-linked kiosk order profile
+  history.
+- Extended local sync client and UI shell contract tests for Square Terminal
+  routes/types and customer kiosk checkout UI markers.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:square-terminal`
+- `git diff --check`
+- Browser click/view pass on `http://127.0.0.1:1420/` Customers workspace:
+  verified request-only create customer form, kiosk order checkout panel,
+  selected order detail, Square reader status panel, no console warnings or
+  errors, and corrected customer profile header layout.
+- Restarted the local sync server and verified
+  `/pos/square/terminal/status` returns secret-safe unconfigured state.
+
+### Rollback Notes
+
+- Revert the affected local sync server, offline app, tests, env template, and
+  docs files. The SQLite migration is additive; rollback code can ignore the
+  extra kiosk order columns, or they can be left in place.
+
+## 2026-06-15 - Graded ScryDex Trade-In Fallback Cleanup
+
+### What Changed
+
+- Updated daily, manual, and live ScryDex card requests to include both
+  `prices` and `pop_reports` so graded-capable payloads are requested
+  consistently.
+- Added a ScryDex price-history provider method and graded-search enrichment
+  path. When the local app searches in graded mode, the local middleman forwards
+  `raw_or_graded=graded` to WordPress; WordPress then requests the documented
+  ScryDex `cards/<id>/price_history` endpoint for cache hits that lack
+  grade-specific rows, merges the latest graded price rows into the search
+  response, and persists them to the provider price-point table.
+- Fixed the production persistence shape for price-history rows by storing a
+  valid graded condition code and MySQL timestamp values for source/provider
+  dates. Production WordPress now accepts the enriched graded rows instead of
+  rejecting them during provider price-point validation.
+- Increased the local sync WordPress catalog fallback timeout to 30 seconds and
+  changed reference-card merging to preserve enriched `price_points`, so the
+  employee app can receive ScryDex graded rows after WordPress enriches a cached
+  search result.
+- Extended the local sync cache normalizer to preserve ScryDex top-level and
+  variant `prices` / `pricePoints` rows, including documented `type`,
+  `condition`, `company`, `grade`, `market`, `low`, `mid`, `high`, and
+  `is_perfect` values.
+- Treated ScryDex `is_perfect: true` graded price rows as grade `10` when the
+  provider row does not include a separate grade value.
+- Changed the Trade-Ins graded quote panel so a missing exact ScryDex graded
+  price does not auto-price from the raw/base card value. The app now marks the
+  quote as manual-required and only allows staging after staff enter a manual
+  offer or a secondary graded comp returns a value.
+- Cleaned customer-facing/server messages so secondary graded comp setup does
+  not expose local environment variable names.
+
+### Why
+
+The Trade-Ins screen was making it look like ScryDex graded pricing existed for
+cards where the local cache only had raw/base prices. Graded intake needs to
+distinguish exact graded market data from raw reference data so staff do not
+accidentally overpay or underpay on slabbed cards.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `apps/local-sync-server/tests/graded-pricing-providers.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added ScryDex normalizer coverage for documented perfect graded rows.
+- Added ScryDex HTTP provider coverage for the documented card price-history
+  route and grade/company filters.
+- Added local sync server coverage proving ScryDex-style `prices` rows are
+  stored as graded grade-10 price points in the reference cache.
+- Added WordPress catalog fallback coverage proving graded searches forward
+  `raw_or_graded=graded`.
+- Extended offline app local-sync client contract coverage for the graded search
+  parameter.
+- Added provider tests confirming missing secondary graded comp configuration
+  does not leak setup-token names.
+- Extended offline app UI contract coverage for manual-required graded price
+  messaging.
+
+### Verification
+
+- `php tests/run.php --filter ScryDex`
+- `php tests/run.php --filter InventorySearchRouteHandlerFactoryTest`
+- `php tests/lint.php`
+- `php tests/run.php --filter ScryDexCardNormalizerTest`
+- `php tests/run.php --filter ScryDexHttpProviderTest`
+- `npm.cmd --prefix apps/local-sync-server run test:graded-pricing`
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-catalog`
+- `npm.cmd --prefix apps/local-sync-server run test:scrydex-reference-search`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server test`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- Production WordPress graded search for `Charizard ex` / Pokemon returned 27
+  cards, 580 graded price points, `price_history_enrichment.status=completed`,
+  `persistence_status=executed`, and zero persistence errors after redeploy.
+- Local app-facing search
+  `/scrydex/cards/search?q=Charizard%20ex&game=pokemon&limit=all&raw_or_graded=graded`
+  returned 27 cards and 580 graded price points; `Charizard ex` 151 #183
+  included SGC 10, PSA 10, CGC 10, BGS 10, and other grade/company rows.
+
+### Rollback Notes
+
+- Revert the affected ScryDex provider/normalizer, local sync cache,
+  Trade-Ins UI, tests, and docs files. No schema rollback is required.
+
+## 2026-06-15 - Customer Checkout Flow and Queue Diagnostics
+
+### What Changed
+
+- Simplified the employee app Customers workspace into a focused counter flow:
+  customer search/select, create customer, selected customer balance, Square
+  ticket total, store-credit redemption amount, Square receipt/reference, and
+  visible ledger history.
+- Removed the visible customer-account dropdown and standalone add-credit panel
+  from the Customers page. Store credit additions still flow through trade-in
+  approval or the existing backend credit adjustment path, while customer
+  checkout focuses on redemption and Square receipt tracking.
+- Made the Square POS handoff visible to staff on the Customers page instead of
+  hiding it as an owner-only detail.
+- Added a secret-safe LAN queue summary to `/sync/status` and rendered the
+  pending operation type, sync intent, customer public id, WordPress customer
+  id, amount, and queued time in the Queue page.
+
+### Why
+
+The Customers page had too many administrative controls for front-counter use,
+and the queue badge only showed a count. Staff need a clear checkout path and a
+plain explanation of why local/LAN queue badges remain visible.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended local sync runtime coverage to assert `queue_summary.pending_count`
+  matches `queue_depth`.
+- Extended offline app client/UI contracts for queue summary types and the new
+  customer checkout markers.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run build`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- Browser check of Customers page confirmed the old add-credit button and
+  customer dropdown are gone, Square receipt/ref is visible, ledger history is
+  visible, and the primary action is `Redeem Credit & Record Square Receipt`.
+- Browser check of Queue page confirmed the LAN pending row displays as a
+  trade-in credit application for customer/public ids with amount and queued
+  time, without raw payload JSON.
+
+### Rollback Notes
+
+- Revert the affected local sync status, offline app UI/style, tests, and docs
+  files. No schema rollback is required.
+
+## 2026-06-15 - ScryDex Graded Price Point Sync and Trade-In Offer Override
+
+### What Changed
+
+- Expanded ScryDex price normalization to import explicit `price_points`,
+  `pricePoints`, `graded_prices`, `gradedPrices`, `graded_price_points`,
+  `gradedPricePoints`, and `grades` collections from both card-level and
+  variant-level provider payloads.
+- Added support for nested grade/company maps such as `PSA -> 10`,
+  `CGC 9.5`, and scalar grade price rows, preserving the grading company,
+  grade, low/mid/high/market price fields, currency, and raw provider payload.
+- Fixed ScryDex price-key inference so uppercase provider keys like `PSA`,
+  `CGC`, `BGS`, `SGC`, and `TAG` are normalized before parsing.
+- Updated Trade-Ins valuation to prefer ScryDex mid price for trade offers
+  when a price point includes low/mid/high/market values.
+- Added a Manual offer value field to the Trade-Ins quote panel before
+  staging a card. Blank keeps the calculated market-mid percentage; a value
+  overrides the staged line and marks it as manually set.
+
+### Why
+
+Graded ScryDex payloads can return multiple price points per card/version by
+grading company and grade. Those rows need to land in the existing WordPress
+`tcg_provider_price_points` database path so daily sync, search, intake, and
+trade-in valuation all see the same source-of-truth pricing. Staff also need a
+fast manual override at quote time when the comp needs judgment.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This uses the existing provider price-point table and local trade-in
+  JSON line-item storage.
+
+### Tests Added
+
+- Added ScryDex normalizer coverage for nested grade-keyed price rows with
+  PSA and CGC grade-specific price points.
+- Added ScryDex persistence query coverage proving grade-specific price points
+  are written through the provider price-point database insert path.
+- Extended offline app UI contract coverage for the manual offer value field.
+
+### Verification
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server test -- --runInBand`
+- Browser check confirmed the Trade-Ins workspace renders the Manual offer
+  value field and market-mid helper text with no console warnings or errors.
+
+### Rollback Notes
+
+- Revert the affected normalizer/test/app/style/docs files to return to the
+  prior generic ScryDex price extraction and post-stage-only final-value
+  editing. No schema rollback is required.
+
+## 2026-06-15 - Secondary Graded Pricing Provider Lookup
+
+### What Changed
+
+- Added a local sync server graded-price lookup path for Trade-Ins that only
+  runs when the app is quoting graded cards and ScryDex/reference cache does
+  not have an exact grade/company match.
+- Added PriceCharting as the first secondary official API provider, with
+  grade/company mapping for PSA/generic 10, BGS 10, CGC 10, SGC 10, 9.5, 9,
+  8/8.5, and 7/7.5.
+- Added a server-side provider cache so repeated graded comp checks do not
+  repeatedly hit the external provider, and added a one-request-per-second
+  default throttle for PriceCharting API compliance.
+- Added offline app client types and UI status text showing when a secondary
+  comp was used while preserving ScryDex/reference cache as the primary source.
+- Added server contract/runtime/provider tests to verify the route, cache hit,
+  credential hiding, grade mapping, and ScryDex-primary status.
+
+### Why
+
+Staff needed the graded Trade-Ins flow to auto-pull secondary comp data when
+ScryDex lacks exact graded pricing, without turning secondary providers into
+the authority or leaking provider credentials to app clients.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/gradedPricingProviders.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/graded-pricing-providers.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added local sync SQLite table `graded_price_valuations` for secondary graded
+  comp cache rows.
+
+### Tests Added
+
+- Added `apps/local-sync-server/tests/graded-pricing-providers.mjs`.
+- Extended local sync server contract/runtime tests for the new
+  `/trade-ins/graded-valuation` endpoint and cache behavior.
+- Extended offline app client/UI contracts for the new client method and
+  secondary comp status text.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+- `npm.cmd --prefix apps/local-sync-server run test:graded-pricing`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+
+### Rollback Notes
+
+- Revert the listed server/app/test/docs files together to remove automatic
+  secondary graded comp lookup. Drop `graded_price_valuations` only if cached
+  comp history is no longer needed. ScryDex/reference valuation remains intact.
+
+## 2026-06-15 - Graded Trade-In Market Value Visibility
+
+### What Changed
+
+- Added grade/company-aware market valuation for selected Trade-Ins cards so
+  graded quotes can use exact ScryDex/reference price points when available.
+- Added a visible Trade-Ins market-value panel that shows the selected market
+  value, source, low/mid/high/observed details when a price point exists, and
+  a warning state when the app has to fall back to raw/base market value.
+- Added external comp links for graded cards when exact pricing is missing:
+  PriceCharting, eBay sold listings, PSA APR, and TCGplayer.
+- Normalized grade and grading-company matching so labels like `Gem Mint 10`,
+  `Grade 10`, `10.0`, `BGS`, and `Beckett` match the staff-selected values.
+- Extended the offline app UI shell contract to protect the new market-value
+  text, comp links, and CSS hooks.
+
+### Why
+
+Staff needed the graded-card Trade-Ins screen to visibly show which market
+value is driving the offer, react to grade/company changes, and provide a clear
+manual comp path when ScryDex/reference data does not have an exact graded
+price.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline app UI shell contract for the Trade-Ins market-value
+  panel and external comp links.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- Browser check confirmed the local app unlocks, opens Trade-Ins, searches
+  Charizard, selects a priced card, switches it to Graded, updates the market
+  panel for PSA/BGS grade 10, and shows comp links when no exact graded price
+  exists. Browser console had no warnings or errors.
+
+### Rollback Notes
+
+- Revert the listed app/test/docs files together to remove the graded
+  valuation panel and return to the prior Trade-Ins quote display. No database
+  rollback is required.
+
+## 2026-06-15 - Customer Profile Trade-In Linkage And Reports Fix
+
+### What Changed
+
+- Added a dedicated Trade-Ins customer lookup field that searches by name,
+  email, phone, or customer ID while keeping name, phone, and email fields for
+  creating new customers.
+- Linked accepted trade-in store-credit application back into the customer
+  profile ledger with staff name, timestamp, order reference, and exact
+  line-item values.
+- Filtered the Trade-Ins saved-offer list to the selected customer when a
+  customer is attached, while retaining the broader saved-offer search and
+  staff filters for store-wide lookup.
+- Tightened server-side customer/trade-in matching so profile trade-in history
+  only includes matching public IDs or exact normalized customer lookup values.
+- Refreshed local sync status during the employee heartbeat so the app header
+  shows live online/local-cache status and current last-sync time after login.
+- Hardened local manager reports so missing/legacy currency or numeric values
+  cannot break report generation, and so local report fallback data powers
+  summary cards, KPI cards, chart series, row previews, and CSV headers.
+
+### Why
+
+Trade-ins, customer credit, and reports needed to communicate as one workflow:
+staff must be able to select or create a customer, save/decline/approve offers
+under that profile, apply store credit automatically on approval, and then see
+the same data in reports.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended LAN middleman runtime/contract coverage for customer profile access,
+  staff credit changes without manager amount limits, profile ledger staff
+  names, trade-in credit application, and local report fallback behavior.
+
+### Verification
+
+- Browser check confirmed the app starts online after login, not stale offline.
+- Browser check confirmed Trade-Ins can search Morgan Lee by email, select the
+  existing customer, search ScryDex/reference cards, add Charizard to the
+  offer cart, save a quote, approve it, apply `$2,520.00` store credit, and
+  convert the accepted card into inventory intake.
+- Browser check confirmed the Customers page shows Morgan Lee's updated
+  balance, exact trade-in ledger line item, staff attribution, and only
+  Morgan-linked trade-in records.
+- Browser check confirmed Reports renders summary cards, five chart series,
+  KPI cards, CSV header information, and live row previews.
+
+### Rollback Notes
+
+- Revert the listed app/server files together to return to the prior trade-in
+  customer lookup and report behavior. No database migration rollback is
+  required. Trade-in/credit records created during testing remain business data
+  and should be corrected with manager ledger corrections rather than deleted.
+
+## 2026-06-15 - Trade-In Cart Workflow And Cart Image Fix
+
+### What Changed
+
+- Reworked the local app Trade-Ins flow so card lookup happens inside the
+  Trade-Ins screen, with all matching ScryDex/reference results available and a
+  set/expansion filter to narrow exact printings.
+- Persisted selected trade-in customers across lookup refreshes so the action
+  changes to `Customer Selected` instead of reverting to `Create & Use`.
+- Added POS-style trade-in cart behavior: select a card/version, choose raw or
+  graded, condition/display condition, per-card trade percentage, cash or store
+  credit payout, then add the item to the offer cart.
+- Added saved-offer loading so a draft/review trade-in can be restored back
+  into the cart for item edits before acceptance, decline, payment, or
+  conversion.
+- Added an authenticated LAN middleman update route for saved trade-in orders
+  so staff can save, accept, or decline a loaded draft/review quote without
+  duplicating the original transaction.
+- Added accepted-trade inventory conversion from trade-in cart lines into the
+  local intake/inventory path with ScryDex identity, image, pricing, and staff
+  attribution metadata preserved.
+- Exposed the converter staff display name on saved trade-in records and in the
+  employee app saved-offer list for later reports.
+- Added event list fallback/refresh UI and selection guards so the Events page
+  shows loaded events instead of sitting on an empty detail state.
+- Fixed the local app shell so the navigation rail remains visible while
+  taller Trade-Ins and Events workspaces scroll.
+- Fixed WooCommerce cart thumbnails for grouped card products by using eager
+  loading and stable card-sized dimensions.
+- Updated offline app UI contracts for current Trade-Ins copy and the explicit
+  `Use Single` / `Use Graded` card-result actions.
+
+### Why
+
+- Staff needed trade-ins to behave like a counter/POS workflow instead of
+  borrowing fields from the inventory intake screen, and saved trade offers
+  needed to reopen in an editable cart.
+- The live WooCommerce cart could show blank card thumbnails because zero-size
+  lazy images were not loading reliably in cart rows.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added WooCommerce grouped-card hook contract coverage for eager, fixed-size
+  cart thumbnail markup.
+- Added LAN middleman coverage for editing saved trade-in drafts/reviews,
+  blocking edits after approval/conversion, preserving converter names, and
+  documenting the new `PATCH /trade-ins/orders/:order_id` endpoint.
+- Updated offline UI shell contract coverage for the current Trade-Ins controls.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`: passed, 1034 tests and 0 failures.
+- `php apps/wordpress-plugin/tests/lint.php`: passed, 648 PHP files and 0 failures.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/offline-app run build`: passed with the existing Vite
+  large-chunk warning.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:pos-payments`: passed.
+- `npm.cmd run test:api-client`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run test:required-matrix`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run production:verify-active-syncs`: passed. Verified ScryDex
+  reference catalog/search, public shop shortcodes, local inventory push,
+  WooCommerce product projection/Square-sale sync, customer credit push,
+  customer upsert push, event registration/check-in push, kiosk order push,
+  and local pickup fulfillment. The first production reference-search attempt
+  retried twice for transient SSH handshakes and then completed successfully.
+- Browser check confirmed local app trade-in card search, set filtering,
+  selecting a card, adding it to the offer cart, selecting a customer, saving
+  a quote, reloading the quote, declining the loaded quote, and Events page
+  population.
+- Browser check confirmed production home, Singles, Graded, Sealed,
+  Accessories, Events, and one product detail page load without console
+  errors or broken loaded images. The production Events page currently shows
+  the empty-state because no current published production event records exist.
+- Browser check confirmed the tested product page renders the ScryDex card
+  image with transparent image backgrounds and the grouped condition selector.
+
+### Rollback Notes
+
+- Revert the listed file changes and reinstall the previous plugin ZIP if the
+  WooCommerce cart image change causes a storefront regression. If saved
+  trade-in update behavior must be rolled back, revert the LAN middleman route,
+  store, client, and app changes together so loaded saved quotes become
+  read-only again. No database migration or destructive data change is included
+  in this revision.
+
+## 2026-06-15 - ScryDex Provider Price Reference Backfill
+
+### What Changed
+
+- Updated ScryDex price-observation and price-point insert SQL so new rows
+  resolve `reference_card_id` from provider/card identity when a reference card
+  is inserted in the same sync pass.
+- Updated duplicate price-point imports to repair reference links and preserve
+  raw/graded metadata such as grading company and grade.
+- Added database migration 15 to backfill existing unlinked provider price rows
+  from the reference-card table.
+- Bumped the WordPress plugin database version from 14 to 15.
+
+### Why
+
+- Production already had graded price-point rows, but some were not linked to
+  reference cards. That prevented graded price data from attaching reliably to
+  card lookup/intake results.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0015ProviderPriceReferenceBackfill.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/Unit/ProviderPriceReferenceBackfillMigrationTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- `Version0015ProviderPriceReferenceBackfill` links provider price observations
+  and provider price points to reference cards where the provider/card identity
+  matches and `reference_card_id` is currently missing.
+
+### Tests Added
+
+- Added migration 15 metadata coverage.
+- Updated migration runner plan coverage for database version 15.
+- Updated ScryDex persistence query coverage so provider price writes include
+  reference-card lookup SQL.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/lint.php`: passed.
+- `php apps/wordpress-plugin/tests/run.php`: passed, 1034 tests and 0 failures.
+
+### Rollback Notes
+
+- The migration is a non-destructive data repair. It does not drop columns or
+  delete price data. If the repair must be undone, restore the pre-deploy
+  production database backup created by the production installer.
+
+## 2026-06-15 - Local Sync Release Artifact Secret Hygiene
+
+### What Changed
+
+- Updated the local middleman server packager to exclude `.env` and `.env.*`
+  files from the production ZIP.
+- Expanded the local sync server package contract to fail if `.env` or
+  `.env.example` appears in the packaged artifact.
+- Rebuilt the production release package after the stricter exclusion.
+
+### Why
+
+- Release artifacts should not include environment files, even template files,
+  because production credentials and connection settings must be configured on
+  the target machine rather than shipped inside the installer package.
+
+### Files Affected
+
+- `scripts/package-local-sync-server.mjs`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated local sync server package contract coverage for forbidden `.env`
+  entries.
+
+### Verification
+
+- `npm.cmd run package:production-release`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- Artifact scan confirmed `dist/pug-local-sync-middleman-server.zip` does not
+  include `.env`, `.env.example`, SQLite databases, logs, or `node_modules`.
+
+### Rollback Notes
+
+- Revert this revision only if the release must intentionally ship environment
+  templates inside the middleman ZIP. No database rollback is required.
+
+## 2026-06-15 - Trade-In Customer Lookup UI Refresh
+
+### What Changed
+
+- Redesigned the local employee Trade-Ins workspace with the same light card
+  treatment used on the Inventory page.
+- Moved customer lookup to the top of the Trade-In Counter.
+- Added live customer match cards from the LAN customer cache.
+- Changed the main customer action to `Use Customer` when a match exists and
+  `Create & Use Customer` when no match exists.
+- Passed `customer_lookup` through local customer creation so phone/lookup text
+  can be saved with new trade-in customers.
+- Updated local app ScryDex lookup to display every returned match, preserve
+  Set / Expansion filtering, and offer explicit `Use Single` / `Use Graded`
+  actions when graded price data is available.
+- Preserved graded ScryDex price point metadata, including grading company and
+  grade, through the WordPress catalog proxy and LAN middleman.
+- Routed graded inventory product projections to the `graded-cards` storefront
+  category instead of the Singles category.
+
+### Why
+
+- Staff need trade-ins to read like a front-counter workflow, starting with the
+  customer record before building the offer.
+- The previous dark panel treatment was visually inconsistent with the newer
+  inventory screen and made the trade-in controls harder to scan.
+- Graded slabs need to remain separate from raw singles during intake,
+  WooCommerce projection, public storefront filtering, and app selection.
+- Broad card searches such as Swamp or Demonic Tutor need the full website
+  reference set so staff can narrow by set instead of missing printings.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added and updated local sync tests for unlimited WordPress catalog fallback
+  pagination and ScryDex reference search contracts.
+- Updated WordPress unit coverage for graded category projection, raw-only
+  public Singles filtering, graded price normalization, and ScryDex `include=prices`.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/offline-app run build`: passed.
+- `npm.cmd --prefix apps/local-sync-server test`: passed.
+- `php apps/wordpress-plugin/tests/lint.php`: passed.
+- `php apps/wordpress-plugin/tests/run.php`: passed, 1033 tests and 0 failures.
+- Browser check confirmed the Trade-Ins customer lookup is first under the
+  heading, the login PIN field no longer autofills, and the Inventory product
+  type selector reveals grading company, grade, and certification fields.
+- Local sync API check confirmed broad MTG searches use `ResultLimit: all`:
+  `swamp` returned 50 matches across 14 sets and `demonic tutor` returned 27
+  matches across 22 sets from the WordPress catalog cache.
+
+### Rollback Notes
+
+- Revert this revision to restore the previous darker Trade-Ins layout,
+  customer entry wording, capped catalog fallback behavior, and raw/graded
+  storefront projection behavior. No database rollback is required.
+
+## 2026-06-15 - Production Hold Sync And Storefront Image Polish
+
+### What Changed
+
+- Added live hold cleanup to local/kiosk inventory workflows so selected cards
+  stay reserved for the configured 30-minute cart window and return to
+  sellable inventory after expiration.
+- Added legacy kiosk hold cleanup for older pending orders that were created
+  before explicit `hold_expires_at_utc` timestamps existed.
+- Removed stale pending kiosk queue operations when kiosk orders become
+  completed or expired.
+- Removed the product/cart image background from grouped singles product images
+  so live card art matches the storefront design.
+- Hardened the production active-sync verifier with bounded retries for
+  transient SSH transport failures.
+- Reinstalled the current WordPress plugin package on the production site after
+  creating a database backup and `wp-content` backup.
+
+### Why
+
+- Kiosk and shopping-cart reservations must live-validate inventory across the
+  local app, local middleman, and WooCommerce so the same card cannot remain
+  stuck in a hold or be oversold after a customer abandons a cart.
+- The storefront product and cart images needed to visually match the rest of
+  The Pug theme without the unwanted pale background.
+- Production verification should tolerate intermittent host SSH handshakes
+  without hiding real sync or command failures.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-hold-expiry.mjs`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `scripts/production-verify-active-syncs.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No new WordPress database migration was added.
+- Local SQLite hold cleanup uses existing kiosk order, reservation, inventory,
+  and queue-operation tables.
+
+### Tests Added
+
+- Added local middleman hold-expiry coverage for current kiosk reservations and
+  legacy kiosk orders that only have a created timestamp.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:hold-expiry`: passed.
+- `php tests/run.php --filter GroupedInventoryProductHooksTest`: passed all
+  1033 WordPress plugin tests.
+- `php tests/lint.php`: passed across 646 PHP files.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run production:verify-active-syncs`: passed against production with
+  ScryDex/reference search, WooCommerce product publishing, Square-sale sync,
+  customer credit, events, kiosk workflows, and pickup fulfillment green.
+- Browser checks confirmed the employee app reports online production sync,
+  the kiosk reports live inventory connected, product images render with a
+  transparent background, cart images render, and the test cart item was
+  removed after verification.
+
+### Rollback Notes
+
+- Reinstall the previous `tcg-store-platform` plugin ZIP from `dist/` or the
+  server backup if the storefront image or hold behavior needs to be reverted.
+- The production install created backups under `$HOME/tcg-production-backups/`
+  before replacing the plugin.
+- Reverting the local hold cleanup code returns kiosk/cart holds to the prior
+  behavior but does not require a database rollback.
+
+## 2026-06-14 - Trade-In Counter UI And Phone Lookup
+
+### What Changed
+
+- Reworked the local employee Trade-Ins screen into a counter/POS-style offer workflow.
+- Added customer phone capture to local trade-in orders and saved-offer lookup.
+- Added Save Quote, Customer Accepts, and Customer Declines actions to the current trade offer.
+- Saved declined offers remain searchable by name, phone, staff, receipt/order id, card, and set.
+
+### Why
+
+- Staff need trade-ins to behave like a customer-facing counter transaction, not an admin draft form.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite adds `customer_phone` to `trade_in_orders` if missing.
+
+### Tests Added
+
+- Existing local trade-in server tests now exercise the migrated table with the new phone field available.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd --prefix apps/offline-app run build`: passed.
+- Live browser smoke test saved a declined trade-in offer with customer name, phone, staff, order id, rejected status, and credit total visible in the saved offer list.
+
+### Rollback Notes
+
+- Reverting this pass removes the improved counter UI and phone lookup field. The additive `customer_phone` SQLite column can remain unused without affecting existing trade-in records.
+
+## 2026-06-14 - Production Release Verification And Packaging
+
+### What Changed
+
+- Completed the final production release pass for the website plugin, storefront theme, local middleman server, employee app, and customer kiosk.
+- Fixed the local app conflict summary so resolved conflicts do not continue to show after restart.
+- Fixed WooCommerce grouped singles option keys so the same card/set/printing is grouped with independent condition choices instead of duplicate raw-card rows.
+- Fixed local trade-in order persistence by aligning the SQLite insert placeholder count with the trade-in order columns.
+- Normalized storefront menu links to HTTPS on the production domain.
+- Rebuilt installable production artifacts for the WordPress plugin, storefront theme, local server, employee app, kiosk package, and Windows app installer.
+- Added the final website/app/kiosk clickthrough report with production deployment caveats.
+
+### Why
+
+- The production package needed one final end-to-end pass proving active syncs, pickup fulfillment, graded inventory, trade-ins, reports, and release artifacts work together before handoff.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+- `docs/FINAL_CLICKTHROUGH_2026-06-14.md`
+
+### Migrations Added
+
+- No new WordPress migration was added in this final patch.
+- Existing local SQLite migration guards for trade-in conversion fields and credit-ledger audit fields were verified by the full test suite.
+
+### Tests Added
+
+- Added a WordPress unit test proving blank raw singles rows and explicit raw singles rows merge into one grouped product option.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:local -- --filter InventoryProductProjectionPlannerTest`: passed; runner reported 1033 tests, 0 failures.
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd test`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `node scripts/production-verify-active-syncs.mjs`: passed.
+- `npm.cmd run production:verify-reference-search`: passed.
+- `npm.cmd run build:offline-app:windows`: passed.
+- `npm.cmd run package:production-release`: passed.
+- `npm.cmd run package:wordpress-theme`: passed.
+- Browser clickthrough covered production Home, Singles, filtered Singles, Sealed, Graded, Accessories, Events, Buying, Cart, a Charizard product detail page, mobile Singles/Product/Kiosk, and all local app sections.
+
+### Rollback Notes
+
+- If the release must be rolled back, reinstall the previous plugin/theme ZIPs and restart the local middleman server from the prior package. The final SQLite column guards are additive and can remain unused without destroying trade-in, credit, or inventory data.
+
+## 2026-06-14 - Customer Credit Ledger Line Details
+
+### What Changed
+
+- Added local middleman ledger fields for balance before, staff user, reference id, and exact line items.
+- Added local SQLite migration guards for existing `credit_ledger_entries` databases.
+- Updated local credit adjustment entries to include staff, before/after balance, reference, and a credit-given/adjustment line item.
+- Updated Square POS credit redemption entries to include staff, before/after balance, Square receipt reference, sale total, and credit-used line item.
+- Updated the employee app ledger preview to show staff/reference, exact line items, and before/after balances.
+
+### Why
+
+- Store credit needs an auditable line-item ledger so managers can see exactly what caused each credit/cash movement and which staff member handled it.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite adds `balance_before_minor_units`, `staff_user_id`, `reference_id`, and `line_items_json` to `credit_ledger_entries` if missing.
+- WordPress schema was not changed in this pass.
+
+### Tests Added
+
+- Local sync runtime tests now assert balance before/after, staff user, references, and line-item details for credit adjustments and Square POS credit redemptions.
+- App UI contracts now assert the visible ledger line-item display and before/after balance markers.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:persistence`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:local -- --filter StoreReportsPlannerTest`: passed; local runner reported 1032 tests, 0 failures.
+
+### Rollback Notes
+
+- Reverting this pass removes richer local ledger detail display and local ledger audit columns. Existing columns can remain unused; customer balances and WordPress ledger data are not destroyed.
+
+## 2026-06-14 - Inventory Intake Grouping And WooCommerce Sync Verification
+
+### What Changed
+
+- Updated the employee app after-intake filter to search by card name instead of the generated barcode.
+- This keeps same-card/same-printing inventory visible as one grouped card with condition stock selectors after adding NM, LP, or other condition copies.
+- Verified the local inventory push path still requests WordPress inventory creation and WooCommerce product sync when visibility allows it.
+
+### Why
+
+- Staff need to see one card printing with condition choices, not a filtered one-barcode view that makes newly added conditions look like separate cards.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required.
+
+### Tests Added
+
+- App UI contract now asserts the post-intake inventory filter uses the card name.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:wordpress-inventory-push`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`: passed.
+
+### Rollback Notes
+
+- Reverting this pass restores barcode-focused filtering after intake. It does not affect saved inventory or WooCommerce products.
+
+## 2026-06-14 - Trade-In Transaction Lifecycle Guards
+
+### What Changed
+
+- Added local middleman trade-in conversion audit fields: `converted_at_utc` and `converted_by_user_id`.
+- Added local SQLite migration guards for existing `trade_in_orders` databases.
+- Enforced trade-in status transitions so rejected/completed records are terminal, paid requires approval, conversion requires approved/paid, and duplicate conversion is blocked.
+- Exposed Convert, Complete, and Reject actions in the employee app alongside Review, Approve, and Paid.
+- Displayed conversion timestamp/user on shared trade-in transaction cards.
+
+### Why
+
+- Trade-ins must remain separate transaction records until intentionally converted, and staff need a reliable audit trail showing who processed and converted each trade/buy-in.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite adds `converted_at_utc` and `converted_by_user_id` columns to `trade_in_orders` if missing.
+- WordPress schema was not changed in this pass.
+
+### Tests Added
+
+- Local sync trade-in tests now verify blocked premature paid status, approved/paid/converted/completed progression, duplicate conversion blocking, terminal status protection, and conversion audit fields.
+- App contracts now assert conversion action/status UI markers and client response fields.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+
+### Rollback Notes
+
+- Reverting this pass removes lifecycle guards and app buttons. Existing local SQLite columns can remain unused; they do not affect sellable inventory or WordPress data.
+
+## 2026-06-14 - Graded Inventory Search Visibility
+
+### What Changed
+
+- Added an app inventory type filter for All inventory, Singles, and Graded Cards.
+- Expanded app inventory search matching to include product type, grading company, grade, and certification number.
+- Added selected-card graded metadata to the app detail panel.
+- Added a server-side `raw_or_graded` filter to WordPress staff inventory search requests, query planning, and prepared SQL.
+- Added a WordPress staff inventory search dropdown for Singles vs Graded Cards and displayed grade, grading company, and certification details in results.
+
+### Why
+
+- Graded-card intake existed in the data and product projection layers, but staff needed an obvious way to find, verify, and operate on graded inventory separately from normal singles.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequestParser.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRequestParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. Existing inventory schema already stores `raw_or_graded`, grading company, grade, and certification number.
+
+### Tests Added
+
+- App UI/workspace contracts now assert graded inventory filter/detail markers and the shared inventory product-type filter export.
+- WordPress parser, planner, query-builder, and admin-presenter tests now cover the `raw_or_graded` staff inventory filter.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- PHP syntax checks for changed WordPress files: passed.
+- `npm.cmd run test:local -- --filter InventorySearch`: passed; local runner reported 1032 tests, 0 failures.
+
+### Rollback Notes
+
+- Reverting this entry removes the graded filter UI/API path but does not alter inventory data, WooCommerce products, or schema.
+
+## 2026-06-14 - Manager Reports Graph Dashboard
+
+### What Changed
+
+- Added a manager-only Business Reports admin screen with a filter bar for date,
+  staff, channel, game, product type, condition, grading company, and source.
+- Added a LAN middleman `GET /reports/{report}` proxy and WordPress reports
+  connector so manager/owner app sessions can pull report plans through the
+  local server without exposing website credentials to app clients.
+- Added graph-ready KPI cards, a Manager Decision Board, a Graph Dashboard,
+  Comparison Builder, Report Matrix, Retail KPI Library, CSV export links, and
+  a REST/app data contract for paired local apps.
+- Expanded the report planner with employee intake versus sales, online versus
+  in-store sales, trade-in cash versus credit, inventory profitability,
+  fulfillment timing, ScryDex sync health, Square/POS reconciliation, and audit
+  reporting structures.
+- Added retail KPI formulas for sell-through rate, inventory turnover, days and
+  weeks on hand, stock-to-sales ratio, GMROI, average order value, and credit
+  redemption rate.
+
+### Why
+
+- Managers need a polished reports area that compares employees, channels,
+  inventory health, trade-ins, fulfillment, and sync health instead of only raw
+  table exports.
+- The local app needs a stable reports contract it can request when a manager is
+  authenticated, while still keeping reports private and paginated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ReportsController.php`
+- `apps/wordpress-plugin/src/Reports/StoreReportsPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/StoreReportsPlannerTest.php`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressReportsPull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-reports-pull.mjs`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. This pass adds report planning, manager UI,
+  and REST contract metadata against the existing inventory, WooCommerce,
+  customer credit, buylist/trade-in, ScryDex, Square/POS, and audit tables.
+
+### Tests Added
+
+- Store report planner tests now verify graph filters, comparison sets, retail
+  KPIs, manager-only data contracts, admin UI markers, and report/export
+  contracts.
+- Local sync tests now verify WordPress report pulling, manager-only LAN report
+  access, secret-safe responses, and app client report contract typing.
+
+### Verification
+
+- `npm.cmd run test:local`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+
+### Rollback Notes
+
+- Reverting these changes removes the manager reports dashboard UI and expanded
+  report metadata plus the local reports proxy, but does not alter store data or
+  database schema.
+
+## 2026-06-14 - Trade-In Line Value Controls
+
+### What Changed
+
+- Kept Inventory as the sellable inventory intake/search screen and Trade-Ins
+  as the separate customer trade/buy-in workflow.
+- Added independent per-card trade-in line controls in the app for payout
+  percentage, cash/credit payout type, and manually editable final value.
+- Removed trade-in value preview/staging controls from the Inventory screen so
+  existing inventory intake stays separate from customer trade/buy-in work.
+- Updated Trade-Ins staging to use the currently selected inventory card when
+  the intake form is empty, preserving the separate workflow while making the
+  staff path usable from inventory search/list selection.
+- Tightened the Trade-Ins screen layout so shared draft lookup, processed-by
+  filters, and saved drafts wrap cleanly without horizontal overflow.
+- Updated the LAN middleman trade-in sanitizer to preserve each line's manual
+  final value while also storing the calculated default value from market mid
+  and percentage.
+- Updated trade-in totals to use each line's stored final value instead of
+  recalculating all lines from one global percentage.
+
+### Why
+
+- Each card in a trade/buy-in can deserve a different percentage and final value.
+  Staff need to adjust those values at line level without turning the inventory
+  screen into a trade-in workflow.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. Trade-in item JSON now carries additional
+  line-value fields through the existing local middleman order payload.
+
+### Tests Added
+
+- Local sync trade-in tests now verify a manual final value is preserved and
+  totals use the manual value while retaining the calculated default value.
+- Offline app UI contract now protects the per-line percentage/final-value
+  controls and manual-value guidance.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+
+## 2026-06-14 - Local App Reports Screen
+
+### What Changed
+
+- Added Reports as a manager/owner app workspace and navigation target.
+- Added date, employee, channel, game, and report-type filters to the local app.
+- Added graph-style comparison cards for employee intake versus sales, online
+  versus in-store sales, and trade-in cash versus credit.
+- Added KPI cards for inventory health, customer credit, and operations audit.
+- Wired the Reports screen to the LAN middleman `getManagerReport` client so an
+  authenticated manager can pull website report data without exposing
+  WordPress credentials in the app.
+- Tightened the selected-card preview frame so Inventory and Graded Cards
+  intake do not generate horizontal overflow in the local app.
+
+### Why
+
+- Managers need the same reports work available from the local app, not only
+  from the WordPress admin screen.
+- The report UI needs to support store decisions like employee accountability,
+  channel comparison, inventory health, and trade-in payout review.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. This adds a manager app surface over the
+  existing LAN reports endpoint and report planner contracts.
+
+### Tests Added
+
+- Offline app UI contract now protects the Reports navigation, manager graph
+  dashboard text, comparison cards, KPI cards, Reports styling hooks, and LAN
+  report pull handler.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`: passed.
+
+### Rollback Notes
+
+- Reverting this section removes the local app Reports screen only. WordPress
+  admin reports and the LAN reports proxy remain independent unless their
+  earlier changes are also reverted.
+
+## 2026-06-14 - Pickup Fulfillment Status Fix
+
+### What Changed
+
+- Preserved locally checked fulfillment item IDs after a successful WordPress
+  Ready for Pickup status push.
+- Refreshed the shared fulfillment queues after kiosk or website pickup status
+  changes so staff see updates without a hard reload.
+- Cleared the active picking drawer when kiosk or website pickup orders are
+  completed so they move into completed/searchable history immediately.
+- Added app contract markers for the Ready for Pickup handler, pick checklist
+  update route, status update route, queue refresh, and active drawer clearing.
+
+### Why
+
+- The app could appear to lose picked-card state after WordPress accepted the
+  Ready for Pickup update because WordPress status responses do not carry the
+  app's local picked checklist.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-fulfillment.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migration was required. This preserves existing fulfillment
+  payload state during status synchronization.
+
+### Tests Added
+
+- Local sync fulfillment test now verifies picked item IDs, picked count, and
+  all-items-picked state survive a successful Ready for Pickup WordPress push.
+- Offline app UI contract now verifies the button flow calls the fulfillment
+  status route, pick checklist route, queue refresh, and active picker cleanup.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:fulfillment`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:local -- --filter FulfillmentOrderControllerTest`: passed
+  through the full local plugin runner with 1032 tests, bootstrap smoke, and
+  PHP lint.
+
+### Rollback Notes
+
+- Reverting this section restores the previous behavior where a successful
+  WordPress fulfillment status response can overwrite local picked checklist
+  state and staff may need to refresh manually to see completed history.
+
+### Rollback Notes
+
+- Reverting this change returns trade-in lines to calculated-only values. Saved
+  line payloads with manual values remain harmless but would no longer be used by
+  the app/server totals after rollback.
+
+## 2026-06-14 - Trade-In Transaction Attribution and Lookup
+
+### What Changed
+
+- Added searchable trade-in/buy-in transaction lookup across order id, customer,
+  staff id/name, card, set, condition, grade, grading company, payout type, and
+  notes in the LAN middleman server.
+- Returned `staff_user_name` with each shared trade-in record and kept
+  `staff_user_id` as the reportable immutable processor identity.
+- Added Trade-Ins app controls for transaction search and staff filtering, and
+  each saved draft now shows "Processed by" plus the receipt/order id.
+- Added a storefront HTTPS normalization filter for same-site production links
+  on `j84.285.myftpupload.com`.
+
+### Why
+
+- Trade-ins and inventory work need to be attributable to the logged-in staff
+  member so managers can audit who processed each customer transaction and use
+  it in reports.
+- Staff need to look up prior trade/buy-in records like transactions instead of
+  relying on a flat unresolved queue.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-trade-ins.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress schema migration was required. Existing local middleman
+  `trade_in_orders.staff_user_id` data is reused and enriched at read time with
+  the current staff display name.
+
+### Tests Added
+
+- Local sync trade-in tests now verify staff id/name are returned and saved
+  trade-in records can be found by customer, staff, receipt/order id, and item
+  text.
+- Offline app UI shell contract now protects transaction lookup, staff filters,
+  and "Processed by" display.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test:trade-ins`: passed.
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- `npm.cmd run test:offline-app`: passed, including Rust/Tauri command tests.
+- `npm.cmd run test:packaging`: passed.
+
+### Rollback Notes
+
+- Reverting these changes removes the new lookup filters and staff-name display,
+  but existing trade-in order rows keep their `staff_user_id` values.
+- No data rollback is required.
+
+## 2026-06-14 - App Intake Search, Graded Sync, Fulfillment Completion
+
+### What Changed
+
+- Updated offline app ScryDex lookup so inventory intake requests all matching
+  local candidates, keeps the full result list visible after staff choose Use
+  Card, and supports Set / Expansion filtering for broad names like Swamp or
+  Demonic Tutor.
+- Added app-side graded-card intake controls and passed grading company, grade,
+  and certification number through the LAN server storage and WordPress
+  inventory push payload.
+- Reworked the app sync banner to derive Online / Online local-cache / Offline
+  fallback from current LAN and WordPress connector checks, with last-sync time
+  refreshed by heartbeat, status, kiosk, and auto-sync runs.
+- Split Order Fulfillment into active pickup work and searchable completed
+  history by customer, order, receipt, barcode, and card text.
+- Fixed fulfillment pick identity cleanup so checked cards can be recorded by
+  public id, inventory id, reservation id, or WooCommerce order item id.
+- Rebuilt the production release bundle with the updated local middleman server
+  and app source.
+
+### Why
+
+- Staff inventory intake needs to show every matching printing and narrow by
+  set instead of hiding candidates after one selection.
+- Graded-card inventory must travel through the same app-to-website sync path
+  as singles.
+- The employee app was displaying stale/offline status even when the LAN server
+  and production WordPress connector were healthy.
+- Fulfillment needs a clean active queue plus completed lookup instead of an
+  ever-growing unresolved stack.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `scripts/production-run-local-pickup-fulfillment-smoke.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local middleman SQLite compatibility migrations add `grading_company`,
+  `grade`, and `cert_number` columns when an existing local database is opened.
+- No WordPress schema migration was required for this chunk.
+
+### Tests Added
+
+- Production pickup fulfillment smoke now explicitly syncs the pick checklist
+  before marking pickup orders ready/completed.
+- Local sync fulfillment coverage now verifies checked item persistence through
+  the ready-for-pickup flow.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run package:production-release`: rebuilt
+  `dist/the-pug-production-release-0.202.0.zip`.
+- `npm.cmd run production:verify-active-syncs`: passed; verified ScryDex
+  catalog/search, public shop shortcodes, local inventory push, WooCommerce
+  product projection with Square-sale handling, customer credit/customer/event/
+  kiosk workflows, and local pickup fulfillment.
+
+### Rollback Notes
+
+- Restore the prior app installer and local middleman server ZIP from the
+  previous release package if the new app/fulfillment behavior must be reverted.
+- No WordPress data rollback is required for this chunk.
+- If a local SQLite database was opened with the new graded columns, older code
+  can ignore those extra columns.
+
+## 2026-06-14 - Store Operations, Trade-In Calculator, Reports Foundation
+
+### What Changed
+
+- Added platform settings for grading-company lists, customer-credit policy,
+  and fulfillment notifications.
+- Exposed the store-operations settings on the WordPress settings page for
+  manager-level configuration.
+- Updated staff inventory intake UI to show Singles / Graded Cards product
+  types and graded-specific fields for grading company, grade, and
+  certification number.
+- Added `BuylistTradeInValuePlanner` for market-mid based trade-in math:
+  selectable 0% to 100% percentages in 5% increments, round-down-to-whole-dollar
+  values, per-item cash/credit payout, and logged manager override reasons.
+- Added `BuylistReceiptPresenter` so trade-in receipts use stored line-item
+  values instead of recalculating later.
+- Added manager-only report planning and REST scaffolding for customers, sales,
+  inventory, trade-ins, fulfillment, ScryDex/API, Square reconciliation, and
+  audit exports.
+- Wired fulfillment ready-for-pickup email sending to the new notification
+  setting.
+
+### Why
+
+- Graded cards and store credit need configurable production controls instead
+  of hardcoded assumptions.
+- Trade-in values must be consistent between staff UI, receipts, ledger, and
+  reports.
+- Reports and exports need a manager-only contract before heavier SQL execution
+  is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/GradingCompanySettings.php`
+- `apps/wordpress-plugin/src/Settings/CustomerCreditSettings.php`
+- `apps/wordpress-plugin/src/Settings/FulfillmentNotificationSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistTradeInValuePlanner.php`
+- `apps/wordpress-plugin/src/Buylist/BuylistReceiptPresenter.php`
+- `apps/wordpress-plugin/src/Reports/StoreReportsPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/ReportsController.php`
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/*`
+
+### Migrations Added
+
+- None. Existing inventory and buylist schemas already include graded company,
+  grade, and certification-number fields.
+
+### Tests Added
+
+- Store policy settings sanitizer/source coverage.
+- Trade-in value planning tests for market-mid rounding, mixed cash/credit,
+  manager overrides, 5% percentage increments, and receipt totals.
+- Report planner and manager-only controller contract tests.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`: 1030 tests, 0 failures.
+- `php apps/wordpress-plugin/tests/lint.php`: 646 PHP files checked, 0 failures.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run test:offline-app`: passed, including 22 Rust/Tauri tests.
+- `npm.cmd run package:wordpress`: created
+  `dist/tcg-store-platform-0.202.0.zip`.
+- `npm.cmd run package:local-sync-server`: created
+  `dist/pug-local-sync-middleman-server.zip`.
+- `npm.cmd run production:install-package`: installed plugin `0.202.0` on
+  production after a one-file hot patch corrected early REST registration.
+- `npm.cmd run production:verify-reference-search`: passed.
+- `npm.cmd run production:verify-public-shortcodes`: passed.
+- `PUG_PROD_CONFIRM_LOCAL_SYNC_INVENTORY_SMOKE=run-production-local-sync-inventory-smoke npm.cmd run production:local-sync-inventory-smoke`:
+  passed and cleaned up the hidden test row.
+- Production route check: reports route and ScryDex catalog status route are
+  registered.
+
+### Production Backups
+
+- Database backup: `$HOME/tcg-production-backups/pug-production-before-plugin-20260614T061246Z.sql`
+- wp-content backup: `$HOME/tcg-production-backups/pug-production-wp-content-20260614T061246Z.tgz`
+
+### Rollback Notes
+
+- Reinstall the prior plugin ZIP to remove these store-operation settings and
+  planner/controller classes.
+- No schema rollback is required for this chunk.
+- If a ready-pickup email policy is misconfigured, disable the email setting in
+  WordPress settings rather than rolling back code.
+
+### Known Remaining Work
+
+- The local app does not yet have a dedicated live trade-in screen consuming the
+  5% increment planner contract.
+- No existing gas-line module/spec was found in the repository; unrelated gas
+  logic was not invented.
+
+## 2026-06-14 - Corrected Production Connector, Rounding, Fulfillment
+
+### What Changed
+
+- Updated local app and LAN sync defaults to use the corrected production
+  WordPress REST URL over HTTPS.
+- Added `PriceRounding` as the centralized PHP helper for sale and trade-in
+  rounding rules, and mirrored the sale rounding behavior in the employee app
+  and LAN sync server.
+- Configured the local sync environment for the live Main Store location
+  (`location_id = 1`) and verified normal app intake creates accepted WordPress
+  inventory instead of remaining pending.
+- Added a WooCommerce `Ready for pickup` status registration path and one-time
+  ready-for-pickup customer email logic for fulfillment updates.
+
+### Why
+
+- WordPress application passwords on the corrected site authenticate over HTTPS,
+  so HTTP REST pushes were rejected even though the plugin was active.
+- Staff intake pricing needed to follow the store policy consistently before
+  inventory is published to WooCommerce.
+- Pending intake was caused by missing location/runtime connector setup, not by
+  the card lookup itself.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Pricing/PriceRounding.php`
+- `apps/wordpress-plugin/src/Pricing/PricingCalculator.php`
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/wordpress-plugin/tests/Unit/PricingCalculatorTest.php`
+- `apps/wordpress-plugin/tests/Unit/FulfillmentOrderControllerTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/*`
+- `.env.local-sync` and `.env.production.local` locally only; secrets are not
+  committed.
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Pricing tests for sale-price round-up and trade-in round-down examples.
+- LAN/WordPress inventory push tests for sale-price rounding.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`: 1019 tests, 0 failures.
+- `php apps/wordpress-plugin/tests/lint.php`: 637 PHP files, 0 failures.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run production:install-package`: installed and activated plugin
+  `0.202.0` on the corrected site with database and wp-content backups.
+- Live smoke: app -> LAN sync -> HTTPS WordPress inventory intake accepted one
+  test item, status `available`, rounded 101 cents to 200 cents.
+
+### Rollback Notes
+
+- Restore the plugin backup created by the installer or reinstall the previous
+  plugin ZIP from WordPress if the new fulfillment/pricing behavior must be
+  reverted.
+- Restore the database backup only if live inventory smoke rows or settings
+  must be removed wholesale; otherwise remove the smoke inventory rows in admin.
+- Revert the local `.env.local-sync` URL/location changes only when intentionally
+  pointing the app back to a different WordPress site.
+
+## 2026-06-10 - Grouped Local Inventory With Condition Stock
+
+- Why: Adding the same printing in NM and LP correctly created two serialized
+  physical inventory copies, but the employee app incorrectly presented them
+  as two different cards.
+- Changed: Grouped matching game/card/set/collector-number/printing records in
+  the employee inventory list and grid, added aggregate stock and price ranges,
+  added condition quantity selectors, and kept the selected condition mapped to
+  one available serialized copy for barcode, location, hold, Square sale, and
+  adjustment workflows.
+- Files affected: Offline app UI, styles, UI contracts, and release logs.
+- Migrations: None. Serialized copy records remain unchanged.
+- Tests: Offline app TypeScript, UI/package contracts, production build, and
+  browser verification with multiple conditions for one printing.
+- Rollback: Restore per-copy inventory list rendering and remove the grouped
+  condition selectors. No inventory data rollback is required.
+
+## 2026-06-10 - Product Images, Singles Links, And Pick Rows
+
+- Why: Remote ScryDex art was visible in Singles search but WooCommerce fell
+  back to placeholders on card detail and cart surfaces; game cards opened
+  category archives instead of filtered Singles; and employee picking rows
+  were too dense for quick fulfillment.
+- Changed: Added a direct grouped-card product gallery fallback and cart
+  thumbnail hook, including lazy canonical-inventory image recovery for legacy
+  serialized products, routed home game cards to filtered Singles URLs, normalized
+  Magic display labels to MTG, and redesigned pick rows with cached card art,
+  barcode, pull location, price, and clearer completion state.
+- Files affected: WooCommerce grouped-product hooks/styles/tests, public
+  inventory presenter/tests, storefront theme home/functions, offline app
+  UI/styles/contracts, and release logs.
+- Migrations: None.
+- Tests: WordPress plugin unit suite, PHP syntax checks, offline app contracts
+  and production build, followed by live product, cart, home-link, and
+  responsive pick-screen verification.
+- Rollback: Revert the new WooCommerce gallery/cart hooks, restore category
+  URLs and prior labels, and restore the former fulfillment row markup/styles.
+
+## 2026-06-10 - Local system launcher
+
+- Why: Store demos and development need one command to start the LAN
+  middleman, employee app, and customer kiosk before signed installers are
+  produced.
+- Changed: Added `Start-Pug-Store.cmd`, `Stop-Pug-Store.cmd`, guarded
+  PowerShell launch/shutdown scripts, npm aliases, and deployment guidance.
+- Files affected: root command wrappers, `scripts/start-pug-store.ps1`,
+  `scripts/stop-pug-store.ps1`, `package.json`,
+  `docs/DEPLOYMENT_OFFLINE_APP.md`, and release logs.
+- Migrations: None.
+- Tests: Launcher reuse/health smoke plus existing local app and LAN server
+  suites.
+- Rollback: Remove the launcher files and npm aliases. Installed or manually
+  running services are unaffected because shutdown only targets recorded,
+  command-verified launcher processes.
+
+## 2026-06-10 - Full-screen customer kiosk connectivity
+
+- Why: The customer gallery inherited the employee app's named grid area,
+  reducing its width and showing an inaccurate offline label before kiosk
+  status was loaded.
+- Changed: Reset the standalone kiosk layout to a full-display flex surface,
+  removed the 48-card display cap, and added independent 15-second sync-status
+  polling with live, local, connecting, and offline labels.
+- Files affected: `apps/offline-app/src/App.tsx`,
+  `apps/offline-app/src/styles.css`, and release logs.
+- Migrations: None.
+- Tests: Offline app build/contracts plus desktop and mobile Browser layout,
+  status, search, cart, overflow, and console checks.
+- Rollback: Revert the kiosk shell overrides, status polling effect, and full
+  `kioskVisibleItems` rendering.
+
+## 2026-06-10 - Customer pickup tray redesign
+
+- Why: Added cards were rendered as unstructured text rows, and the tray
+  appeared after the entire gallery on smaller kiosk displays.
+- Changed: Added thumbnail-based order rows, concise card metadata and price
+  hierarchy, icon removal controls, a separated customer-details checkout
+  area, responsive tray ordering, and a persistent mobile pickup-summary
+  action for returning to the list after adding cards.
+- Files affected: `apps/offline-app/src/App.tsx`,
+  `apps/offline-app/src/styles.css`, and release logs.
+- Migrations: None.
+- Tests: Offline app build/contracts and desktop/mobile Browser interaction,
+  layout, remove-control, overflow, and console verification.
+- Rollback: Restore the prior simple pickup-list markup and remove the
+  kiosk-cart-specific responsive styles and mobile pickup-summary action.
+
 This log records implementation revisions in a format suitable for pull request
 review, staging approval, deployment approval, and rollback planning.
+
+## 2026-06-09 - Customer Kiosk And Paid Pickup Fulfillment Split
+
+### What Changed
+
+- Added a dedicated customer-only kiosk app surface at `?mode=kiosk` so the
+  customer screen can browse only in-stock kiosk-visible inventory, build a
+  first/last-name pickup request, and submit it without a staff PIN.
+- Changed the employee app's visible Kiosk section into Order Fulfillment,
+  keeping staff-only PIN access and showing customer kiosk requests separately
+  from paid website local-pickup orders.
+- Added WordPress REST endpoints for paid WooCommerce local-pickup fulfillment:
+  `GET /wp-json/tcg-store/v1/fulfillment/orders` and
+  `PATCH /wp-json/tcg-store/v1/fulfillment/orders/{order_id}/status`.
+- Added a LAN middleman fulfillment connector that pulls paid WooCommerce
+  pickup orders, caches them in SQLite, exposes `/fulfillment/orders`, and
+  retries staff status updates when WordPress is temporarily unavailable.
+- Extended normal LAN website pull sync to include fulfillment orders alongside
+  inventory and events.
+- Removed the production staging banner flags from the live site configuration;
+  the separate public `noindex` meta remains to be traced outside the staging
+  banner module.
+
+### Why
+
+The kiosk is a customer-facing request screen, not the employee workflow. Paid
+website pickup orders need to enter the same staff pull queue after WooCommerce
+payment succeeds, while kiosk requests should reserve local copies first and be
+pulled by staff. Keeping status updates separate from payment and inventory
+mutation prevents accidental payment capture or double inventory changes during
+fulfillment.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/FulfillmentOrderControllerTest.php`
+- `apps/local-sync-server/src/wordpressFulfillmentPull.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/wordpress-fulfillment-pull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-fulfillment.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local sync server SQLite table `fulfillment_orders`, created by the
+  middleman server migration. No WordPress database migration was added.
+
+### Tests Added
+
+- WordPress fulfillment route unit contract coverage.
+- LAN WordPress fulfillment connector parsing and status-push test.
+- LAN server fulfillment route test for paid pickup pull, status update,
+  secret redaction, and status/count reporting.
+- Offline app client/UI contract markers for fulfillment routes and the
+  two-source Order Fulfillment panel.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php --filter FulfillmentOrderControllerTest`
+- `php -l apps\wordpress-plugin\src\Api\V1\FulfillmentOrderController.php`
+- `php -l apps\wordpress-plugin\src\Bootstrap\Plugin.php`
+- `node apps\local-sync-server\tests\wordpress-fulfillment-pull.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-fulfillment.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-runtime.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-contract.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-multi-client.mjs`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert the WordPress fulfillment controller registration and redeploy the
+  previous plugin package to remove the REST routes.
+- Revert the local sync server fulfillment connector/store/route changes and
+  restart the LAN middleman server. The local `fulfillment_orders` table can be
+  left in place safely, or removed from a copied SQLite database if a clean
+  rollback image is required.
+- Revert the offline app fulfillment UI/client changes to restore the prior
+  kiosk-only employee tab.
+- No payment data or WooCommerce payment capture is changed by this revision.
+
+## 2026-06-09 - Offline App Catalog Result Expansion And Set Filter
+
+### What Changed
+
+- Removed the 8-result cap from the LAN middleman ScryDex reference-card search
+  for local-cache hits.
+- Added `limit` and `set`/`set_filter` query support to the local
+  `/scrydex/cards/search` endpoint.
+- Raised the WordPress reference-card search intake ceiling to 250 rows for
+  website catalog fallback lookups.
+- Added a compatibility retry that falls back to a 50-row website catalog
+  request if the live WordPress plugin has not yet been updated for 250-row
+  lookups.
+- Added a Set / Expansion filter to the offline app catalog lookup so broad
+  searches can show all returned cards while staff narrow by set before intake.
+- Preserved the selected-card handoff behavior: Use Card clears the lookup,
+  hides the result list, fills card name/set/price, and focuses the intake card
+  field.
+- Verified the production local-sync Square sale smoke after cleanup fixes.
+
+### Why
+
+Staff inventory intake needs to see every relevant printing returned by the
+local/website catalog instead of only the top 8 results. A set filter keeps
+large searches usable while preserving the database-first lookup flow: local
+reference cache first, website catalog proxy second, provider fallback only when
+needed.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision changes lookup behavior and UI only.
+
+### Tests Added
+
+- Local sync ScryDex reference search now asserts broad searches can return more
+  than 8 cards and set filtering narrows cached results.
+- Offline app shell and client contracts now guard the Set / Expansion filter
+  and URLSearchParams-based catalog search request.
+- WordPress route unit coverage now verifies 250-row reference lookup requests.
+
+### Tests Run
+
+- `node apps\local-sync-server\tests\scrydex-reference-search.mjs`
+- `node apps\local-sync-server\tests\wordpress-catalog-fallback.mjs`
+- `node apps\local-sync-server\tests\local-sync-server-runtime.mjs`
+- `node apps\local-sync-server\tests\wordpress-inventory-push.mjs`
+- `node apps\local-sync-server\tests\wordpress-inventory-sale-push.mjs`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `php apps\wordpress-plugin\tests\run.php --filter InventorySearchRouteHandlerFactoryTest`
+- `npm.cmd run production:local-sync-square-sale-smoke`
+- Browser QA at `http://127.0.0.1:1420/`: searched Pokemon `a`, confirmed 25
+  results, filtered to `Pokemon TCG Classic - Charizard`, confirmed 4 visible
+  results, then used a card into intake with search cleared and fields filled.
+
+### Rollback Notes
+
+- Revert the local sync server, offline app, and WordPress route changes to
+  restore the previous 8-result/50-row behavior.
+- No database rollback is required.
+- If a release build has already been deployed, redeploy the prior plugin/app
+  package and restart the LAN middleman server.
+
+## 2026-06-09 - Square-Ready Woo Products, LAN Discovery, And Auto Pricing Floors
+
+### What Changed
+
+- Marked WooCommerce card product operations with the official WooCommerce
+  Square extension taxonomy request `wc_square_synced=yes`.
+- Updated the WooCommerce CRUD product writer to set that taxonomy on saved
+  products when WooCommerce Square has registered it, while deferring safely if
+  the extension/taxonomy is unavailable.
+- Replaced grouped card product image zoom/lightbox markup with a static ScryDex
+  image wrapper so clicking the product image no longer blocks the rest of the
+  product page.
+- Added LAN UDP discovery to the local sync middleman server and a Tauri command
+  plus offline app setup UI to discover/apply the local server without exposing
+  credentials.
+- Added intake pricing fields for current market, market plus 10 percent,
+  minimum sale floor, final sale price, and pricing source through the offline
+  app, middleman, and WordPress push payload.
+- Added a Windows service manifest and package contract for the local sync
+  middleman bundle.
+
+### Why
+
+Square for WooCommerce expects synced products to have unique SKUs and the
+extension's per-product "Sync with Square" flag enabled. The plugin already
+creates SKU/stock/price/product records; this revision makes new generated card
+products Square-ready through the extension's own taxonomy while preserving the
+Pug system as the exact serialized inventory authority. The app/server discovery
+and pricing-floor work support the production store flow where employee stations
+should connect to the LAN middleman quickly and add inventory at current market
+plus margin without violating staff-set minimum sale prices.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/WooCommerceInventoryProductWriterTest.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/local-sync-server/src/localSyncDiscovery.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/local-sync-discovery.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/config/windows-service.manifest.json`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src/data/tauriLocalSyncDiscoveryAdapter.ts`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/config/windows-package.manifest.json`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `scripts/package-local-sync-server.mjs`
+- `scripts/tests/local-sync-server-package-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added LAN discovery unit coverage for the middleman UDP responder and
+  no-credential discovery payload.
+- Added offline app contract coverage for Tauri discovery command registration,
+  discovery adapter wiring, setup UI markers, and Windows package manifest
+  discovery metadata.
+- Added WooCommerce product writer coverage for setting the official Square
+  sync taxonomy flag on generated products.
+- Added local sync runtime coverage for pricing-floor payloads flowing through
+  intake and WordPress inventory push.
+- Added local sync middleman package contract coverage.
+
+### Verification
+
+- `php -l apps\wordpress-plugin\src\WooCommerce\WooCommerceInventoryProductWriter.php`: passed.
+- `php -l apps\wordpress-plugin\src\WooCommerce\InventoryProductProjectionPlanner.php`: passed.
+- `php -l apps\wordpress-plugin\src\WooCommerce\GroupedInventoryProductHooks.php`: passed.
+- `php apps\wordpress-plugin\tests\run.php`: passed, 1011 tests, 0 failures.
+- `npm.cmd --prefix apps\local-sync-server test`: passed.
+- `npm.cmd --prefix apps\offline-app run typecheck`: passed.
+- `node apps\offline-app\tests\tauri-command-contract.mjs`: passed.
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`: passed.
+- `node apps\offline-app\tests\ui-shell-contract.mjs`: passed.
+- `node apps\offline-app\tests\windows-package-contract.mjs`: passed.
+- `node scripts\tests\local-sync-server-package-contract.mjs`: passed and built
+  `dist\pug-local-sync-middleman-server.zip`.
+- `node scripts\tests\wordpress-package-contract.mjs`: passed and built
+  `dist\tcg-store-platform-0.201.0.zip`.
+- `npm.cmd run test:offline-app:rust`: passed after cleaning generated Tauri
+  target artifacts to resolve a disk-space-only compile failure.
+- `cargo metadata --manifest-path apps\offline-app\src-tauri\Cargo.toml --format-version 1 --no-deps`: passed and reports `tcg-store-offline@0.201.0`.
+
+### Rollback Notes
+
+- Reinstall the prior production plugin package if the product image or Square
+  taxonomy compatibility causes storefront/admin issues.
+- Disable or revert the `square_sync` operation metadata and writer taxonomy
+  assignment if WooCommerce Square changes the expected sync marker.
+- Revert the LAN discovery additions to require manual middleman URLs only.
+- Revert the app/server pricing-floor changes to return intake to the previous
+  single sale-price field behavior.
+- No database rollback is required for this revision.
+
+## 2026-06-09 - Online-First LAN Inventory And Square Sale Sync
+
+### What Changed
+
+- Changed local inventory intake to attempt the configured WordPress inventory
+  push immediately after creating local queue rows, while keeping failed pushes
+  queued for offline retry.
+- Changed exact Square POS sale finalization to attempt the configured
+  WordPress mark-sold push immediately after scanning inventory and recording
+  the Square receipt/order reference.
+- Reused the same push helpers for automatic online push and manual
+  `/sync/push`, so accepted/retry behavior is consistent across both paths.
+- Extended the offline app local-sync contract with auto-sync result counts and
+  updated the Add Inventory UI to display WordPress/WooCommerce acceptance from
+  the server response instead of requiring a separate manual Sync action.
+- Updated production local-sync smoke scripts to read auto-sync results before
+  falling back to manual `/sync/push`.
+
+### Why
+
+The store workflow needs to feel online/live when the website is reachable, but
+still work when the LAN or website connection drops. The previous behavior made
+inventory intake and Square sale finalization wait for a manual sync push. This
+change makes the Add Inventory and exact Square sold flow update the website
+immediately when online, while preserving the queued retry path for offline
+operation.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/production-run-local-sync-workflows-smoke.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated LAN runtime coverage so successful intake auto-publishes immediately,
+  an intentionally unavailable WordPress inventory push stays queued for retry,
+  and Square sale finalization immediately marks exact scanned inventory sold.
+- Updated offline app contract coverage for auto-sync response fields.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `node scripts/tests/production-local-sync-inventory-smoke-contract.mjs`:
+  passed.
+- `node scripts/tests/production-local-sync-workflows-smoke-contract.mjs`:
+  passed.
+- `npm.cmd run production:local-sync-inventory-smoke` with visible inventory:
+  passed. Verified a temporary Add Inventory item auto-created a WordPress
+  inventory row, auto-published WooCommerce product `202`, matched the REST
+  inventory search, then deleted the inventory row, price row, and product.
+- `npm.cmd run production:local-sync-workflows-smoke`: passed. Verified event
+  pull/registration/check-in, customer creation, credit add/redemption, hidden
+  inventory intake, kiosk-visible inventory intake, kiosk order reservation,
+  WordPress cleanup, and local cleanup.
+
+### Rollback Notes
+
+- Revert the local sync server changes to return intake and Square sale
+  finalization to manual `/sync/push` only.
+- No database rollback is required.
+
+## 2026-06-09 - Production Storefront Click-Through And Shelf Polish
+
+### What Changed
+
+- Finished a production storefront click-through pass for Home, Singles, Sealed,
+  Graded, Accessories, Events, Buying, Contact, Cart, and the legacy `/shop/`
+  route.
+- Seeded 18 visible WooCommerce shelf products across Sealed, Graded, and
+  Accessories so those pages render populated product grids during preview.
+- Replaced WooCommerce default placeholder thumbnails in plugin-rendered product
+  shelves with branded PUG gradient tiles while preserving real product images.
+- Hardened public storefront link behavior so old theme-level Shop links point
+  shoppers to Singles, and `/shop/` redirects to `/shop-singles/`.
+- Kept the Pug theme files untouched; all storefront wiring and shelf rendering
+  changes are in the plugin and production setup scripts.
+
+### Why
+
+The custom pages were connected, but the live click-through showed empty
+non-singles shelves and plain WooCommerce placeholder thumbnails. Those made the
+site feel unfinished even though the data paths were live. The change keeps the
+preview visually aligned with the home page while still using WooCommerce
+products and plugin-owned storefront components.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/assets/js/public-storefront-links.js`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/PublicSite/ProductShelfShortcode.php`
+- `apps/wordpress-plugin/tests/Unit/ProductShelfShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-install-wordpress-package.mjs`
+- `scripts/production-seed-visible-card-inventory.mjs`
+- `scripts/staging-install-wordpress-package.mjs`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added unit coverage that WooCommerce placeholder images are replaced by the
+  branded product shelf tile.
+- Added/updated public storefront unit coverage for storefront page cache-bypass
+  context, header/footer legacy Shop link rewrites, and mobile full-width CSS.
+
+### Verification
+
+- `php apps\wordpress-plugin\tests\run.php`: 1011 tests, 0 failures.
+- `node scripts\tests\wordpress-package-contract.mjs`: passed, built
+  `dist\tcg-store-platform-0.200.0.zip`.
+- `node --check scripts\production-install-wordpress-package.mjs`: passed.
+- Production package install activated plugin `0.200.0` after backups:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T233742Z.sql`
+  and
+  `$HOME/tcg-production-backups/pug-production-wp-content-20260609T233742Z.tgz`.
+- `npm run production:verify-public-shortcodes` with expected plugin
+  `0.200.0`: passed.
+- `npm run production:verify-reference-search` with expected plugin `0.200.0`:
+  passed, still cache-first with images and two-decimal prices.
+- Browser click-through saved screenshots under
+  `.codex-logs/storefront-clickthrough-20260609T233417Z` and verified:
+  header navigation, all expected storefront links, no exact `/shop/` links on
+  cache-busted storefront pages, `/shop/` 301 to Singles, Singles search with
+  image result, product detail with image/condition/price/add-to-cart, populated
+  Sealed/Graded/Accessories shelves, no bad price precision, and no desktop or
+  mobile horizontal overflow.
+- Refreshed post-deploy shelf screenshot saved under
+  `.codex-logs/storefront-clickthrough-20260609T233936Z` and verified
+  6 branded placeholders, 0 WooCommerce placeholders, plugin asset `0.200.0`,
+  and no horizontal overflow.
+
+### Rollback Notes
+
+- Restore the production plugin and content backups created before the
+  `0.200.0` package install if the product shelf renderer causes storefront
+  issues.
+- The 18 seeded shelf products are idempotent WooCommerce products with SKUs
+  prefixed `pug-demo-`; they can be trashed or deleted from WooCommerce if the
+  preview products should be removed.
+- No database migration rollback is required.
+- If GoDaddy serves an older cached canonical homepage, `/shop/` still redirects
+  to Singles and cache-busted storefront pages show the current header. Clear
+  GoDaddy managed WordPress/CDN cache from hosting if the old homepage cache
+  persists in a visitor browser.
+
+## 2026-06-09 - Production Product Shelf Shortcode
+
+### What Changed
+
+- Added a public `[tcg_product_shelf]` shortcode that reads published
+  WooCommerce products from a supplied product category and renders a branded
+  Pug storefront product grid.
+- Added a polished connected-empty state for shelves with no published products
+  yet, so Sealed, Graded, and Accessories no longer render as visually blank
+  WooCommerce shortcode areas.
+- Rewired production page setup so Sealed, Graded, and Accessories use
+  `[tcg_product_shelf]` instead of the bare `[products]` shortcode.
+- Extended production public-shortcode verification to prove the product shelf
+  shortcode is registered and renders either a connected empty state or product
+  grid.
+
+### Why
+
+The live storefront pages were correctly routed and styled, but the non-singles
+shelves had zero WooCommerce products and rendered empty areas. The store needs
+those shelves to stay visually complete while remaining connected to real
+WooCommerce product data when sealed product, graded slabs, and accessories are
+published.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/PublicSite/ProductShelfShortcode.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/tests/Unit/ProductShelfShortcodeTest.php`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-verify-public-shortcodes.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `scripts/tests/production-public-shortcodes-contract.mjs`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added unit coverage for product shelf shortcode registration, empty-state
+  rendering, provider-backed product card rendering, and shelf CSS hooks.
+- Updated production public page and shortcode contract tests to require the
+  new product shelf shortcode markers.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1009 tests, 0 failures.
+- `php -l src/PublicSite/ProductShelfShortcode.php`: passed.
+- `php -l src/Bootstrap/Plugin.php`: passed.
+- `node --check scripts/production-configure-public-pages.mjs`: passed.
+- `node --check scripts/production-verify-public-shortcodes.mjs`: passed.
+- `node scripts/tests/production-public-pages-contract.mjs`: passed.
+- `node scripts/tests/production-public-shortcodes-contract.mjs`: passed.
+- `npm run package:wordpress`: built
+  `dist/tcg-store-platform-0.195.0.zip`.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed.
+- Production package install activated plugin `0.195.0` after backup:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T222201Z.sql`
+  and
+  `$HOME/tcg-production-backups/pug-production-wp-content-20260609T222201Z.tgz`.
+- `npm run production:configure-public-pages` with expected plugin `0.195.0`:
+  passed, with Sealed, Graded, and Accessories all reporting
+  `contains_product_shelf_shortcode: true`.
+- `npm run production:verify-public-shortcodes` with expected plugin
+  `0.195.0`: passed.
+- `npm run production:verify-reference-search` with expected plugin `0.195.0`:
+  passed, still cache-first with images and two-decimal prices.
+- Browser verification confirmed Sealed, Graded, and Accessories render the
+  storefront shell, product shelf connected-empty state, no raw shortcodes, no
+  console errors, and no mobile horizontal overflow on Sealed at 390px width.
+
+### Rollback Notes
+
+- Restore the production plugin and content backups created before the
+  `0.195.0` package install if the shelf renderer causes storefront issues.
+- Page content backups were also written to post meta key
+  `_tcg_store_public_pages_backup_20260609222429`.
+- No database migration rollback is required.
+- Actual Sealed, Graded, and Accessories product counts remain zero until real
+  WooCommerce products are added to those categories.
+
+## 2026-06-09 - Production Storefront Click-Through And Singles Launch Polish
+
+### What Changed
+
+- Reconfigured production commerce pages so the public header exposes the custom
+  shelves only: Home, Singles, Sealed, Graded, Accessories, Events, Buying, and
+  Contact.
+- Removed the visible legacy Shop path by redirecting `/shop/` to
+  `/shop-singles/`, pointing WooCommerce empty-cart return links to Singles,
+  and rewriting theme footer shop links to the custom shelves from the plugin
+  layer.
+- Improved the Singles storefront UI with a full-width dark arcade layout,
+  responsive filters, game labels, card images, two-decimal prices, and a
+  "Choose condition" path to WooCommerce product detail pages.
+- Updated WooCommerce grouped card products so single-product pages render the
+  ScryDex remote card image as the main gallery image and use clean display game
+  labels/categories.
+- Seeded production with 48 visible card products from the ScryDex-backed
+  reference catalog: 12 Pokemon, 12 Magic: The Gathering, 12 Lorcana, and
+  12 One Piece cards.
+
+### Why
+
+The staging theme push left the public storefront visually close to the desired
+brand, but the commerce paths still needed to be reconnected to the card
+inventory system. The public Singles page needed enough real inventory to
+verify search/filter/product flows, and old generic Shop links needed to stop
+surfacing in the shopper experience.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/assets/js/public-storefront-links.js`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `scripts/production-configure-commerce-menu.mjs`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-seed-visible-card-inventory.mjs`
+- `scripts/tests/production-commerce-menu-contract.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added/updated unit coverage for public storefront link assets, Singles
+  filter labels, dark storefront CSS hooks, WooCommerce remote gallery images,
+  and grouped product game/category display.
+- Added a guarded production seed helper that can populate visible public card
+  inventory from existing ScryDex reference rows and sync the matching
+  WooCommerce products.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1005 tests, 0 failures.
+- `php -l src/PublicSite/InventorySearchShortcode.php`: passed.
+- `node --check apps/wordpress-plugin/assets/js/public-storefront-links.js`:
+  passed.
+- `npm run package:wordpress`: built
+  `dist/tcg-store-platform-0.194.0.zip`.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed.
+- Production package installs completed for `0.193.0` and `0.194.0`, each with
+  database and `wp-content` backups.
+- `npm run production:verify-public-shortcodes` with expected plugin
+  `0.194.0`: passed.
+- `npm run production:verify-reference-search` with expected plugin `0.194.0`:
+  passed using the WordPress catalog cache, with images and two-decimal prices.
+- Production ScryDex index runs completed for Lorcana and One Piece before the
+  visible seed.
+- `npm run production:seed-visible-card-inventory`: synced 48 visible
+  WooCommerce card products, 12 per game.
+- Browser click-through verified Home, Singles, Sealed, Graded, Accessories,
+  Events, Buying, Contact, `/shop/` redirect, public search, all four game
+  filters, product detail image/condition UI, add-to-cart/remove-from-cart, and
+  empty-cart Return to shop.
+- Mobile browser check verified the Singles page has 48 cards and no horizontal
+  overflow at 390px width.
+
+### Rollback Notes
+
+- Restore the production plugin from the backup created before the latest
+  package install if storefront behavior regresses:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T220537Z.sql`
+  and
+  `$HOME/tcg-production-backups/pug-production-wp-content-20260609T220537Z.tgz`.
+- Earlier plugin install backup:
+  `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T220038Z.sql`
+  with paired `wp-content` archive.
+- Lorcana/One Piece catalog import backups are available at the production
+  ScryDex index backup timestamps from 2026-06-09T215522Z and
+  2026-06-09T215620Z.
+- No database schema migration rollback is required. To remove the demo public
+  inventory without a full restore, hide or delete the deterministic seeded
+  inventory rows and resync WooCommerce products.
+
+## 2026-06-09 - Fresh Plugin Package Install Guard
+
+### What Changed
+
+- Updated production plugin installs to rebuild the default WordPress plugin
+  zip from the current working tree before upload/install.
+- Updated staging plugin install and upload scripts with the same fresh-package
+  default.
+- Preserved custom zip support through `PUG_PROD_PLUGIN_ZIP` and
+  `PUG_STAGING_PLUGIN_ZIP`; when those are set, the scripts use the supplied
+  package and report that a custom package was provided.
+- Added dry-run/result fields showing whether a fresh package will be built
+  from source.
+
+### Why
+
+The production customer-credit fix initially installed a stale existing
+`dist/tcg-store-platform-0.189.0.zip`, which left old code active on the site.
+Deployment tooling now makes the current source the default source of truth for
+plugin installs.
+
+### Files Affected
+
+- `scripts/production-install-wordpress-package.mjs`
+- `scripts/staging-install-wordpress-package.mjs`
+- `scripts/staging-upload-wordpress-package.mjs`
+- `scripts/tests/production-install-contract.mjs`
+- `scripts/tests/staging-install-contract.mjs`
+- `scripts/tests/staging-upload-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated production and staging install/upload contract tests to require fresh
+  package build reporting and custom-package reporting.
+
+### Verification
+
+- `node --check scripts/production-install-wordpress-package.mjs`: passed.
+- `node --check scripts/staging-install-wordpress-package.mjs`: passed.
+- `node --check scripts/staging-upload-wordpress-package.mjs`: passed.
+- `node scripts/tests/production-install-contract.mjs`: passed.
+- `node scripts/tests/staging-install-contract.mjs`: passed.
+- `node scripts/tests/staging-upload-contract.mjs`: passed.
+- `npm run production:install-package -- --dry-run`: reports
+  `buildsFreshPackageFromSource: true`.
+- `npm run staging:install-package -- --dry-run`: reports
+  `buildsFreshPackageFromSource: true`.
+- `npm run test:packaging`: passed.
+
+### Rollback Notes
+
+- Revert these script changes if a release process needs to reuse a prebuilt
+  default zip without rebuilding.
+- To intentionally install a prebuilt zip without rollback, set
+  `PUG_PROD_PLUGIN_ZIP` or `PUG_STAGING_PLUGIN_ZIP` to the desired package path.
+- No production database or WordPress content changes are made by this commit.
+
+## 2026-06-09 - Production Local Sync Customer And Credit Workflow Fix
+
+### What Changed
+
+- Fixed WordPress customer upserts so missing customer barcodes are written as
+  `NULL` instead of an empty string, avoiding unique-barcode insert collisions.
+- Rebuilt and reinstalled the production plugin package after confirming the
+  stale versioned zip had not included the working-tree fix.
+- Expanded the production local-sync workflow smoke to use separate hidden and
+  kiosk-visible inventory fixtures, verify customer creation and two credit
+  ledger posts, and clean up both inventory rows.
+- Added sanitized push-result diagnostics to the workflow smoke output so
+  future connector failures show operation status, local code, WordPress code,
+  and HTTP status without credentials or raw payloads.
+
+### Why
+
+The production workflow smoke showed events, inventory, and kiosk order sync
+were communicating, but customer creation failed with
+`tcg_customer_insert_failed`; credit posts then correctly waited for a
+WordPress customer ID. The root cause was the unique `barcode` column rejecting
+multiple empty-string customer barcodes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/CustomerController.php`
+- `scripts/production-run-local-sync-workflows-smoke.mjs`
+- `scripts/tests/production-local-sync-workflows-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated the production local-sync workflows smoke contract to require both
+  hidden inventory and kiosk-visible inventory coverage.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1004 tests, 0 failures.
+- `php tests/lint.php` from `apps/wordpress-plugin`: 632 PHP files checked,
+  0 failures.
+- `npm run production:install-package`: installed fresh package on production
+  after creating database and `wp-content` backups.
+- `npm run production:local-sync-workflows-smoke`: passed with event,
+  customer, credit, hidden inventory, kiosk inventory, kiosk order, and cleanup
+  checks all green.
+- `npm run test:packaging`: passed.
+
+### Rollback Notes
+
+- Restore the production plugin from the backup created before
+  `pug-production-before-plugin-20260609T210203Z.sql` and the paired
+  `wp-content` backup if the customer route change causes unexpected behavior.
+- No database migration rollback is required.
+- Reverting this change may reintroduce customer creation failures for local
+  app customers without barcode values.
+
+## 2026-06-09 - Production Menu And Square POS Sale Finalization
+
+### What Changed
+
+- Added a production commerce menu helper that assigns the primary header menu
+  to Home, Singles, Sealed Products, Graded Cards, Accessories, and Events while
+  removing the basic WooCommerce Shop link from navigation.
+- Added the WordPress inventory mark-sold route handler for exact serialized
+  inventory sale finalization by numeric inventory ID or public inventory ID.
+- Added runtime gating for the staff mark-sold route so sale finalization can
+  be enabled independently from inventory intake.
+- Added local sync server support for `POST /pos/square/sales/finalize`, which
+  records a Square receipt/order reference, marks scanned local inventory as
+  sold, queues `square_pos_sale` operations, and pushes those operations to
+  WordPress.
+- Extended the offline app/local sync client contracts to understand `sold`
+  inventory and the WordPress sale-push connector.
+- Kept Square payment capture delegated to the official WooCommerce Square /
+  Square POS workflow; Pug records exact inventory removal and customer credit
+  ledger entries against the Square receipt reference.
+
+### Why
+
+The site header needed to point shoppers directly at the branded commerce
+shelves instead of the generic Shop page, and in-store sales need a reliable
+way to remove the exact scanned card from WordPress, WooCommerce, kiosk search,
+and the local cache after Square completes the payment.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryMarkSoldRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteContracts.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Settings/InventoryRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-sale-push.mjs`
+- `apps/wordpress-plugin/tests/Unit/InventoryMarkSoldRouteHandlerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `scripts/production-configure-commerce-menu.mjs`
+- `scripts/tests/production-commerce-menu-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+
+### Tests Added
+
+- Added PHP coverage for inventory mark-sold validation, idempotent sold
+  handling, valid available-to-sold transition, and invalid transition blocking.
+- Added local sync runtime coverage for Square sale finalization and WordPress
+  sale-push acceptance.
+- Added local sync connector coverage for the WordPress mark-sold REST call.
+- Added production commerce menu contract coverage.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`: 1004 tests, 0 failures.
+- `npm --prefix apps/local-sync-server test`: all local sync contract/runtime
+  and WordPress connector tests passed.
+- `npx tsc --noEmit --pretty false` from `apps/offline-app`: passed.
+
+### Rollback Notes
+
+- Disable `staff_mark_sold_route_enabled` to stop live mark-sold REST writes.
+- Revert the plugin package to the previous backup if production sale
+  finalization causes issues.
+- Restore the previous WordPress menu assignment from the
+  `_tcg_store_commerce_menu_backup_*` option if the header menu needs to be
+  rolled back.
+- No database migration rollback is required.
+
+## 2026-06-09 - Production Commerce Pages And Graded Shelf
+
+### What Changed
+
+- Restyled the public Singles inventory search from the plugin to better match
+  the live dark Pug storefront theme, including the search form, inventory
+  cards, pagination, and empty state.
+- Updated the empty Singles state to explain that cards appear only after
+  inventory rows are `available` and `visible`.
+- Added a fresh public inventory stylesheet cache key so the updated design is
+  served immediately after the plugin install.
+- Expanded the production public page setup to restore the Shop hub plus
+  dedicated Singles, Sealed Products, Graded Cards, Accessories, Card Inventory,
+  and Events pages without changing the active WordPress theme.
+- Added the `graded-cards` WooCommerce product category to the production page
+  setup.
+- Kept game categories top-level so the pushed storefront design links such as
+  `/product-category/pokemon/` continue to work.
+- Updated WooCommerce product projection/writing so graded inventory is tagged
+  with `graded-cards` in addition to `singles` and the matching game category.
+- Removed duplicate content headings from the generated shelf page content and
+  kept the Shop page as a category hub so WooCommerce does not render duplicate
+  product grids.
+- Improved the public Events empty-state styling for the dark Pug storefront
+  theme.
+
+### Why
+
+The live design from the secondary site should stay in place, but it still
+needs real commerce destinations for singles, sealed product, graded cards,
+accessories, and events. Graded cards also need their own product category so
+inventory added through intake can automatically land on the correct storefront
+shelf.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/assets/css/public-events.css`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/Events/EventShortcodes.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/tests/Unit/EventShortcodesTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/WooCommerceInventoryProductWriterTest.php`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+
+### Tests Added
+
+- Added unit coverage for graded inventory category projection.
+- Updated WooCommerce writer coverage for creating the Graded Cards product
+  category.
+- Updated the production public pages contract for the Shop hub and Graded Cards
+  shelf.
+
+### Verification
+
+- Pending in this checkpoint: run focused PHP tests, public page contract,
+  package contract, production plugin install, live page configuration, and
+  browser screenshots.
+
+### Rollback Notes
+
+- Revert this revision to remove the dedicated Graded Cards shelf/category
+  behavior.
+- Restore page content from the `_tcg_store_public_pages_backup_*` post meta
+  created by the public page helper if a live page needs to be reverted.
+- No database migration rollback is required.
+
+## 2026-06-09 - Visible Local Inventory WooCommerce Smoke Coverage
+
+### What Changed
+
+- Extended the guarded production local-sync inventory smoke so it can run in
+  hidden mode or visible mode using `PUG_PROD_LOCAL_SYNC_INVENTORY_VISIBILITY`.
+- Visible mode now verifies that a local inventory intake pushed through the LAN
+  middleman asks WordPress to publish a WooCommerce product and returns at least
+  one product ID.
+- The smoke cleanup now removes temporary WooCommerce products found by returned
+  product ID, SKU, or barcode, then removes the matching inventory and price log
+  rows.
+- Updated the smoke contract test to cover the dual-mode behavior while keeping
+  secret and destructive-operation checks.
+
+### Why
+
+The store workflow requires visible local inventory to automatically become
+saleable website inventory. The existing smoke intentionally used hidden
+inventory, so it proved WordPress inventory push without proving the visible
+WooCommerce publishing path.
+
+### Files Affected
+
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/tests/production-local-sync-inventory-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+
+### Tests Added
+
+- Updated `production-local-sync-inventory-smoke-contract.mjs` to assert the
+  visible-mode WooCommerce sync and cleanup markers.
+
+### Verification
+
+- `node --check scripts/production-run-local-sync-inventory-smoke.mjs`: passed.
+- `node scripts/tests/production-local-sync-inventory-smoke-contract.mjs`:
+  passed.
+
+### Rollback Notes
+
+- Revert this revision to return the production local-sync inventory smoke to
+  hidden-only verification.
+- No database rollback is required; the smoke deletes temporary rows and
+  products that it creates.
+
+## 2026-06-09 - Storefront Shelves And Automatic WooCommerce Inventory Publishing
+
+### What Changed
+
+- Imported the Pug arcade WooCommerce storefront theme from the secondary Pug
+  Card Website workspace into `apps/storefront-theme-or-blocks`.
+- Added WordPress theme packaging and a guarded production theme install script.
+- Added storefront page/category setup for Shop Singles, Shop Sealed Products,
+  Shop Accessories, Events, and the related WooCommerce product categories.
+- Added a public set/expansion filter to `[tcg_inventory_search]`, matching set
+  name and set code and preserving the filter across pagination.
+- Updated WooCommerce card product projection/writing so published singles are
+  categorized as `singles` plus their game category.
+- Updated the LAN inventory push to request WooCommerce product sync for visible
+  inventory, carrying the explicit production product-sync approval while
+  keeping payment capture and Square inventory writes deferred.
+- Updated the offline app Add Inventory flow to immediately attempt the LAN
+  queue push after successful local intake and show a concise publish result.
+- Updated `wp-env` to install and activate the Pug storefront theme and seed the
+  storefront pages locally.
+- Updated the changelog and packaging/deployment contracts.
+
+### Why
+
+The website sales flow needed real storefront pages for singles, sealed
+products, and accessories, and the local app should not require a manual sync
+click after adding inventory. Visible card inventory now moves from local intake
+to WordPress and WooCommerce product publishing in the same guarded push path,
+while the customer storefront has category and filter surfaces to house it.
+
+### Files Affected
+
+- `.wp-env.json`
+- `apps/storefront-theme-or-blocks/README.md`
+- `apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/*`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequest.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRequestParser.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/tests/Unit/*`
+- `package.json`
+- `scripts/package-wordpress-theme.mjs`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/production-install-storefront-theme.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `scripts/tests/production-theme-install-contract.mjs`
+- `scripts/tests/wordpress-package-contract.mjs`
+- `scripts/wp-env/seed-dev-data.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress migrations: none.
+- Local SQLite migrations: none.
+- WooCommerce taxonomy setup is handled by the production public page/category
+  configuration script and the product writer's category resolution.
+
+### Tests Added
+
+- Public inventory parser/planner/query/presenter coverage for the set/expansion
+  filter.
+- WooCommerce projection/writer coverage for singles/game category assignment.
+- Local sync inventory push coverage for automatic WooCommerce product-sync
+  request, approval flag, and deferred payment/Square writes.
+- Offline app contracts for automatic post-intake push feedback.
+- Theme package and guarded production theme install contract coverage.
+- Production public page/category setup contract coverage.
+
+### Verification
+
+- `php tests/run.php`: passed, 995 tests.
+- `php tests/lint.php`: passed, 630 files.
+- `node apps/local-sync-server/tests/wordpress-inventory-push.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node scripts/tests/production-public-pages-contract.mjs`: passed.
+- `node scripts/tests/production-theme-install-contract.mjs`: passed.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the imported storefront theme, automatic
+  WooCommerce product-sync request, public set filter, and category assignment.
+- If the production theme was installed, reactivate the previous theme through
+  WordPress Admin or `wp theme activate <previous-theme>`.
+- If production pages/categories were configured, restore page content from the
+  `_tcg_store_public_pages_backup_*` post meta created by the configuration
+  script or edit the pages manually.
+- No WordPress or local SQLite schema rollback is required.
+
+## 2026-06-09 - Manager-Controlled LAN Website Setup
+
+### What Changed
+
+- Added a manager-only `POST /setup/config` route to the local sync server.
+- Persisted the one-website setup binding in the local SQLite
+  `server_settings` table.
+- Updated `/health` and `/setup/status` so employee/kiosk clients see the
+  current persisted website binding.
+- Wired the offline app Settings save flow to publish the public website setup
+  to the LAN middleman when a manager PIN session is active.
+- Updated the local sync server and offline app contract tests.
+- Updated the changelog.
+
+### Why
+
+The local employee app, local kiosk, and any additional workstations should all
+bind to one configurable website through the LAN middleman server instead of
+using a company dropdown or per-device-only setup. The setup route keeps
+credentials out of app responses while allowing a manager to publish the
+public website URL/rest path used by all local clients.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local sync server SQLite schema now creates `server_settings` for persistent
+  LAN setup configuration.
+- WordPress migrations: none.
+
+### Tests Added
+
+- Runtime coverage for blocked unauthenticated setup writes, manager setup
+  writes, secret-free responses, and updated `/setup/status`.
+- Persistence coverage proving setup survives a local sync server restart.
+- Client/UI contract coverage for the new setup config route.
+
+### Verification
+
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-persistence.mjs`: passed.
+- `npm.cmd --prefix apps/local-sync-server test`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the manager setup publish route and return to
+  environment/per-device-only local setup.
+- If a local `store-sync.sqlite` already contains the `server_settings` table,
+  no rollback is required; the old code ignores the table.
+- No WordPress database rollback is required.
+
+## 2026-06-09 - Offline App UI Version Alignment
+
+### What Changed
+
+- Updated the offline app UI version constant from `0.186.0` to `0.189.0`.
+- Added a UI shell contract assertion that the visible app version matches
+  `apps/offline-app/package.json`.
+- Updated the changelog.
+
+### Why
+
+The Windows app package, root project, and offline app package are now at
+`0.189.0`, but the UI still displayed the older version. The app shell should
+not show stale version metadata during demos, support, or store setup.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `apps/offline-app/tests/ui-shell-contract.mjs`.
+
+### Verification
+
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore the prior displayed app version.
+- No database rollback is required.
+
+## 2026-06-09 - Full Local Test Matrix Verification
+
+### What Changed
+
+- Ran the complete repository test matrix after production package deployment,
+  live catalog/storefront/local-sync verification, public page configuration,
+  and offline app Windows build verification.
+
+### Why
+
+The branch needed a fresh all-up local signal after the live verification work
+to catch regressions across WordPress, sync, POS policy, API-client, offline
+app, packaging, and required delivery-matrix checks.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd test`: passed. This includes `test:local`, `test:sync-engine`,
+  `test:pos-payments`, `test:api-client`, `test:offline-app`,
+  `test:packaging`, and `test:required-matrix`.
+
+### Rollback Notes
+
+- No rollback is required because this revision records verification only.
+
+## 2026-06-09 - Production Public Inventory And Events Pages
+
+### What Changed
+
+- Verified production public inventory, event list, and event detail shortcodes.
+- Configured the production `card-inventory` and `events` pages to use the
+  plugin shortcodes.
+- Updated the ignored local production expected-version override from `0.187.0`
+  to `0.189.0` so future production helper runs validate the current package.
+
+### Why
+
+The live site needs customer-facing entry points for searchable card inventory
+and event registration. The helper updates only the dedicated public pages,
+backs up previous page content metadata, and does not change the homepage or
+navigation menus.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+- `.env.production.local` (ignored local operator config only)
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run production:verify-public-shortcodes`: passed. Verified
+  inventory/events/event-detail shortcodes, public CSS enqueues, rendered
+  inventory shell, rendered events shell, event detail contract, and no raw
+  shortcode output.
+- `npm.cmd run production:configure-public-pages`: passed. Updated
+  `/card-inventory/` and `/events/`, backed up prior content metadata, and did
+  not change the homepage or menus.
+- `Invoke-WebRequest https://vbf.2a7.myftpupload.com/card-inventory/?q=Charizard&game=pokemon`:
+  returned HTTP 200, rendered the inventory shell, included Charizard content,
+  and did not expose the raw shortcode.
+- `Invoke-WebRequest https://vbf.2a7.myftpupload.com/events/`: returned HTTP
+  200, rendered the `.tcg-events` shell, loaded public events CSS, and did not
+  expose the raw shortcode.
+
+### Rollback Notes
+
+- Restore prior page content from the `_tcg_store_public_pages_backup_*` post
+  meta key created by the helper if the public page content needs to be
+  reverted.
+- No database migration rollback is required.
+
+## 2026-06-09 - Offline App Test And Windows Build Verification
+
+### What Changed
+
+- Verified the offline/online desktop app test suite, including TypeScript
+  typecheck, UI shell contracts, local queue/cache contracts, local sync client
+  contracts, Tauri command contracts, and Rust command tests.
+- Verified the production web build for the offline app.
+- Verified the Windows Tauri build and NSIS installer generation.
+
+### Why
+
+The offline app must run online and offline, sync through the LAN middleman
+server, preserve connector isolation, and package as a Windows desktop app. The
+previous Rust/Cargo blocker is now cleared on this machine.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run test:offline-app`: passed, including 22 Rust/Tauri command
+  tests.
+- `npm.cmd run build`: passed, producing the offline app web build.
+- `npm.cmd run build:offline-app:windows`: passed, producing
+  `apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/tcg-store-offline.exe`
+  and the NSIS setup executable
+  `apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/TCG Store Local_0.189.0_x64-setup.exe`.
+
+### Rollback Notes
+
+- No rollback is required because this revision records verification only.
+- Build artifacts are ignored and can be regenerated with
+  `npm.cmd run build:offline-app:windows`.
+
+## 2026-06-09 - Production Local Sync Smoke Verification
+
+### What Changed
+
+- Verified the LAN local sync server against production WordPress inventory,
+  event, customer, credit, and kiosk workflows.
+- The inventory smoke created a hidden local intake, pushed it to WordPress,
+  verified it through production inventory search, and cleaned up local and
+  WordPress rows.
+- The workflow smoke created a temporary production event and exercised event
+  pull, event registration, event check-in, customer creation, credit
+  add/redemption, hidden inventory push, kiosk order submission, and cleanup.
+
+### Why
+
+The website is the source of truth, while the LAN sync server must act as the
+middleman for local staff apps and kiosks. These smokes prove the current
+production connector path is working for the core local-online workflow set.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run production:local-sync-inventory-smoke`: passed. Verified local
+  hidden inventory intake, WordPress push, production REST search match, hidden
+  online/kiosk/POS visibility, WordPress cleanup, and local cleanup.
+- `npm.cmd run production:local-sync-workflows-smoke`: passed. Verified event
+  pull, event registration, event check-in, customer push, two credit ledger
+  operations, hidden inventory push, kiosk order push, WordPress cleanup, and
+  local cleanup.
+
+### Rollback Notes
+
+- No rollback is required because both production smokes cleaned up their
+  temporary WordPress rows and local SQLite rows.
+- If residual test rows are found, search for the `CODEX-LSYNC-` barcode or
+  `codex-lsync-` event slug prefix and delete those rows only.
+
+## 2026-06-09 - Production Catalog And WooCommerce Smoke Verification
+
+### What Changed
+
+- Reinstalled the current `tcg-store-platform-0.189.0.zip` package on
+  production after the first WooCommerce smoke showed production code lagged the
+  local selector implementation.
+- Production install created a database backup and a `wp-content` backup before
+  overwriting plugin files.
+- Verified production ScryDex catalog status, production reference-card search,
+  and the guarded WooCommerce exact-card smoke.
+
+### Why
+
+The live site needed to prove that the populated ScryDex catalog powers local
+reference search and that inventory rows can become WooCommerce card products
+with exact condition/price/stock selection and reservation safety.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Production database version remained `14`.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run production:verify-scrydex-catalog`: passed with plugin `0.189.0`,
+  database `14`, catalog/status/index/export routes registered, `151854`
+  reference cards, `245641` variants, `737845` price points, 100% image
+  coverage, 100% variant coverage, and 86% price coverage.
+- `npm.cmd run production:verify-reference-search`: passed for Pokemon
+  `Charizard`; source was `wordpress_catalog_cache`, no live ScryDex provider
+  request was made, images were present, price formatting was two decimals, and
+  no credentials were returned.
+- First `npm.cmd run production:woocommerce-card-smoke`: failed only the new
+  selector UI checks, showing production plugin files were behind the local
+  package.
+- `npm.cmd run production:install-package`: passed; uploaded package size
+  matched, plugin stayed active, migrations remained current at version `14`,
+  and production backups were created.
+- Second `npm.cmd run production:woocommerce-card-smoke`: passed; verified
+  grouped card product creation, exact-copy selector header, selected option,
+  stock, two-decimal price data, quantity lock, reservation release,
+  paid-order conversion to sold inventory, and cleanup of temporary product,
+  order, inventory rows, and reservations.
+
+### Rollback Notes
+
+- Restore the production database backup and `wp-content` backup created by the
+  install helper if the package reinstall needs to be reversed.
+- No migration rollback is required for this verification because no new
+  migrations were applied.
+
+## 2026-06-09 - ScryDex Production Index Page Diagnostics
+
+### What Changed
+
+- Added secret-safe per-page summaries to the production ScryDex index runner.
+- The runner now reports scoped expansion ID, page number, provider HTTP/status,
+  provider row count, normalized reference/variant/price-point counts,
+  persistence status, transaction commit status, and block reasons for the last
+  pages in each set import.
+- Updated the production ScryDex index contract to require those diagnostics.
+
+### Why
+
+The live import needs to be able to answer exactly why an expansion did not
+produce cards without printing raw ScryDex response bodies or credentials.
+
+### Files Affected
+
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `scripts/tests/production-scrydex-index-contract.mjs`.
+
+### Verification
+
+- `node scripts/tests/production-scrydex-index-contract.mjs`: passed.
+- `node scripts/production-run-scrydex-index.mjs --dry-run`: passed.
+- `npm.cmd run test:packaging`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove per-page diagnostic summaries from production
+  index output.
+- No database rollback is required.
+
+## 2026-06-09 - ScryDex Production Set Card Indexing ID Preservation
+
+### What Changed
+
+- Updated the production ScryDex index runner to preserve case-sensitive
+  provider expansion IDs when importing cards by set.
+- Replaced the runner's `sanitize_key()` expansion handling with a
+  provider-resource sanitizer aligned to the WordPress catalog controller.
+- Added production index contract markers to prevent lowercasing provider set
+  IDs again.
+
+### Why
+
+ScryDex scoped card endpoints use provider expansion IDs in the path, such as
+`/expansions/OGN/cards`. Lowercasing those IDs can make the runner successfully
+import expansion metadata but fail to import the cards inside each expansion on
+case-sensitive provider routes.
+
+### Files Affected
+
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `scripts/tests/production-scrydex-index-contract.mjs`.
+
+### Verification
+
+- `node scripts/tests/production-scrydex-index-contract.mjs`: passed.
+- `node scripts/production-run-scrydex-index.mjs --dry-run`: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore the previous production runner expansion-ID
+  sanitation behavior.
+- No database rollback is required.
+
+## 2026-06-09 - WooCommerce Selector Production Smoke Coverage
+
+### What Changed
+
+- Extended the guarded production WooCommerce card smoke to render the grouped
+  card condition selector.
+- Added smoke checks for:
+  - exact-copy selector header
+  - selected option target
+  - selected price target
+  - selected stock target
+  - option-level stock data
+  - two-decimal price data
+  - serialized quantity locked to one
+- Updated the smoke contract test to require those markers.
+
+### Why
+
+The production smoke already verified product metadata, remote image fallback,
+exact inventory reservation release, and paid-order conversion. It now also
+verifies the customer-visible selector UI that exposes condition, price, and
+available copies before checkout.
+
+### Files Affected
+
+- `scripts/production-run-woocommerce-card-smoke.mjs`
+- `scripts/tests/production-woocommerce-card-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `scripts/tests/production-woocommerce-card-smoke-contract.mjs`.
+
+### Verification
+
+- `node scripts/tests/production-woocommerce-card-smoke-contract.mjs`: passed.
+- `node scripts/production-run-woocommerce-card-smoke.mjs --dry-run`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove selector-HTML checks from the guarded
+  production smoke.
+- No database rollback is required.
+
+## 2026-06-09 - WooCommerce Exact Card Selector Polish
+
+### What Changed
+
+- Updated grouped card product pages to show a compact exact-copy selector
+  header.
+- Added selected condition/version, two-decimal selected price, and available
+  copy count beside the WooCommerce add-to-cart button.
+- Locked grouped card WooCommerce quantity inputs to one copy because serialized
+  inventory reservations must choose one exact row at a time.
+- Expanded the WooCommerce card product stylesheet for selected-option,
+  price, stock, and mobile layout polish.
+- Added unit/source coverage for the new selector and stylesheet markers.
+
+### Why
+
+Customers need to see the exact condition/version, price, and available stock
+before adding a card to cart. The backend already reserves exact inventory rows;
+this revision makes that behavior visible and clearer on the product page.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added grouped product hook coverage for the selected option, stock, and
+  stylesheet selectors.
+
+### Verification
+
+- `php -l apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`:
+  passed.
+- `php tests/run.php`: passed.
+
+### Rollback Notes
+
+- Revert this revision to return the grouped WooCommerce selector to its
+  previous simple dropdown plus selected-price label.
+- No database rollback is required.
+
+## 2026-06-09 - Customer Credit Two-Decimal REST Money
+
+### What Changed
+
+- Updated customer credit REST response presentation to format balances,
+  ledger amounts, and posting-result balances as two-decimal currency strings.
+- Updated the customer credit REST presenter tests to lock the `.00` display
+  contract while leaving ledger storage/math precision untouched.
+
+### Why
+
+The store UI, local app, and connector screens should not show
+database-precision money such as `.0000` for customer-facing pricing or credit
+values. The API can still receive and store high-precision decimal values, but
+the presentation boundary should look like normal currency.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Credit/CustomerCreditRestPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditRestPresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated `CustomerCreditRestPresenterTest` expectations for two-decimal REST
+  money output.
+
+### Verification
+
+- `php tests/run.php`: passed.
+
+### Rollback Notes
+
+- Revert this revision to return REST credit money responses to four-decimal
+  database-style formatting.
+- No database rollback is required.
+
+## 2026-06-09 - Local Sync Operator Smoke Command
+
+### What Changed
+
+- Added `npm run local-sync:smoke`.
+- Added `scripts/local-sync-smoke.mjs`, a local-only workstation smoke that:
+  - reads ignored local env files
+  - checks `/health`
+  - checks `/setup/status`
+  - writes one harmless smoke heartbeat through `/devices/heartbeat`
+  - checks `/devices/status`
+  - verifies the configured website binding when `LOCAL_SYNC_EXPECT_WEBSITE_URL`
+    or `PUG_WORDPRESS_URL` is present
+  - prints only summarized, secret-free output
+- Documented workstation usage in the local sync server README.
+- Added packaging contract coverage for the new smoke command.
+
+### Why
+
+The store needs a quick way to verify that a central LAN sync server is reachable
+from each employee/kiosk workstation before trusting inventory intake, kiosk
+pickup, customer credit, or event workflows.
+
+### Files Affected
+
+- `package.json`
+- `scripts/local-sync-smoke.mjs`
+- `scripts/tests/local-sync-smoke-contract.mjs`
+- `apps/local-sync-server/README.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `scripts/tests/local-sync-smoke-contract.mjs`
+
+### Verification
+
+- `node scripts/local-sync-smoke.mjs --dry-run`: passed.
+- `node scripts/tests/local-sync-smoke-contract.mjs`: passed.
+- `node scripts/local-sync-smoke.mjs`: passed against
+  `http://127.0.0.1:8787`, wrote only a local smoke heartbeat, reported
+  `mutatesWordPress: false`, `capturesPayments: false`,
+  `credentialsPrinted: false`, and `rawResponsePrinted: false`.
+
+### Rollback Notes
+
+- Revert this revision to remove the operator smoke command and README entry.
+- If already run locally, the only persistent side effect is a local
+  `codex-local-sync-smoke-*` client heartbeat row in the LAN SQLite database;
+  no WordPress or Square rollback is required.
+
+## 2026-06-09 - Local Sync Multi-Client Smoke Coverage
+
+### What Changed
+
+- Added a dedicated local sync server multi-client HTTP smoke test.
+- The new smoke boots one LAN middleman server and simulates:
+  - front-counter employee app heartbeat
+  - customer kiosk heartbeat
+  - back-counter employee app heartbeat
+  - kiosk pickup order creation
+  - duplicate pickup hold prevention
+  - employee pickup status update
+  - second staff queue read with the updated status
+  - stale-device offline detection after heartbeat timeout
+- Wired the smoke into `npm --prefix apps/local-sync-server run test`.
+
+### Why
+
+The architecture depends on one local server coordinating multiple employee app
+and customer kiosk instances. Single-client tests are useful, but they do not
+prove that separate devices share the same pickup queue, reservation state, and
+presence status through the LAN middleman.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/local-sync-server-multi-client.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `apps/local-sync-server/tests/local-sync-server-multi-client.mjs`
+
+### Verification
+
+- `node apps/local-sync-server/tests/local-sync-server-multi-client.mjs`:
+  passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the multi-client smoke and test script hook.
+- No runtime or database rollback is required.
+
+## 2026-06-09 - Shared LAN Kiosk Pickup Queue
+
+### What Changed
+
+- Added shared LAN server APIs for staff to list kiosk pickup orders and update
+  pickup status:
+  - `GET /kiosk/orders`
+  - `PATCH /kiosk/orders/:order_id/status`
+- Kiosk orders now persist card item snapshots, updated timestamps, totals, and
+  customer-safe order summaries in the local sync SQLite database.
+- Kiosk order creation now rejects unavailable or kiosk-hidden inventory before
+  reserving items.
+- WordPress kiosk acceptance no longer overwrites staff pull states such as
+  `pulling`, `ready`, or `completed` when the local order is pushed later.
+- The offline app now refreshes a shared pickup queue after PIN login, lets staff
+  refresh manually, and updates ticket statuses through the LAN server without
+  changing inventory counts.
+
+### Why
+
+Multiple employee stations and customer kiosks need one shared in-store pickup
+queue. The website remains the source of truth for inventory, while the LAN
+server coordinates local staff workflow and survives temporary website/network
+interruptions.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteBootstrapperRuntimeWiringTest.php`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local sync SQLite `kiosk_orders.items_json`.
+- Local sync SQLite `kiosk_orders.updated_at_utc`.
+
+### Tests Added
+
+- LAN server contract coverage for shared kiosk queue endpoints,
+  responsibilities, and non-mutating status updates.
+- LAN runtime coverage proving staff can list shared kiosk tickets, see exact
+  item snapshots, and move a ticket to `pulling` without inventory mutation.
+- Offline app client contract coverage for shared kiosk list/status methods.
+- Offline app UI shell coverage for the shared pickup queue, refresh control,
+  and empty queue state.
+- Hardened the offline route runtime wiring fixture with a far-future device
+  token expiry so the full matrix does not fail on June 9, 2026.
+
+### Verification
+
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:offline-app`: passed, including offline app contracts and
+  22 Rust/Tauri unit tests.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the shared kiosk queue endpoints, client
+  methods, and offline app shared queue UI.
+- Existing local sync SQLite databases may retain the added nullable/defaulted
+  columns; no production WordPress database rollback is required.
+
+## 2026-06-09 - Square POS Count Reconciliation Slice
+
+### What Changed
+
+- Added shared Square inventory count reconciliation logic that compares returned
+  Square `IN_STOCK` counts against serialized WordPress inventory expectations.
+- Added a manager-only LAN endpoint:
+  `/pos/square/inventory-counts/reconcile`.
+- Added offline app client typing and a Settings UI panel where managers can
+  paste Square inventory count JSON, compare counts, and review matched,
+  mismatched, missing, and unexpected Square rows.
+- Updated local sync server contract coverage to advertise count reconciliation
+  as manager-only, non-mutating, and payment-capture-free.
+
+### Why
+
+Square POS integration needs a practical step after the barcode/SKU pull plan:
+staff must be able to compare Square's returned counts to the website inventory
+source of truth without letting the local app capture payments or write directly
+to Square inventory.
+
+### Files Affected
+
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Shared Square adapter tests for matched count reconciliation and mismatch /
+  missing / unexpected Square count conflicts.
+- LAN runtime coverage for manager-only Square count reconciliation and
+  non-mutating conflict output.
+- Offline app client and UI shell contract coverage for the new reconciliation
+  method, route, fields, and UI labels.
+
+### Verification
+
+- `node packages/api-client/tests/square-inventory-adapter.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`: passed.
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`: passed.
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd run test:api-client`: passed.
+- `npm.cmd --prefix apps/local-sync-server run test`: passed.
+- `npm.cmd run test:offline-app`: passed, including offline app contracts and
+  22 Rust/Tauri unit tests.
+- `npm.cmd run build`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the Square count reconciliation endpoint,
+  client method, and Settings UI panel.
+- No database rollback is required because the comparison is non-mutating.
+
+## 2026-06-09 - Offline Kiosk Pickup Pull Workflow
+
+### What Changed
+
+- Offline kiosk pickup now filters customer-facing results to available,
+  kiosk-visible inventory only.
+- Added kiosk order readiness details for customer name, pickup total, and
+  website inventory authority.
+- Added richer pickup tickets with exact card summaries, barcodes, locations,
+  totals, reservation IDs, and staff statuses for queued, pulling, ready, and
+  completed pickup orders.
+- Added UI contract coverage for the new kiosk-visible inventory copy and staff
+  pull controls.
+
+### Why
+
+The local kiosk needs to behave like an in-store order queue: customers should
+only browse sellable kiosk inventory, while staff need the exact pull details
+and a clear pickup status workflow after the LAN server reserves the cards.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline app UI shell contract to require kiosk-visible inventory
+  messaging and staff pull workflow controls.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`: passed.
+- `node apps/offline-app/tests/ui-shell-contract.mjs`: passed.
+- `npm.cmd run test:offline-app`: passed, including offline app contracts and
+  22 Rust/Tauri unit tests.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with line-ending normalization warnings only.
+- Playwright render smoke against `http://127.0.0.1:1420` after PIN unlock:
+  passed for visible kiosk panel, kiosk-visible inventory copy, pickup total,
+  two rendered kiosk inventory cards, and zero console errors.
+- A full pickup-submit browser smoke was not counted because the already-running
+  LAN dev server returned a `409 Conflict` for the demo inventory row, which
+  indicates the row was already held in the current local sync server state.
+
+### Rollback Notes
+
+- Revert this revision to return kiosk pickup to the prior simple cart/ticket
+  behavior.
+- No database rollback is required.
+
+## 2026-06-09 - Production Deploy 0.189.0
+
+### What Changed
+
+- Installed and activated WordPress plugin package `tcg-store-platform-0.189.0.zip`
+  on production with the guarded production installer.
+- Confirmed production plugin status is active and database target/current
+  version remains `14`.
+- Verified the new WooCommerce grouped card product stylesheet package with
+  production smoke checks.
+
+### Why
+
+The buyer-facing card product UI polish needs to be live beside the already
+verified grouped WooCommerce checkout and exact inventory reservation behavior.
+
+### Files Affected
+
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None in this deployment record; the `0.189.0` package added the CSS enqueue
+  contract and production smoke coverage already exists.
+
+### Verification
+
+- `npm.cmd run production:install-package`: passed on retry; production plugin
+  active at `0.189.0`, database version `14`, database backup created, and
+  `wp-content` backup created. The first install attempt timed out during SSH
+  handshake before upload or mutation, then the retry completed successfully.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:verify-scrydex-catalog`:
+  passed with 151,854 cards, 245,641 variants, 737,845 price points, 100%
+  image coverage, 100% variant coverage, and 86% price coverage.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:verify-reference-search`:
+  passed against cached WordPress catalog search for `Charizard`.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:verify-public-shortcodes`:
+  passed for public inventory, events, and event-detail shortcode contracts.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:local-sync-inventory-smoke`:
+  passed for local inventory intake, WordPress push/search, and cleanup.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 npm.cmd run production:local-sync-workflows-smoke`:
+  passed for event pull/register/check-in, customer credit add/redeem, hidden
+  inventory, kiosk order, and cleanup.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.189.0 PUG_PROD_CONFIRM_WOOCOMMERCE_CARD_SMOKE=run-production-woocommerce-card-smoke npm.cmd run production:woocommerce-card-smoke`:
+  passed; temporary WooCommerce product had remote card art, two condition
+  options (`0.99` and `1.23`), exact reservation release to available, exact
+  order conversion to sold, and deleted temporary product/order/inventory and
+  reservation rows.
+
+### Rollback Notes
+
+- Reinstall `dist/tcg-store-platform-0.188.0.zip` to roll back the product-page
+  stylesheet package while keeping the previously verified grouped WooCommerce
+  checkout behavior.
+- The production installer created pre-deploy database and `wp-content` backups
+  under `$HOME/tcg-production-backups`.
+- No schema rollback is required.
+
+## 2026-06-09 - WooCommerce Product UI Polish Package 0.189.0
+
+### What Changed
+
+- Added a dedicated WooCommerce grouped card product stylesheet for remote card
+  art, condition/version selector controls, selected-price display, empty stock
+  messaging, add-to-cart button alignment, and mobile product-page layout.
+- Wired the grouped card product hooks to enqueue the stylesheet on public
+  WooCommerce pages.
+- Bumped root workspace, WordPress plugin, offline app, Tauri config, and Rust
+  package metadata to `0.189.0`.
+
+### Why
+
+The grouped WooCommerce product flow is live and verified. The buyer-facing
+product page also needs polished visual treatment so card image, condition
+choice, and price selection look like an intentional shopping experience.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/woocommerce-card-product.css`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended grouped WooCommerce product hook contract coverage for public asset
+  enqueue and stylesheet markers.
+
+### Verification
+
+- `php tests/run.php`: passed 994 tests.
+- `php tests/lint.php`: passed 630 PHP files.
+- `node scripts/tests/wordpress-package-contract.mjs`: passed before version
+  packaging and confirmed the product stylesheet is included in the package.
+- `npm.cmd run package:wordpress`: passed and produced
+  `dist/tcg-store-platform-0.189.0.zip`.
+- `npm.cmd run test`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+
+### Rollback Notes
+
+- Reinstall `dist/tcg-store-platform-0.188.0.zip` to remove the product-page
+  stylesheet while keeping the previously verified grouped WooCommerce product
+  checkout behavior.
+- No database schema or data rollback is required.
+
+## 2026-06-09 - Production Deploy 0.188.0 and WooCommerce Card Smoke
+
+### What Changed
+
+- Installed and activated WordPress plugin package `tcg-store-platform-0.188.0.zip`
+  on production with the guarded production installer.
+- Added `production:woocommerce-card-smoke`, a guarded live smoke that creates a
+  temporary grouped WooCommerce card product, verifies remote image metadata,
+  two-decimal condition prices, exact reservation release, paid-order conversion
+  to sold, and full cleanup.
+- Added a packaging contract for the new production WooCommerce card smoke.
+
+### Why
+
+Grouped WooCommerce card products are now the main online selling surface for
+card inventory. The live site needs proof that product creation, image display,
+condition-specific pricing, and exact physical-card reservation all work
+together before the remaining storefront and local-app polish builds on top.
+
+### Files Affected
+
+- `package.json`
+- `scripts/production-run-woocommerce-card-smoke.mjs`
+- `scripts/tests/production-woocommerce-card-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Production database target/current version remained `14`.
+
+### Tests Added
+
+- Production WooCommerce card smoke contract covering required confirmation,
+  temporary data cleanup, product metadata checks, image fallback checks,
+  exact reservation release, exact order conversion, and credential redaction
+  markers.
+
+### Verification
+
+- `npm.cmd run production:install-package`: passed; production plugin active at
+  `0.188.0`, database version `14`, database backup created, and `wp-content`
+  backup created.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:verify-scrydex-catalog`:
+  passed with 151,854 cards, 245,641 variants, 737,845 price points, 100%
+  image coverage, 100% variant coverage, and 86% price coverage.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:verify-reference-search`:
+  passed against cached WordPress catalog search for `Charizard`.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:verify-public-shortcodes`:
+  passed for public inventory, events, and event-detail shortcode contracts.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:local-sync-inventory-smoke`:
+  passed for local inventory intake, WordPress push/search, and cleanup.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 npm.cmd run production:local-sync-workflows-smoke`:
+  passed for event pull/register/check-in, customer credit add/redeem, hidden
+  inventory, kiosk order, and cleanup.
+- `node scripts/tests/production-woocommerce-card-smoke-contract.mjs`: passed.
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.188.0 PUG_PROD_CONFIRM_WOOCOMMERCE_CARD_SMOKE=run-production-woocommerce-card-smoke npm.cmd run production:woocommerce-card-smoke`:
+  passed; temporary WooCommerce product had two condition options (`0.99` and
+  `1.23`), ScryDex image URL metadata, exact reservation release to available,
+  exact order conversion to sold, and deleted temporary product/order/inventory
+  and reservation rows.
+
+### Rollback Notes
+
+- Reinstall `dist/tcg-store-platform-0.187.0.zip` if production behavior needs
+  to return to the prior active package.
+- The production installer created pre-deploy database and `wp-content` backups
+  under `$HOME/tcg-production-backups`.
+- The WooCommerce card smoke deletes its temporary product, order, inventory
+  rows, and reservations. If a future interrupted smoke leaves residue, remove
+  rows/products with the unique `CODEX-WOO-` prefix.
+- No schema rollback is required.
+
+## 2026-06-09 - Version 0.188.0 Package Preparation
+
+### What Changed
+
+- Bumped root workspace, WordPress plugin, offline app, Tauri config, and Rust
+  package metadata to `0.188.0`.
+- Prepared the next WordPress package version to carry grouped WooCommerce card
+  product publishing and exact inventory checkout reservation hooks.
+
+### Why
+
+The production plugin installer and verification scripts compare the deployed
+plugin version against repository metadata. A version bump keeps the live site
+deployment and rollback trail clear for the new WooCommerce checkout behavior.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None; version metadata is covered by packaging and bootstrap checks.
+
+### Verification
+
+- `npm.cmd run package:wordpress`: passed and produced
+  `dist/tcg-store-platform-0.188.0.zip`.
+- `npm.cmd run test`: passed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+
+### Rollback Notes
+
+- Reinstall the prior plugin package if the `0.188.0` package fails live
+  verification.
+- No database schema migration is included in this package bump.
+
+## 2026-06-09 - Grouped WooCommerce Card Product Checkout
+
+### What Changed
+
+- Added grouped WooCommerce product projection for card inventory so one card
+  product can represent multiple exact inventory rows by condition/version.
+- Added admin inventory search actions that sync a selected card group to
+  WooCommerce and map the resulting product ID back to all matching inventory
+  rows.
+- Added WooCommerce storefront hooks for card image fallback, condition/version
+  selection, price display, exact inventory reservation on add-to-cart, cart
+  price snapshots, order-line metadata, and reservation conversion/release on
+  payment or cart/order failure.
+- Added a WordPress database reservation storage adapter for the existing
+  reservation domain service.
+
+### Why
+
+Online inventory needs to sell the same way staff manages cards: the website
+must show a card image, let the buyer choose condition/version, show the right
+price, and reserve one exact inventory row so the same copy cannot be sold twice
+online, in-store, or through the local app.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryExternalMappingRepository.php`
+- `apps/wordpress-plugin/src/Reservations/WpdbReservationStorage.php`
+- `apps/wordpress-plugin/src/WooCommerce/GroupedInventoryProductHooks.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/WpdbReservationStorageTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses existing inventory, reservation, and WooCommerce
+  product ID mapping tables.
+
+### Tests Added
+
+- Grouped WooCommerce product projection test covering condition/price option
+  metadata, stock counts, product image URL metadata, and grouped product mode.
+- WooCommerce grouped product hook contract tests covering selector,
+  add-to-cart reservation, price snapshot, metadata, payment conversion, and
+  cart removal release hooks.
+- Admin UI contract test for syncing existing card groups into WooCommerce.
+- WordPress reservation storage adapter source contract test.
+
+### Verification
+
+- `php tests/lint.php`
+- `php tests/run.php`
+
+### Rollback Notes
+
+- Disable the grouped product hooks by reverting `GroupedInventoryProductHooks`
+  registration in `Plugin.php`.
+- Existing WooCommerce products created by this revision can be unpublished or
+  deleted from WooCommerce; inventory rows keep their canonical website status.
+- If product IDs were mapped incorrectly, clear `woocommerce_product_id` on the
+  affected `tcg_inventory_items` rows and resync the correct card group.
+
+## 2026-06-09 - Production Deploy 0.187.0
+
+### What Changed
+
+- Installed and activated WordPress plugin package `tcg-store-platform-0.187.0.zip`
+  on production.
+- Confirmed production plugin status is active and database target/current
+  schema version remains `14`.
+- Updated local production smoke-test expected plugin version to `0.187.0`.
+
+### Why
+
+The live site needed the Square POS Mapping dashboard and Square mapping save
+workflow available in wp-admin so managers can review and correct Square item
+and variation IDs from website inventory search results.
+
+### Files Affected
+
+- Production WordPress plugin files under `wp-content/plugins/tcg-store-platform`
+- Local ignored deployment config `.env.production.local`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Production migration runner reported current `14`, target `14`.
+
+### Tests Added
+
+- None in this deployment-only revision.
+
+### Verification
+
+- `npm.cmd run production:install-package`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:verify-scrydex-catalog`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:verify-reference-search`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:verify-public-shortcodes`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:local-sync-inventory-smoke`
+- `PUG_PROD_EXPECT_PLUGIN_VERSION=0.187.0 npm.cmd run production:local-sync-workflows-smoke`
+
+### Rollback Notes
+
+- Database backup: `$HOME/tcg-production-backups/pug-production-before-plugin-20260609T145109Z.sql`
+- wp-content backup: `$HOME/tcg-production-backups/pug-production-wp-content-20260609T145109Z.tgz`
+- Reinstall the prior plugin zip or restore the wp-content backup to return
+  plugin files to the previous production state.
+- No database schema migration ran, so rollback is expected to be plugin-file
+  focused unless bad inventory mapping IDs were manually saved after deploy.
+
+## 2026-06-09 - Version 0.187.0 Package Preparation
+
+### What Changed
+
+- Bumped root workspace, WordPress plugin, offline app, Tauri config, and Rust
+  package metadata to `0.187.0`.
+- Prepared the next WordPress package version to carry the Square POS Mapping
+  dashboard and Square mapping save workflow.
+
+### Why
+
+The production plugin installer and verification scripts compare the deployed
+plugin version against repository metadata. A version bump keeps the install,
+rollback, and smoke-test trail clear.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None; package/version metadata is covered by existing package and bootstrap
+  checks.
+
+### Verification
+
+- `npm.cmd run package:wordpress`
+- `npm.cmd run test`
+- `npm.cmd run build`
+- `npm.cmd run verify:no-production-secrets`
+
+### Rollback Notes
+
+- Revert this revision to return package metadata to `0.186.0`.
+- No database migrations or production data changes are involved.
+
+## 2026-06-09 - Website Square Mapping Save Workflow
+
+### What Changed
+
+- Added an authenticated WordPress admin-post action for saving Square catalog
+  item and variation IDs onto inventory rows.
+- Added secure per-row Square mapping forms to the inventory admin Square POS
+  Mapping dashboard, fed by staff inventory search results.
+- Added update result notices for saved and failed mapping attempts.
+- Added `inventory_id` to the Square mapping presenter row model so the admin
+  form updates the exact inventory row flagged by the dashboard.
+
+### Why
+
+Managers need to do more than see POS mapping problems. They need a fast,
+website-native way to correct missing Square variation IDs so the inventory
+record becomes ready for Square/POS reconciliation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended admin UI source coverage for the mapping save hook, nonce, form,
+  persisted Square ID field names, and repository call.
+- Extended presenter coverage for inventory row identity in Square mapping
+  summary rows.
+
+### Verification
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert this revision to leave Square POS Mapping as read-only dashboard
+  guidance.
+- Saved mapping IDs are normal inventory metadata. If a bad ID is entered,
+  edit the same inventory row through this form or clear the Square catalog
+  fields directly from a database backup/recovery workflow.
+
+## 2026-06-09 - Website Square POS Mapping Dashboard
+
+### What Changed
+
+- Added a WordPress inventory admin Square POS Mapping panel beside Staff
+  Search.
+- Added presenter logic that summarizes POS-visible inventory rows into ready
+  Square variation mappings and review rows for duplicate barcode/SKU values,
+  missing barcode/SKU scan IDs, and missing Square catalog variation IDs.
+- Updated the admin search JavaScript so live staff inventory search results
+  immediately refresh Square readiness metrics, ready pull-feed rows, and
+  manager next actions.
+
+### Why
+
+The website is the inventory authority and Square should pull/reconcile against
+clean, uniquely scannable inventory rows. Managers need to see which cards are
+ready for POS mapping and which need data cleanup without requiring the local
+app first.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added presenter coverage for Square ready/review counts, hidden POS rows,
+  duplicate scan IDs, and mapping errors.
+- Added admin source coverage to keep the Square mapping dashboard wired to
+  staff inventory search results.
+
+### Verification
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert this revision to remove the website Square POS Mapping panel and
+  return inventory admin to Staff Search, Card Lookup, Staff Intake, and
+  readiness sections only.
+- No database migrations or production data changes are involved.
+
+## 2026-06-09 - Square POS Inventory Readiness Panel
+
+### What Changed
+
+- Expanded the LAN sync server Square POS inventory pull plan with a
+  manager-readable mapping summary, ready Square pull feed rows, POS mapping
+  review items, generated timestamp, updated-after echo, and next-action
+  guidance.
+- Added a Settings screen Square POS inventory readiness panel to the offline
+  app showing ready/review counts, POS-visible inventory counts, duplicate scan
+  counts, mapped Square variation feed rows, and mapping-review next steps.
+- Kept Square payment capture explicitly unsupported in the local app and
+  delegated to the existing Square/WooCommerce Square path.
+
+### Why
+
+The store needs the website and local middleman to make Square/POS inventory
+readiness clear before live POS reconciliation. Managers should see exactly
+which website inventory rows are ready to compare with Square and which rows
+need barcode, location, or Square variation mapping work.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended local sync runtime coverage for Square POS readiness summaries,
+  ready feed rows, review items, and next actions.
+- Extended offline app client/UI contract coverage for the Square POS
+  readiness panel and response fields.
+
+### Verification
+
+- `npm.cmd run local-sync:test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+
+### Rollback Notes
+
+- Revert this revision to return the local Square POS planner to the simpler
+  mapped/unresolved count response and remove the Settings readiness panel.
+- No database migrations or production WordPress data changes are involved.
+
+## 2026-06-09 - Connected Checkout, Kiosk, Account, and Catalog Polish
+
+### What Changed
+
+- Bumped the platform, WordPress plugin, offline app, Tauri, and Rust package
+  metadata to `0.186.0`.
+- Added cashier-facing Square store-credit reconciliation to the offline app:
+  Square ticket total, receipt/reference, explicit cashier confirmation, and a
+  checklist that keeps Square payment capture delegated to the official Square
+  path while WordPress remains the credit ledger authority.
+- Extended LAN credit redemption validation and WordPress credit push metadata
+  with Square receipt/reference, cashier confirmation, sale total, amount due,
+  and recorded timestamp.
+- Hydrated offline app PIN/user access from the LAN sync server policy after
+  successful PIN auth, while keeping demo PIN fallback limited to local dev.
+- Added kiosk pickup order ticket identity to the offline app and staged hold
+  reasons so kiosk, employee stations, and sync logs share the LAN order ID.
+- Added ScryDex price provenance to local inventory intake queue payloads:
+  catalog source, observed timestamp, suggested price, final staff price, and
+  override reason.
+- Added customer account event registration history to the WooCommerce portal.
+- Added public inventory pagination, result ranges, and pagination styling.
+- Hardened ScryDex catalog exports with deterministic per-table primary-key
+  ordering and an export manifest.
+
+### Why
+
+The three connected surfaces need to behave like one store system: WordPress is
+the primary data source, the LAN app/server keep staff and kiosk stations in
+sync, Square remains the in-person payment tool, and ScryDex powers card data
+and pricing without leaking credentials to local clients.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressCreditPush.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/assets/css/customer-account-portal.css`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalController.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended local sync runtime and persistence coverage for Square credit
+  references and cashier confirmation.
+- Extended offline app client/UI contracts for Square reconciliation fields and
+  kiosk order ticket text.
+- Extended WordPress presenter/controller contracts for public inventory
+  pagination, account event history, and deterministic ScryDex catalog export.
+
+### Verification
+
+- `npm.cmd run test`
+- `npm.cmd run build`
+- `npm.cmd run test:packaging`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd run local-sync:test`
+- `git diff --check`
+- Browser QA on `http://127.0.0.1:1420/`: manager PIN login, Customers view
+  Square receipt/confirmation controls, Kiosk view render, and desktop
+  screenshot check. Mobile screenshot capture timed out in the in-app browser,
+  but build and responsive contracts passed.
+
+### Rollback Notes
+
+- Revert this revision and reinstall the previous `0.185.0` WordPress package.
+- No database migration rollback is required.
+- Existing ScryDex catalog rows, inventory rows, customer credit ledger rows,
+  kiosk orders, and local sync queues remain compatible. Reverting removes the
+  new receipt/reference metadata validation and public pagination UI, but does
+  not require data deletion.
+
+## 2026-06-09 - Platform Package Version 0.185.0
+
+### What Changed
+
+- Bumped the workspace package metadata to `0.185.0`.
+- Bumped the WordPress plugin header and platform version constant to
+  `0.185.0`.
+- Bumped the offline app package, Tauri config, and Rust crate metadata to
+  `0.185.0`.
+- Updated the changelog so the current production package/cache-bust version
+  matches the built zip.
+
+### Why
+
+The ScryDex price point and offline intake updates need a fresh WordPress
+package and app build identifier so deployed assets and support checks can be
+verified against the correct release.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None.
+
+### Verification
+
+- `npm.cmd run test:packaging`
+- `php apps\wordpress-plugin\tests\lint.php`
+- `npm.cmd run test:offline-app`
+- `npm.cmd run local-sync:test`
+- `npm.cmd run build`
+- `npm.cmd run verify:no-production-secrets`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert the version metadata and rebuild the WordPress package from the
+  previous release tag/commit. No database rollback is required for this
+  version-only checkpoint.
+
+## 2026-06-09 - ScryDex Price Points Through Local Intake
+
+### What Changed
+
+- Added an additive `price_points_json` column to the LAN `reference_cards`
+  SQLite cache.
+- Preserved WordPress/ScryDex `price_points` through local sync fallback,
+  normalization, persistence, and cached search responses.
+- Added typed offline app support for ScryDex price points.
+- Updated offline intake pricing so selecting a ScryDex card, changing version,
+  or changing condition uses the best matching variant/condition price point
+  before falling back to card-level market price.
+- Tightened the local sync runtime secret guard to inspect PIN/API key fields
+  rather than brittle substring matches that collide with normal catalog data.
+
+### Why
+
+Inventory intake is what fills the online and in-store shop, so staff should see
+the correct condition/version price when adding cards instead of a single
+card-level fallback price.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- LAN SQLite additive column: `reference_cards.price_points_json TEXT NOT NULL
+  DEFAULT '[]'`.
+- No WordPress database migration.
+
+### Tests Added
+
+- Extended local sync runtime coverage to assert WordPress fallback price points
+  are normalized to minor units and persist into the cached second lookup.
+- Extended offline client/UI contracts for price point types and price-aware
+  intake handlers.
+
+### Verification
+
+- `npm.cmd run local-sync:test`
+- `npm.cmd run test:offline-app`
+- `npm.cmd run build`
+- `npm.cmd run verify:no-production-secrets`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert the local sync cache, offline app type/UI, and test changes. Existing
+  reference search and intake still work, but offline intake will return to
+  card-level market price instead of matching variant/condition price points.
+
+## 2026-06-09 - Offline Inventory Detail and Intake Preview Polish
+
+### What Changed
+
+- Added online, kiosk, and POS visibility fields to the offline inventory item
+  model and populated them from LAN sync inventory rows.
+- Updated the selected inventory detail panel to show card version and
+  online/kiosk/POS visibility.
+- Kept the selected inventory image separate from the selected ScryDex catalog
+  intake draft, preventing a catalog lookup image from appearing on an
+  unrelated inventory row.
+- Added a clearly labeled catalog intake draft callout when staff has selected
+  a ScryDex card for intake.
+- Changed selected ScryDex preview art to use contained card art instead of
+  cropped cover images, and allowed long detail values to wrap cleanly.
+
+### Why
+
+Staff need to see exactly which inventory row is selected while they are also
+preparing a separate ScryDex-based intake draft. The detail panel now shows the
+inventory row's own image, version, visibility, and sync context without
+blending it with the catalog lookup state.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline UI shell contract coverage for the selected inventory image,
+  version/visibility summaries, and catalog intake draft callout.
+
+### Verification
+
+- `npm.cmd run test:offline-app`
+- `npm.cmd run build`
+- `npm.cmd run local-sync:test`
+- Playwright headless preview at `http://127.0.0.1:1420/`, including login,
+  Inventory navigation, selected detail text checks, screenshot capture, and no
+  console/page errors.
+
+### Rollback Notes
+
+- Revert the offline app model, UI, styles, and contract test. Existing intake
+  still works, but the selected inventory panel may again mix catalog lookup art
+  with an unrelated inventory row and will no longer display visibility state.
+
+## 2026-06-09 - Public Inventory Brand Settings Polish
+
+### What Changed
+
+- Passed saved plugin settings into the public inventory shortcode presenter for
+  ready, blocked, and validation-error render paths.
+- Aligned public inventory CSS with the active `--tcg-*` branding variables
+  emitted by the plugin.
+- Improved the public card grid/card-art treatment with roomier cards, centered
+  art, and a more polished search surface.
+- Made `Settings::all()` fall back to defaults when the WordPress options API
+  is unavailable in dependency-free CLI tests.
+
+### Why
+
+The public inventory page should reflect the configured company branding for a
+multi-company install and production The Pug rebrand. The CLI fallback keeps
+unit tests and package checks stable outside a booted WordPress runtime.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added settings fallback coverage for CLI contexts without WordPress option
+  functions.
+- Added public inventory shortcode source coverage for passing saved settings
+  into the presenter and inline brand CSS.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php --filter PublicInventorySearchShortcodeTest`
+- `php apps/wordpress-plugin/tests/run.php --filter SettingsTest`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `git diff --check`
+
+### Rollback Notes
+
+- Revert the public inventory shortcode, settings fallback, CSS, and tests. The
+  search page will continue rendering inventory but may fall back to default
+  brand copy/colors instead of the configured website branding.
+
+## 2026-06-09 - Reference Lookup to Intake Identity Handoff
+
+### What Changed
+
+- Added `reference_card_id` to cached WordPress reference card search response
+  rows.
+- Kept live provider fallback rows explicit with `reference_card_id` set to
+  `0` until a cached/persisted row is available.
+- Updated the WordPress admin card lookup handoff to fill the hidden
+  `reference_card_id` intake field when staff selects a catalog result.
+
+### Why
+
+The website schema and intake parser already support canonical reference card
+identity, but lookup-to-intake only filled provider card and variant identity.
+Passing the cached `reference_card_id` keeps staff intake tied to the canonical
+website reference record whenever the catalog row is present.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended reference search unit coverage to assert cached rows expose
+  `reference_card_id` and live provider fallback rows do not pretend to have a
+  cached identity.
+- Extended admin workspace UI source coverage to assert lookup-to-intake fills
+  the hidden `reference_card_id` field.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php --filter InventorySearchRouteHandlerFactoryTest`
+- `php apps/wordpress-plugin/tests/run.php --filter InventoryAdminWorkspaceUiTest`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert the WordPress plugin lookup/admin files to return provider-only
+  lookup data. Intake will still work through provider IDs and variants, but
+  will lose direct canonical reference-card linkage from the admin handoff.
+
+## 2026-06-09 - Offline Inventory Search Parity
+
+### What Changed
+
+- Expanded offline app inventory filtering to include card number, set code,
+  condition, provider card ID, provider variant ID, variant, finish, language,
+  and Square catalog item/variation IDs.
+- Preserved existing local provider/variant/image metadata when WordPress pull
+  refreshes update an existing offline inventory row.
+
+### Why
+
+Staff searches should not appear to miss cards that the LAN server can find,
+especially when searching by set number, condition, provider IDs, selected card
+version, or POS/Square mapping IDs during intake and inventory reconciliation.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline pull/cache contract to assert inventory filtering by card
+  number, condition/status, Square variation ID, and variant finish.
+
+### Verification
+
+- `node apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Revert the offline app search/filter changes to return to the older
+  name/set/barcode/public-id/location-only filtering behavior.
+
+## 2026-06-09 - Variant-Aware Offline Inventory Intake
+
+### What Changed
+
+- Added additive LAN SQLite inventory fields for selected ScryDex variant
+  identity, display metadata, raw/graded mode, and back image URL.
+- Updated LAN inventory intake, cache load/save, public API responses, and
+  WordPress inventory push mapping to preserve variant/reference metadata.
+- Updated the offline app ScryDex selected-card preview with a version selector
+  and variant-aware image handling.
+- Updated the offline app intake submission payload so selected variant data
+  reaches the website inventory create route.
+
+### Why
+
+Staff intake needs to distinguish card versions, finishes, and variant images,
+not just the base card name/set. WordPress already has variant-capable schema
+and intake parsing, so the local app and LAN middleman needed to carry those
+fields through the online-first/offline-capable workflow.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite additive columns only:
+  - `inventory_items.reference_variant_id`
+  - `inventory_items.provider_variant_id`
+  - `inventory_items.variant`
+  - `inventory_items.finish`
+  - `inventory_items.language`
+  - `inventory_items.raw_or_graded`
+  - `inventory_items.back_image_url`
+
+### Tests Added
+
+- Extended LAN runtime intake coverage to assert variant metadata round-trips.
+- Extended WordPress inventory push coverage to assert variant metadata is sent
+  to the website intake route.
+- Extended offline local sync client contract markers for variant fields.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- Restarted the LAN sync server and verified `/sync/status` reports healthy
+  WordPress inventory/event pull, push connected, and queue depth `0`.
+- Headless preview check against `http://127.0.0.1:1420/` unlocked with the
+  test PIN, searched ScryDex, confirmed the version selector rendered, and saw
+  no console or page errors.
+
+### Rollback Notes
+
+- Revert the local sync server and offline app files to return to base-card
+  intake only. The SQLite columns are additive and can remain unused.
+
+## 2026-06-09 - Offline App Website Pull UI Integration
+
+### What Changed
+
+- Updated the offline app LAN sync client contract so `/sync/pull` requests
+  both `inventory` and `events` domains.
+- Added typed support for event pull counters, event rows, separate
+  inventory/event pull connector health, local event counts, and accepted
+  WordPress inventory IDs.
+- Updated the app Sync Now flow to merge pulled event snapshots into the local
+  Events workspace alongside website inventory refreshes.
+- Updated LAN status copy in the sidebar, Status screen, and Settings screen
+  to show separate inventory pull and event pull health.
+
+### Why
+
+The backend was already able to pull production WordPress inventory and events,
+but the desktop preview still treated Sync Now as an inventory-only workflow.
+The app needs to make the connected website-event cache visible so staff can
+trust that local event registration and check-in screens are using current
+website data.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the offline app local sync client contract markers for event pull
+  counters, event metadata, separate pull connector health, and explicit
+  inventory/events domain requests.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd --prefix apps/offline-app run build`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- Headless preview check against `http://127.0.0.1:1420/` unlocked with the
+  test PIN and clicked Sync Now. The UI reported inventory pull and event pull
+  connected, pulled five website inventory rows, kept LAN queue depth at `0`,
+  and had no console or page errors.
+
+### Rollback Notes
+
+- Revert the offline app files if Sync Now should return to inventory-only
+  behavior. Backend event pull can remain in place; this change only affects
+  the desktop/client display and request body.
+
+## 2026-06-09 - Live Local Sync Workflow Verification and Event Pull
+
+### What Changed
+
+- Added a WordPress events pull adapter for the LAN sync server so `/sync/pull`
+  can cache published website events in the local SQLite database.
+- Added `slug` to local event snapshots so queued local event registration and
+  check-in pushes target the real WordPress event route instead of a local seed
+  ID.
+- Added `wordpress_public_id` to local inventory rows and persist the accepted
+  WordPress inventory ID returned from inventory intake pushes.
+- Updated kiosk order push mapping to send the WordPress inventory `public_id`
+  for locally created inventory, preventing WordPress reservation failures from
+  local-only IDs.
+- Added a guarded production workflow smoke script that creates temporary
+  production smoke rows, verifies event pull/register/check-in, customer credit
+  add/redeem, hidden inventory intake, kiosk reservation, and cleans up both
+  WordPress and local SQLite rows.
+
+### Why
+
+The local app needs website events as a real source-of-truth cache, not seeded
+event placeholders. The live production workflow smoke also exposed that kiosk
+reservations for locally created inventory were using local-only IDs after
+inventory push acceptance; WordPress requires its own inventory `public_id` for
+reservation writes.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressEventsPull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-events-pull.mjs`
+- `apps/local-sync-server/package.json`
+- `scripts/production-run-local-sync-workflows-smoke.mjs`
+- `scripts/tests/production-local-sync-workflows-smoke-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite additive columns only:
+  - `event_snapshots.slug`
+  - `inventory_items.wordpress_public_id`
+
+### Tests Added
+
+- Added `tests/wordpress-events-pull.mjs` for WordPress event pull request,
+  response, auth, and pagination contracts.
+- Extended `tests/local-sync-server-runtime.mjs` to verify `/sync/pull` caches
+  WordPress events with slugs and preserves WordPress inventory IDs for kiosk
+  pushes.
+- Added `scripts/tests/production-local-sync-workflows-smoke-contract.mjs` for
+  production smoke safety markers and confirmation gates.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `node scripts/production-run-local-sync-workflows-smoke.mjs --dry-run`
+- `node scripts/tests/production-local-sync-workflows-smoke-contract.mjs`
+- Production local-sync workflows smoke passed with temporary event,
+  registration, check-in, customer credit add/redeem, hidden inventory intake,
+  kiosk reservation, and cleanup. Queue depth after smoke: `0`.
+- LAN server restarted after cleanup and verified with `queue_depth=0`,
+  WordPress inventory/event pull connected, and WordPress push connected.
+
+### Rollback Notes
+
+- Revert the event pull adapter and remove `wordpressEventsPull` wiring if
+  event caching needs to return to seeded/local-only behavior.
+- Revert the `wordpress_public_id` mapping only if kiosk reservations no longer
+  depend on WordPress inventory IDs; otherwise local intake kiosk orders will
+  fail again.
+- The SQLite changes are additive; rollback can leave the columns unused.
+
+## 2026-06-09 - LAN ScryDex Lookup and Offline Queue Demo Stabilization
+
+### What Changed
+
+- Updated LAN ScryDex reference search relevance so ordinary card-name
+  searches require a card, set, number, barcode, or provider ID match before
+  using the local cache.
+- Kept explicit variant-style searches able to match variants, and expanded
+  variant search haystacks so long imported variant lists are not truncated
+  before later variants.
+- Added a ScryDex regression test for noisy stamp variants that mention
+  another card name.
+- Updated the offline app Queue badge, sync strip, and queue panel to show
+  live LAN queue depth when the local middleman server is connected, with
+  device-only queue counts shown as detail.
+- Aligned offline app package, Tauri config, and Rust crate metadata with
+  version `0.184.0`.
+
+### Why
+
+The local ScryDex cache could return a non-card-name result when a variant
+label contained the search term, causing searches like `Pikachu` to show a
+stamp variant on an unrelated card instead of falling back to WordPress for
+real Pikachu results. The app preview also displayed stale seeded/browser
+queue counts even when the LAN server queue was empty.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/scrydex-reference-search.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added `tests/scrydex-reference-search.mjs` for LAN ScryDex lookup relevance
+  and variant-only match behavior.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+- `npm.cmd run test:offline-app:rust`
+- `npm.cmd --prefix apps/offline-app run build`
+- Production hidden local-sync inventory smoke passed, including local intake,
+  WordPress push acceptance, hidden inventory verification, and cleanup.
+- Browser preview verified `Pikachu` lookup returns real Pikachu card results
+  with image, market price, stock/variant summary, and no console
+  warnings/errors.
+
+### Rollback Notes
+
+- Revert the ScryDex relevance helper changes and remove the regression test
+  script entry.
+- Revert the Queue badge/sync strip to seeded/device queue counts if needed.
+- No database migrations are involved.
+
+## 2026-06-09 - Public Inventory Search Cache Safeguard
+
+### What Changed
+
+- Added a WordPress `wp` hook for the public inventory search shortcode that
+  marks inventory shortcode pages and inventory query requests as
+  uncacheable.
+- The shortcode now defines `DONOTCACHEPAGE`, sends WordPress no-cache
+  headers before rendering dynamic inventory search results, and repeats the
+  bypass at the final `send_headers` phase with explicit `no-store` and edge
+  cache headers for GoDaddy/Cloudflare.
+- Added a `wp_headers` filter that rewrites inventory search responses to
+  `no-store` before WordPress emits its header set.
+- Added a client-side timestamp cache-bust field to public inventory search
+  submissions so managed edge cache cannot replay old result URLs for normal
+  customer searches.
+- Bumped the WordPress plugin/package version to `0.184.0` for deployment and
+  asset/version cache separation.
+
+### Why
+
+Production GoDaddy/Cloudflare full-page cache was serving stale public
+inventory HTML after plugin deployment. Inventory search pages need live price,
+stock, search result, and stylesheet behavior instead of long-lived static-page
+cache.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `docs/CHANGELOG.md`
+- `package-lock.json`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the public inventory shortcode contract to require the new `wp`
+  cache-safeguard hook.
+- Added a unit check that inventory query parameters are recognized as dynamic
+  inventory page context.
+
+### Verification
+
+- `php tests\run.php --filter PublicInventorySearch`
+- `php tests\lint.php src\PublicSite\InventorySearchShortcode.php src\PublicSite\InventorySearchPresenter.php src\Version.php tcg-store-platform.php`
+- `node scripts\tests\wordpress-package-contract.mjs`
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd run production:install-package`
+- `npm.cmd run production:verify-public-shortcodes` with
+  `PUG_PROD_EXPECT_PLUGIN_VERSION=0.184.0`
+- GoDaddy managed WordPress shutdown-path cache ban produced a fresh CDN
+  invalidation ID.
+- Live browser verification on `/card-inventory/` confirmed stylesheet
+  `public-inventory.css?ver=0.184.0`, styled grid/cards, no console warnings
+  or errors, no horizontal overflow, no four-decimal prices, and search form
+  submissions adding `tcg_inventory_cache_bust=<timestamp>`.
+
+### Rollback Notes
+
+- Revert the shortcode cache-safeguard hook and version bump.
+- No database changes are involved. If stale cache returns after rollback,
+  purge GoDaddy/Cloudflare full-page cache.
+
+## 2026-06-09 - Public Inventory Display Case and Price Formatting
+
+### What Changed
+
+- Updated the customer-facing public inventory shortcode markup to wrap card
+  art in a stable media frame and add detail chips for condition, variant, set,
+  and printed card number.
+- Restyled public inventory cards with The Pug brand colors, stronger card art
+  framing, clearer price/stock hierarchy, and responsive mobile behavior.
+- Added staff admin inventory-search money formatting so raw four-decimal
+  database prices display as two-decimal money values.
+- Bumped the WordPress plugin/package version to `0.179.0` for deployed asset
+  cache busting.
+
+### Why
+
+The live site inventory needs to look customer-ready and card prices should
+read as normal retail money while preserving four-decimal precision in the
+database, exports, provider price history, and audit records.
+
+### Files Affected
+
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `docs/CHANGELOG.md`
+- `package-lock.json`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the public inventory presenter test to lock the new media/chip
+  markup.
+- Added an admin workspace UI contract check for two-decimal staff price
+  presentation.
+
+### Verification
+
+- `php tests\run.php --filter PublicInventorySearchPresenterTest`
+- `php tests\run.php --filter InventoryAdminWorkspaceUiTest`
+- `php tests\lint.php src\Admin\AdminMenu.php src\PublicSite\InventorySearchPresenter.php`
+
+### Rollback Notes
+
+- Revert the public inventory presenter/CSS and admin display formatter.
+- No data migrations or price precision changes were made, so rollback only
+  affects presentation.
+
+## 2026-06-09 - WordPress Package Includes Public Assets
+
+### What Changed
+
+- Added the plugin `assets/` directory to the WordPress package archive.
+- Extended the package contract test to require the customer account, public
+  event, and public inventory CSS assets.
+- Bumped the WordPress plugin/package version to `0.180.0` so the live site
+  receives a package with the CSS files included.
+
+### Why
+
+The live public inventory page linked the `0.179.0` stylesheet, but the
+stylesheet URL returned 404 because package creation only archived the plugin
+PHP/readme files and omitted the `assets/` directory.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/CHANGELOG.md`
+- `package-lock.json`
+- `package.json`
+- `scripts/package-wordpress-plugin.mjs`
+- `scripts/tests/wordpress-package-contract.mjs`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Package contract assertions for the three public/customer CSS assets.
+
+### Verification
+
+- Pending in this checkpoint: package contract, secret scan, production
+  reinstall, and live browser stylesheet check.
+
+### Rollback Notes
+
+- Revert the package script/test and version bump.
+- No database or runtime schema changes are involved.
+
+## 2026-06-09 - Manager Square POS Inventory Pull Plan
+
+### What Changed
+
+- Added a manager-only LAN endpoint,
+  `POST /pos/square/inventory-pull-plan`, that runs the Square barcode/SKU
+  inventory-readiness planner against cached local inventory.
+- Added optional local sync env keys for sandbox/test Square planning:
+  `PUG_SQUARE_ENVIRONMENT` and `PUG_SQUARE_LOCATION_ID`.
+- Added a local app client method and a Settings screen **Plan POS Pull**
+  control that displays mapped versus review-needed rows.
+- Kept Square network calls, custom plugin payment capture, and raw credential
+  exposure disabled.
+
+### Why
+
+The store needs a concrete connector diagnostic showing whether website-backed
+inventory rows have enough barcode/SKU and Square catalog mapping data for
+Square POS inventory reads and reconciliation.
+
+### Files Affected
+
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended the local sync server contract and runtime tests for the new manager
+  endpoint.
+- Extended the offline app local-sync client and UI shell contracts.
+
+### Verification
+
+- `npm.cmd --prefix apps\local-sync-server run test`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- Browser smoke at `http://127.0.0.1:1420/` verified manager unlock, the
+  **Plan POS Pull** control, mapped/review count display, no console warnings,
+  and no horizontal overflow on desktop or a 390px mobile viewport.
+
+### Rollback Notes
+
+- Revert the local sync server endpoint/contract, offline app client/UI, and
+  related tests/docs.
+- Existing cached Square mapping fields remain safe; the route only reads them.
+- No Square provider writes, payment capture, customer credit, or WordPress
+  inventory mutations occur through this diagnostic.
+
+## 2026-06-09 - Square POS Mapping Persistence and Local Cache
+
+### What Changed
+
+- Added a WordPress inventory repository method to persist Square catalog item
+  and variation IDs against serialized inventory rows.
+- Marked Square catalog mappings as `square_synced` without enabling plugin
+  payment capture or custom Square gateway behavior.
+- Added Square mapping fields to the LAN sync SQLite inventory cache with
+  migration-safe columns.
+- Preserved Square mapping fields from WordPress inventory pulls through local
+  sync public item responses and offline app cache records.
+- Displayed selected-card POS mapping status in the offline app inventory
+  detail panel.
+
+### Why
+
+Square POS needs barcode/SKU inventory and sold-line reconciliation to tie back
+to website inventory rows. The website remains the inventory authority, but
+staff need cached Square mapping visibility locally, including when the app is
+running offline.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryExternalMappingRepository.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryExternalMappingRepositoryTest.php`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite only: `inventory_items.square_catalog_item_id`,
+  `inventory_items.square_catalog_variation_id`, and
+  `inventory_items.external_sync_state`.
+- No WordPress database migration was required because the Square mapping
+  columns already exist in migration `0013`.
+
+### Tests Added
+
+- Extended WordPress inventory external mapping repository tests.
+- Extended LAN sync runtime and WordPress inventory-pull tests.
+- Extended offline app local-sync client, pull-cache, and UI shell contracts.
+
+### Verification
+
+- `php tests\run.php` from `apps\wordpress-plugin`
+- `php tests\lint.php` from `apps\wordpress-plugin`
+- `node packages\api-client\tests\square-inventory-adapter.mjs`
+- `npm.cmd --prefix apps\local-sync-server run test`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\pull-inventory-cache-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert the affected WordPress repository, LAN sync server, and offline app
+  files.
+- Existing WordPress `square_catalog_item_id` and
+  `square_catalog_variation_id` values can remain; they are inert without the
+  mapping update method.
+- Existing LAN SQLite caches can keep the added columns; older code ignores
+  them.
+- No customer credit, payment capture, or production Square transaction data is
+  affected.
+
+## 2026-06-09 - Local Sync Inventory Visibility and Production Smoke
+
+### What Changed
+
+- Added online, kiosk, and POS visibility fields to the LAN sync server
+  inventory cache with migration-safe SQLite columns.
+- Preserved visibility choices from offline app intake through local sync
+  client payloads, queued inventory rows, WordPress inventory push requests, and
+  public local sync item responses.
+- Added staff-facing visibility controls to the offline inventory intake form.
+- Added optional LAN server env defaults for WordPress inventory visibility.
+- Documented `PUG_WORDPRESS_DEFAULT_LOCATION_ID` so stores can map accepted
+  local intake to an active WordPress inventory location and immediately create
+  available stock.
+- Added a guarded production local-sync inventory smoke script that creates one
+  hidden test item, pushes it through the LAN server to WordPress, verifies it
+  through authenticated inventory search, and deletes the smoke row from
+  WordPress and local SQLite.
+- User/PIN access policy updates are now stored as `local_only` LAN audit
+  operations instead of pending WordPress push work.
+
+### Why
+
+The local app needs to add real inventory through the website-backed source of
+truth while still giving staff control over whether newly accepted cards appear
+online, in the customer kiosk, or in POS-facing inventory.
+
+### Files Affected
+
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `scripts/production-run-local-sync-inventory-smoke.mjs`
+- `scripts/tests/production-local-sync-inventory-smoke-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local SQLite only: `inventory_items.online_visibility`,
+  `inventory_items.kiosk_visibility`, and `inventory_items.pos_visibility`
+  default to `visible`.
+- Existing local `user_access_upsert` queue rows migrate from `pending` to
+  `local_only`.
+- No WordPress database migration was added.
+
+### Tests Added
+
+- Extended local sync runtime, persistence, and WordPress inventory push tests.
+- Added `node scripts/tests/production-local-sync-inventory-smoke-contract.mjs`.
+
+### Verification
+
+- `npm.cmd --prefix apps\local-sync-server run test`
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `node scripts\tests\production-local-sync-inventory-smoke-contract.mjs`
+- `node scripts\production-run-local-sync-inventory-smoke.mjs --dry-run`
+- Browser smoke at `http://127.0.0.1:1420/` verified the visibility controls,
+  ready summary text, no horizontal overflow, and no console warnings/errors.
+- Guarded live production smoke pushed hidden barcode
+  `CODEX-LSYNC-20260609T094614Z`, verified it in authenticated WordPress
+  inventory search, then deleted one WordPress inventory row, one price-log row,
+  and one local SQLite row.
+- After setting the local machine's ignored
+  `PUG_WORDPRESS_DEFAULT_LOCATION_ID=6`, a second guarded smoke pushed hidden
+  barcode `CODEX-LSYNC-20260609T095727Z`, verified it as WordPress
+  `available` inventory with online/kiosk/POS visibility still hidden, then
+  deleted one WordPress inventory row, one price-log row, and one local SQLite
+  row.
+- Restarted the LAN server after the `local_only` migration and verified
+  `queueDepth: 0` with the preserved `user_access_upsert` row no longer counted
+  as pending WordPress work.
+
+### Rollback Notes
+
+- Revert the affected local sync server and offline app files.
+- If a future smoke aborts before cleanup, search WordPress inventory for
+  barcode prefix `CODEX-LSYNC-` and delete matching smoke rows plus related
+  price-log rows.
+- No customer, payment, Square, or public website data rollback is required.
+
+## 2026-06-09 - Offline ScryDex Intake Preview
+
+### What Changed
+
+- Added a selected-card preview to the offline app's ScryDex inventory intake
+  flow.
+- The preview shows card art, card/set identity, catalog source, local stock by
+  condition, queued intake quantity/price, provider card ID, variants, and the
+  lookup order used by the app.
+- Tightened the phone-width layout so the ScryDex lookup and selected-card
+  preview stay readable without horizontal overflow.
+- Extended the offline UI shell contract to pin the selected-card preview
+  markers.
+
+### Why
+
+Store staff need the online catalog/intake flow to clearly confirm the exact
+card, image, variant, condition stock, and queued price before adding inventory
+from the local app.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended `node apps/offline-app/tests/ui-shell-contract.mjs`.
+
+### Verification
+
+- `npm.cmd --prefix apps\offline-app run typecheck`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- Browser smoke at `http://127.0.0.1:1420/` with PIN login, Charizard catalog
+  lookup, selected-card image/stock/price preview, desktop layout check, mobile
+  390px layout check, and console warning/error check.
+
+### Rollback Notes
+
+- Revert the affected offline app UI files. No database rollback or WordPress
+  plugin rollback is required.
+
+## 2026-06-09 - Production Public Inventory and Events Pages
+
+### What Changed
+
+- Added an idempotent production page configurator for the public website.
+- The configurator publishes or updates `/card-inventory/` with
+  `[tcg_inventory_search limit="24"]`.
+- The configurator publishes or updates `/events/` with `[tcg_events limit="12"]`.
+- Existing page title/status/content summaries are backed up into post meta
+  before updates without printing page content.
+- The script intentionally leaves the homepage and navigation menus unchanged.
+
+### Why
+
+The customer-facing inventory and event shortcodes were deployed and verified,
+but they still needed real website pages so the live site has a usable preview
+surface.
+
+### Files Affected
+
+- `package.json`
+- `scripts/production-configure-public-pages.mjs`
+- `scripts/tests/production-public-pages-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `node scripts/tests/production-public-pages-contract.mjs`
+- `node scripts/production-configure-public-pages.mjs --dry-run`
+- `node scripts/production-configure-public-pages.mjs`
+
+### Rollback Notes
+
+- Restore the previous page content from each affected page's
+  `_tcg_store_public_pages_backup_*` post meta entry, or set the generated pages
+  back to draft if they did not previously exist.
+
+## 2026-06-09 - Production Public Shortcode Hotfix 0.178.0
+
+### What Changed
+
+- Bumped the root package and WordPress plugin version to `0.178.0`.
+- Added a reusable read-only production verifier for public inventory and event
+  shortcodes.
+- Fixed `[tcg_inventory_search]` to use `InventorySearchValidationResult::is_valid()`
+  and guard its nullable request result instead of calling a non-existent
+  `is_accepted()` method.
+- Added a focused unit test for invalid public inventory filters, the branch
+  that exposed the production fatal during shortcode smoke testing.
+
+### Why
+
+The `0.177.0` production install activated correctly, but the live shortcode
+smoke found a parser-contract mismatch in the public inventory shortcode before
+any public page was wired to it. The hotfix makes the shortcode safe and adds a
+repeatable production check for the customer-facing website surfaces.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `scripts/production-verify-public-shortcodes.mjs`
+- `scripts/tests/production-public-shortcodes-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `node scripts/tests/production-public-shortcodes-contract.mjs`
+- `node scripts/production-verify-public-shortcodes.mjs`
+
+### Rollback Notes
+
+- Reinstall the previous `0.176.0` package if the public website shortcode
+  release needs to be backed out fully. No database rollback is required.
+
+## 2026-06-09 - Production Public Website Package 0.177.0
+
+### What Changed
+
+- Bumped the root package and WordPress plugin version to `0.177.0`.
+- Prepared the production plugin package for the public inventory search and
+  event-registration shortcode release.
+
+### Why
+
+The production site needs a distinct plugin version for installing and
+verifying the newly added public website surfaces without confusing them with
+the prior ScryDex catalog import release.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Pending package and production smoke verification in this release pass.
+
+### Rollback Notes
+
+- Reinstall the previous `0.176.0` plugin package if the public shortcode
+  release causes production display issues. No database rollback is required.
+
+## 2026-06-09 - Public Inventory Search and Event Registration
+
+### What Changed
+
+- Added `[tcg_inventory_search]`, a branded public inventory shortcode that
+  renders customer-facing search filters and card results from the inventory
+  repository.
+- Grouped serialized inventory rows into card listings with card image,
+  condition, set/number, price, quantity in stock, and WooCommerce product link
+  when a product mapping exists.
+- Added public inventory CSS for The Pug-styled search and card grid.
+- Extended event shortcodes to enqueue public event CSS and render inline event
+  registration forms for open, almost-full, and waitlist events.
+- Event registration form posts into the existing event registration service,
+  preserving current duplicate/idempotency/capacity behavior.
+
+### Why
+
+The backend inventory, WooCommerce projection, and event registration logic
+existed, but the customer-facing website still lacked a usable inventory search
+surface and visible registration forms. This adds the first functional public
+website layer without depending on the inventory REST route being enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchPresenter.php`
+- `apps/wordpress-plugin/src/PublicSite/InventorySearchShortcode.php`
+- `apps/wordpress-plugin/src/Events/EventShortcodes.php`
+- `apps/wordpress-plugin/assets/css/public-inventory.css`
+- `apps/wordpress-plugin/assets/css/public-events.css`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PublicInventorySearchShortcodeTest.php`
+- `apps/wordpress-plugin/tests/Unit/EventShortcodesTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the public inventory shortcode and inline
+  event registration forms. Existing inventory, WooCommerce, and event database
+  tables are unchanged, so no database rollback is required.
+
+## 2026-06-09 - Local App LAN Client Presence
+
+### What Changed
+
+- Added typed offline app client methods for `POST /devices/heartbeat` and
+  `GET /devices/status`.
+- The unlocked local app now reports a 30-second heartbeat to the LAN
+  middleman server with device ID, mode, app version, setup status, website URL,
+  server URL, and allowed workspace capabilities.
+- Added a Status screen client-presence summary and heartbeat timeline entry
+  showing online/offline client counts without exposing credentials.
+- Updated offline Tauri Windows metadata from `0.175.0` to `0.176.0`.
+
+### Why
+
+The LAN server already persisted employee/kiosk device presence, but the app was
+not calling those endpoints. Multiple local app and kiosk instances need a
+central status view so staff can tell which clients are connected before relying
+on offline fallback or live sync.
+
+The Windows package contract was also failing because the Tauri metadata lagged
+behind the current app/package version.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `npm --prefix apps/offline-app run test:package-contract`
+- Browser smoke against `http://127.0.0.1:1420` verifying PIN unlock, Status
+  screen client presence, heartbeat text, and no fresh browser console warnings
+  or errors.
+- LAN endpoint smoke against `http://127.0.0.1:8787/devices/status` confirming
+  one online client and no credential fields returned.
+
+### Rollback Notes
+
+- Revert the app heartbeat/status UI changes if client presence causes noisy
+  local network traffic or stale status expectations. No WordPress or SQLite
+  schema rollback is required.
+
+## 2026-06-09 - Local App Website Sync Status Preservation
+
+### What Changed
+
+- Added a dedicated `Sync to Website` command on the offline app queue screen.
+- Disabled manual sync buttons while a sync attempt is already running.
+- Preserved the status returned by WordPress after a LAN inventory push instead
+  of forcing accepted local intake rows to `available`.
+- Extended the offline app local sync client type to include the accepted
+  WordPress inventory payload and price-change-log persistence flag.
+- Made the operation sync visibility panel defensive against early or restored
+  app state where collection props can be missing during reload.
+
+### Why
+
+The live LAN-to-WordPress smoke showed WordPress correctly accepting an intake
+row as `pending_intake` when location data is not configured. The local app was
+overriding that canonical status to `available`, which could mislead staff
+about whether new inventory was ready for sale.
+
+Staff also needed an obvious queue-level website sync action, not just the top
+bar `Sync Now` control.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- Browser smoke against `http://127.0.0.1:1420` verifying PIN unlock, queue
+  sync controls, Charizard catalog lookup from the local/WordPress cache, card
+  images, and no fresh browser console warnings or errors.
+
+### Rollback Notes
+
+- Revert this revision if the queue sync controls or WordPress status
+  preservation cause unexpected staff workflow issues. No database rollback is
+  required.
+
+## 2026-06-09 - Reference Search Relevance Ranking
+
+### What Changed
+
+- Bumped the platform/plugin package version to `0.176.0`.
+- Updated WordPress reference-card search SQL to rank exact, prefix, and
+  contains matches on `cards.name` ahead of identifier/search-text/set-name
+  matches.
+- Added a unit assertion that the generated reference-card select uses the
+  relevance `CASE` ordering and binds exact/prefix/contains search arguments.
+- Added a read-only production reference-search verification script and contract
+  test for the live `/tcg-store/v1/reference/search` route.
+
+### Why
+
+Production catalog lookup for broad terms such as `Charizard` could return
+set-name-only matches before actual card-name matches. Staff intake search
+should show the most likely card first.
+
+The live verifier gives us a repeatable way to confirm production search result
+ordering, card images, two-decimal price presentation, and catalog-cache source
+without exposing credentials or writing production data.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `apps/offline-app/package.json`
+- `scripts/production-verify-reference-search.mjs`
+- `scripts/tests/production-reference-search-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `php tests/run.php`
+- `php tests/lint.php`
+- `php tests/bootstrap-smoke.php`
+- `node scripts/tests/production-reference-search-contract.mjs`
+- `npm run production:verify-reference-search`
+- `npm run production:verify-scrydex-catalog`
+
+### Rollback Notes
+
+- Reinstall the previous WordPress plugin package `0.175.0` if search ranking
+  causes unexpected database-load or result-order issues. No database rollback is
+  required.
+
+## 2026-06-09 - LAN Local Sync Server Foundation
+
+### What Changed
+
+- Added and configured `apps/local-sync-server`, a Node LAN middleman server
+  for the local employee app and kiosk clients.
+- Implemented setup/status, 4-digit PIN login, manager-gated user management,
+  local inventory search/intake, ScryDex lookup through the WordPress catalog,
+  kiosk orders, customers, credit adjustments/redemptions, events, pull/push
+- summaries, and SQLite-backed local persistence.
+- Added production CLI env loading from ignored local env files, generic
+  WordPress Application Password aliases, a guarded WordPress push switch, and
+  CLI-only cleanup of canned ScryDex seed rows so live lookup uses the
+  WordPress catalog.
+- Added local reference relevance sorting so card-name matches appear ahead of
+  set-name-only matches in employee intake search.
+- Verified the rendered offline app can sign in with PIN `1420`, search the
+  WordPress-backed card catalog, load card images/prices, select a catalog card,
+  and queue a local inventory intake item through the LAN server.
+- Preserved the full local sync server contract/runtime/persistence/WordPress
+  adapter test suite.
+- Added root `local-sync:start` and `local-sync:test` scripts.
+
+### Why
+
+The desktop app already expected a single local LAN server so multiple in-store
+employee/kiosk instances can stay synchronized while the website remains the
+source of truth. The missing server meant many app buttons could only preview
+or report unavailable local sync.
+
+### Files Affected
+
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/.env.example`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for WordPress. The LAN server uses the existing local SQLite schema at
+  `apps/local-sync-server/store-sync.sqlite` or `LOCAL_SYNC_SQLITE_PATH`.
+
+### Tests Added
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `npm --prefix apps/offline-app run test:package-contract`
+- Browser smoke against `http://127.0.0.1:1420` and
+  `http://127.0.0.1:8787`.
+
+### Rollback Notes
+
+- Stop the local sync server and keep the offline app in browser-only preview
+  mode. Remove `LOCAL_SYNC_WORDPRESS_PUSH_ENABLED=true` if it was enabled. No
+  WordPress database rollback is required for these local server/app changes.
+
+## 2026-06-09 - Two-Decimal Reference Lookup Pricing
+
+### What Changed
+
+- Changed reference-card search API presentation to return money strings with
+  two decimal places for market prices and condition price points.
+- Added unit coverage for the lookup payload consumed by the admin card intake
+  workspace.
+- Updated the WordPress inventory smoke assertion for two-decimal lookup prices.
+- Bumped the plugin/package version to `0.175.0`.
+
+### Why
+
+The live intake/search UI was showing catalog prices like `250.0000`. Staff
+pricing should display as normal currency (`250.00`) while the database can
+continue storing four-decimal precision internally.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added assertions that reference-card lookup returns `1120.45` and `1199.99`
+  presentation values instead of four-decimal strings.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.174.0` to restore four-decimal reference lookup
+  presentation.
+- No database rollback is required.
+
+## 2026-06-09 - ScryDex Provider ID Punctuation Compatibility
+
+### What Changed
+
+- Expanded ScryDex provider card/variant ID validation to accept observed `?`
+  and `!` characters from legitimate card IDs.
+- Added a persistence query-builder regression test for Unseen Forces-style
+  provider IDs such as `ex10-?`.
+- Bumped the plugin/package version to `0.174.0`.
+
+### Why
+
+Production batch indexing reached the Pokémon Unseen Forces expansion and
+blocked on two valid ScryDex rows whose provider card/variant IDs contain
+question/bang punctuation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added a persistence query-builder regression test covering ScryDex provider
+  IDs with `?` and `!`.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.173.0` to restore the previous provider-ID
+  validation behavior.
+- No database rollback is required.
+
+## 2026-06-09 - ScryDex Catalog Variant Status Predicate Fix
+
+### What Changed
+
+- Removed the provider-name predicate from ScryDex variant integrity and
+  latest-card status queries because `tcg_reference_variants` links to cards by
+  `reference_card_id` and does not store `provider_name`.
+- Bumped the plugin/package version to `0.173.0`.
+
+### Why
+
+Production table inspection confirmed the imported variant rows were linked to
+reference cards correctly, but the status route still returned zero variant
+coverage because the query referenced another non-existent variants-table
+column.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Expanded the ScryDex catalog controller contract to require the variant
+  existence predicate that uses only `reference_card_id`.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.172.0` to restore the prior status-query
+  behavior.
+- No database rollback is required.
+
+## 2026-06-09 - ScryDex Catalog Integrity Variant Coverage Fix
+
+### What Changed
+
+- Updated ScryDex catalog status integrity queries to link reference cards to
+  reference variants through `reference_card_id`, matching the actual table
+  schema.
+- Updated the latest-card status preview to use the same variant relationship.
+- Bumped the plugin/package version to `0.172.0`.
+
+### Why
+
+Production imported variant rows successfully, but the status route reported
+zero variant coverage because it was checking a non-existent provider-card
+column on the variants table.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Expanded the ScryDex catalog controller contract to require the status query
+  to use the `reference_card_id` variant relationship.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.171.0` to restore the prior status-query
+  behavior.
+- No database rollback is required.
+
+## 2026-06-09 - Production ScryDex Usage Snapshot Deferral
+
+### What Changed
+
+- Treated an empty ScryDex usage snapshot as a deferred usage check rather than
+  a zero-credit account snapshot.
+- Updated the manager catalog indexing route to pass usage snapshots into the
+  card worker only when the usage endpoint was actually requested and returned
+  ready data.
+- Added live-run diagnostics for card worker block reasons so production proofs
+  show the exact readiness gate that stopped indexing.
+- Bumped the plugin/package version to `0.171.0`.
+
+### Why
+
+Production card indexing still stopped before network requests after the first
+gate fix because the enterprise route intentionally skipped usage lookup, then
+forwarded an empty snapshot into the worker. The worker normalized that empty
+array to zero remaining credits and blocked on the remaining-credit floor.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `scripts/production-run-scrydex-index.mjs`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added a usage-budget planner regression test proving an empty usage snapshot
+  stays ready and is treated as deferred usage data.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.170.0` to restore the prior usage snapshot
+  behavior.
+- No database rollback is required.
+
+## 2026-06-09 - Production ScryDex Card Worker Gate Fix
+
+### What Changed
+
+- Updated the manager ScryDex catalog index route to explicitly enable the
+  checkpoint and persistence repository readiness gates after database prefix
+  validation and repository construction.
+- Bumped the plugin/package version to `0.170.0`.
+
+### Why
+
+Production ScryDex indexing was able to import expansion/set rows, but card
+workers stopped as `blocked` with zero provider requests. The route was already
+constructing repository-backed workers; the execution gate simply needed the
+same controlled-route override for repository readiness that it already had for
+network, budget, database-write, and worker gates.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `package.json`
+- `package-lock.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Expanded the ScryDex catalog controller source contract to require repository
+  gate overrides on the manager catalog index path.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.169.0` to restore the previous gate behavior.
+- No database rollback is required.
+
+## 2026-06-09 - Pug Demo UI, Local Presence, Intake Receipts, and Square Barcode Planning
+
+### What Changed
+
+- Added a branded WooCommerce customer account portal presentation with
+  Collector Vault summary metrics, shop/order links, styled order cards, and
+  account-page-only CSS.
+- Updated the offline app to use The Pug logo, show card art in inventory and
+  kiosk search rows, constrain money inputs to two decimals, and track local
+  inventory intake sync receipts through LAN push acceptance/retry/rejection.
+- Added local sync server client presence support with `POST /devices/heartbeat`
+  and `GET /devices/status`, persisted client devices, and online/offline
+  counts in sync status responses.
+- Added a Square barcode/SKU inventory pull planner that maps WordPress
+  inventory scan identities to Square catalog variation IDs/location IDs for
+  deferred inventory count reads while leaving payment capture to the official
+  WooCommerce Square extension.
+- Aligned offline Windows/Tauri package metadata to release `0.169.0`.
+- Added a contained The Pug website/customer UI rebrand package under
+  `docs/branding/` for the broader theme pass.
+
+### Why
+
+The live demo needs the visible customer/local app surfaces to feel like The
+Pug, and the operational architecture needs to show how multiple local app and
+kiosk clients stay coordinated through the LAN middleman while WordPress remains
+the source of truth. Square inventory/barcode planning also needed a concrete
+bridge that does not confuse POS inventory reads with payment processing.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalController.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/assets/css/customer-account-portal.css`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/assets/the-pug-brand-logo.webp`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/README.md`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.md`
+- `packages/api-client/README.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/branding/the-pug-rebrand-plan.md`
+- `docs/branding/the-pug-customer-ui.css`
+- `docs/branding/assets/the-pug-logo-reference.webp`
+
+### Migrations Added
+
+- Local sync SQLite creates a `client_devices` table for LAN client heartbeat
+  presence. The WordPress database schema is unchanged.
+
+### Tests Added
+
+- Added local sync server contract, runtime, and persistence coverage for
+  heartbeat/status endpoints and persisted client presence.
+- Added offline app workspace and pull-cache contract coverage for intake sync
+  receipts, canonical inventory operation counting, and two-decimal money input
+  drafts.
+- Added API-client coverage for Square barcode/SKU inventory pull request
+  planning, missing mapping conflicts, and production credential rejection.
+- Expanded customer account portal tests for asset enqueue contracts and branded
+  portal HTML.
+
+### Rollback Notes
+
+- Roll back to plugin/package version `0.168.0` if the branded account portal
+  or ScryDex admin behavior needs to be reverted.
+- Remove `client_devices` from the local sync SQLite database if reverting the
+  LAN presence feature.
+- Square barcode/SKU planner changes are planning-only and can be reverted from
+  `packages/api-client` without database rollback.
+
+## 2026-06-09 - ScryDex Full Index Runner and Admin Failure Visibility
+
+### What Changed
+
+- Updated the production ScryDex index runner so the default production path is
+  the full catalog mirror: all expansion pages, all stored sets, and card pages
+  until ScryDex returns a short page.
+- Added checkpoint forwarding between repeated bounded production card batches
+  so smoke runs advance to the next page instead of re-requesting page 1.
+- Updated the read-only live ScryDex smoke helper to test the real expansion
+  card endpoint with `include=prices`, then summarize card image, variant, and
+  nested price coverage without logging raw API responses.
+- Updated the ScryDex Catalog admin importer to surface card-worker block
+  reasons, configuration issues, and provider error codes instead of silently
+  completing a zero-card batch.
+- Updated staff lookup/intake and customer account money displays to show two
+  decimal places while keeping four-decimal provider/database values intact.
+- Bumped the plugin/package version to `0.169.0`.
+
+### Why
+
+Production was pulling ScryDex sets but not showing usable card imports. The
+live API path was proven to return cards; the remaining failure mode was that
+blocked card batches could be hidden by the admin progress loop and bounded
+production helper runs could fail to advance checkpoint state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `scripts/scrydex-live-smoke.mjs`
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This revision changes indexing orchestration, admin visibility, and
+  verification tooling only.
+
+### Tests Added
+
+- Expanded the ScryDex live-smoke contract to require the expansion-card API
+  path, documented `page_size`, `include=prices`, image/variant/price summaries,
+  and no raw response logging.
+- Expanded the production ScryDex index contract to require run-until-short-page
+  defaults and checkpoint forwarding.
+- Expanded the ScryDex admin workspace contract to require visible block reason
+  handling for expansion and card batches.
+- Expanded staff/customer UI tests so human-facing money formatting stays at
+  two decimals.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.168.0` if the admin import console behavior
+  needs to be reverted.
+- No database rollback is required.
+
+## 2026-06-09 - Production ScryDex Catalog Verification Runner
+
+### What Changed
+
+- Added `npm run production:verify-scrydex-catalog`, a read-only SSH/WP-CLI
+  verification runner for the production WordPress site.
+- The runner checks the deployed plugin version, registered ScryDex catalog
+  routes, catalog counts, image coverage, variant coverage, price coverage,
+  total price points, game counts, and latest imported card samples.
+- Added configurable verification thresholds in `.env.example`:
+  `SCRYDEX_VERIFY_MIN_CARDS`, `SCRYDEX_VERIFY_MIN_IMAGE_COVERAGE`,
+  `SCRYDEX_VERIFY_MIN_VARIANT_COVERAGE`,
+  `SCRYDEX_VERIFY_MIN_PRICE_COVERAGE`, and
+  `SCRYDEX_VERIFY_MIN_PRICE_POINTS`.
+
+### Why
+
+After the user uploads the fixed plugin and runs the ScryDex index, we need one
+repeatable command that proves the production website has the expected plugin
+build and a usable card catalog, without relying on screenshots or manual
+inspection.
+
+### Files Affected
+
+- `scripts/production-verify-scrydex-catalog.mjs`
+- `scripts/tests/production-scrydex-verify-contract.mjs`
+- `package.json`
+- `.env.example`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None. This runner is read-only and does not change WordPress settings,
+  database rows, or files other than its temporary remote runner, which it
+  removes after execution.
+
+### Tests Added
+
+- Added a production ScryDex verification contract test that checks the command
+  is registered, reads only the status/integrity route, exposes no credential
+  values, and forbids destructive/write-oriented production operations.
+- Dry run passed: `node scripts/production-verify-scrydex-catalog.mjs --dry-run`.
+- Contract passed: `node scripts/tests/production-scrydex-verify-contract.mjs`.
+
+### Rollback Notes
+
+- Remove the `production:verify-scrydex-catalog` script and its contract test if
+  this read-only verification helper is not wanted.
+- No database rollback is required.
+
+## 2026-06-09 - ScryDex Catalog Integrity Status
+
+### What Changed
+
+- Added a secret-free catalog integrity summary to the ScryDex catalog status
+  REST response.
+- Added a ScryDex Catalog admin panel section that shows card image coverage,
+  variant coverage, price-point coverage, total condition price points, per-game
+  card counts, and latest imported card samples.
+- Bumped the plugin/package version to `0.168.0`.
+
+### Why
+
+After a production ScryDex import, table counts alone do not prove the catalog
+is usable for inventory intake. Staff need to see whether imported cards have
+images, variants, and condition/variant price points before relying on lookup
+and add-to-inventory flows.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `docs/CHANGELOG.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This status view reads existing catalog tables only.
+
+### Tests Added
+
+- Added controller/admin source contract coverage for the new integrity summary
+  and admin display markers.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.167.0` if the integrity display needs to be
+  removed.
+- No database rollback is required because this revision does not change schema
+  or imported catalog rows.
+
+## 2026-06-09 - Live ScryDex Card Import Probe and Variant Price Fix
+
+### What Changed
+
+- Ran a live Postman-style ScryDex probe against
+  `/pokemon/v1/expansions/me4/cards?page=1&page_size=3&include=prices` and
+  verified the API returns cards, images, variants, and nested variant prices.
+- Updated the ScryDex card normalizer to read `variants[].prices[]`, store
+  variant/condition price points, and link each price point to the same
+  provider variant ID used by the reference variant row.
+- Aligned ScryDex provider pagination URLs with the documented `page_size`
+  parameter.
+
+### Why
+
+Production was receiving expansions while card/price indexing was still not
+usable enough for inventory intake. The live API response proved cards were
+available, but prices were nested below variants rather than at the card root,
+so the importer needed to normalize that exact provider shape.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None. Existing catalog tables already support provider variant IDs,
+  condition codes, and price point rows.
+
+### Tests Added
+
+- Added normalizer coverage for the live ScryDex nested variant-price shape.
+- Verified live ScryDex sample through the plugin PHP normalizer:
+  3 card rows, 5 variants, 3 primary prices, 12 price points, 0 errors.
+- Verified live ScryDex sample through the persistence write planner:
+  3 reference inserts, 5 variant upserts, 3 price observations, 12 price
+  points, valid query plan, 0 query errors.
+- Full PHP suite: `972 tests, 0 failures`.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.166.0` if the live-shape price import causes
+  unexpected catalog price behavior.
+- No database rollback is required because this revision does not change
+  schema.
+- Existing imported card, variant, and price-point rows remain compatible with
+  rollback; re-run ScryDex indexing after redeploying the fixed build to refill
+  any missing price points.
+
+## 2026-06-09 - Variant-Aware Card Lookup Intake
+
+### What Changed
+
+- Extended reference-card search responses to include variant IDs, variant
+  front/back image URLs, and latest provider price points by variant and
+  condition.
+- Updated the staff card lookup UI to show a variant/version selector and carry
+  the selected variant image, condition, quantity, and price point into the
+  inventory intake form.
+- Sorted price points so variant-specific and condition-specific prices are
+  preferred over generic card-level prices.
+
+### Why
+
+Staff intake needs to add the exact card version, not just the first normalized
+variant. ScryDex can provide images and prices at card, variant, and condition
+levels, so the lookup response and UI need to preserve that context all the way
+to inventory creation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None. This uses schema version `14` from the prior reference variant image
+  migration.
+
+### Tests Added
+
+- Expanded reference-card search coverage for cached catalog variant images,
+  cached provider price points, ScryDex fallback variant images, and ScryDex
+  fallback condition price points.
+- Full PHP suite: `972 tests, 0 failures`.
+
+### Rollback Notes
+
+- Roll back to plugin version `0.166.0` if the new lookup/intake selector needs
+  to be removed.
+- No database rollback is required because this revision does not change schema.
+- Existing ScryDex catalog and inventory rows remain compatible with this
+  rollback.
+
+## 2026-06-09 - ScryDex Production Catalog Import Fixes
+
+### What Changed
+
+- Fixed ScryDex expansion-card indexing so provider expansion IDs are preserved
+  exactly when calling `/expansions/{id}/cards` and when resuming checkpoints.
+- Replaced the single-game import field with game checkboxes and parallel
+  per-game progress rows.
+- Added official ScryDex endpoint-key defaults and alias mapping for older
+  friendly keys such as `one-piece` and `magic-the-gathering`.
+- Added a ScryDex catalog database browser with paginated previews, single-table
+  JSON download, and full-catalog JSON download.
+- Added variant-specific front/back image URL storage for ScryDex variants.
+- Removed misleading production-facing staging copy from route/ScryDex admin
+  messages.
+- Continued the WooCommerce product-sync slice: staff intake can optionally
+  create/update WooCommerce product records while payments remain delegated to
+  the official WooCommerce Square extension.
+
+### Why
+
+Production imports were pulling expansions but not cards for some sets because
+provider IDs could be normalized before the card lookup. The catalog also needed
+a visible database inspection/export page and a way to preserve variant images,
+condition/grade price points, and official multi-game indexing behavior.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncDryRunPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0014ReferenceVariantImages.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryExternalMappingRepository.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- `0014_reference_variant_images`: adds nullable `front_image_url` and
+  `back_image_url` columns to `tcg_reference_variants`.
+
+### Tests Added
+
+- Added ScryDex worker/dry-run coverage for exact uppercase provider expansion
+  IDs.
+- Added ScryDex HTTP provider alias coverage for official endpoint keys.
+- Added ScryDex normalizer coverage for provider variant image URLs.
+- Added migration/schema coverage for reference variant image storage.
+- Expanded admin workspace coverage for checkbox imports, parallel runs, and
+  full catalog downloads.
+- Full PHP suite: `971 tests, 0 failures`.
+
+### Rollback Notes
+
+- Roll back to plugin/database version `0.165.0` / schema `13` to remove the
+  variant image migration.
+- Database rollback target: run migration rollback to version `13`, which drops
+  `tcg_reference_variants.front_image_url` and `back_image_url`.
+- ScryDex catalog rows, price observations, and checkpoints are cache data and
+  can remain in place if rolling back only the plugin files.
+- Before production rollback, export the ScryDex catalog from the admin browser
+  or REST export endpoint if the latest imported variant-image data should be
+  retained externally.
+
+## 2026-06-09 - Enterprise ScryDex Full-Game Indexer
+
+### What Changed
+
+- Replaced bounded manual ScryDex catalog batches with an admin full-game
+  runner that pulls expansions first, then indexes cards by expansion until a
+  page returns fewer than the configured page size.
+- Removed the plugin-side daily credit/batch ceiling from the manager-only
+  catalog mirror endpoint while keeping ScryDex credentials server-side and
+  provider bodies out of responses.
+- Added continuation checkpoint pass-through so browser-driven indexing resumes
+  page-by-page instead of restarting page 1.
+- Added paginated JSON export support for ScryDex catalog tables.
+- Fixed the catalog controller provider factory/provider ordering issue.
+- Added a local app Status dashboard so ScryDex, website/LAN, queue, and cache
+  messages are visible on the Status screen.
+
+### Why
+
+The live store needs to mirror the paid ScryDex catalog without manual page
+limits or fake daily caps, while still avoiding oversized WordPress requests
+that hosting may terminate.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Added ScryDex worker coverage proving full pages continue until a short page
+  is returned when provider pagination metadata is absent.
+- Updated admin/controller contract tests for the full-game indexer, enterprise
+  usage policy, checkpoint continuation, and paginated export route.
+- Updated offline app UI contract coverage for the dedicated Status dashboard.
+
+### Rollback Notes
+
+- Reinstall version `0.163.0` to restore the previous bounded batch UI and
+  usage-budget preflight behavior. No database rollback is required; catalog
+  tables are append/update caches and remain compatible.
+
+## 2026-06-09 - Reference Search Stock Summaries
+
+### What Changed
+
+- Added WordPress inventory stock aggregation to the reference-card search
+  route.
+- Included available, reserved, pending-intake, total, and
+  available-by-condition counts in card lookup responses.
+- Updated focused route-handler tests to prove stock counts come from
+  `tcg_inventory_items`.
+
+### Why
+
+Staff need the card lookup window to show real quantity in stock while adding
+cards from the website catalog or ScryDex cache.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Expanded `InventorySearchRouteHandlerFactoryTest::test_reference_handler_returns_catalog_cards_with_images_and_price`
+  with stock-count assertions.
+
+### Rollback Notes
+
+- Revert this revision to return zero stock counts in reference search. No
+  database rollback is required.
+
+## 2026-06-09 - Customer Account Portal
+
+### What Changed
+
+- Added a WooCommerce My Account `pug-portal` endpoint for logged-in customers.
+- Added a customer-safe account portal presenter for store credit visibility,
+  recent ledger activity, and card purchase history.
+- Wired the portal into plugin bootstrap and WooCommerce account menu hooks.
+- Documented the read-only portal behavior and hidden internal credit fields.
+
+### Why
+
+Customers need to see their available store credit and card purchase history on
+the website without exposing staff-only ledger metadata or enabling credit
+redemption before the checkout hook is ready.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalController.php`
+- `apps/wordpress-plugin/src/WooCommerce/CustomerAccountPortalPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerAccountPortalPresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/CUSTOMER_CREDIT.md`
+- `docs/UI_FLOWS.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `CustomerAccountPortalControllerTest`
+- `CustomerAccountPortalPresenterTest`
+
+### Rollback Notes
+
+- Remove the portal controller registration from plugin bootstrap and reinstall
+  the prior plugin package. No database rollback is required because this slice
+  is read-only.
+
+## 2026-06-09 - ScryDex Import Budget And Permission Guardrails
+
+### What Changed
+
+- Added whole-batch ScryDex provider request budgeting for catalog imports.
+- Added a controller rate-limit preflight below ScryDex's documented
+  requests-per-second limit.
+- Re-checked `manage_settings` inside the catalog controller before honoring
+  `execute_database_writes`.
+- Added focused source/unit coverage for budget multiplication, request-count
+  guardrails, and manager-only write markers.
+
+### Why
+
+The live catalog importer can request expansion pages and card pages in one
+bounded batch. Budgeting only one cards page could allow an import to exceed
+the store's configured ScryDex credit budget or remaining-credit reserve.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `ScryDexUsageBudgetPlannerTest::test_provider_request_batch_multiplies_estimated_credit_cost`
+- `ScryDexCatalogControllerContractTest::test_catalog_index_preflights_usage_and_rate_limit_budget`
+- `ScryDexCatalogControllerContractTest::test_catalog_index_keeps_database_writes_manager_only`
+
+### Rollback Notes
+
+- Revert these files to restore the prior single-page budget behavior.
+- No database rollback is required; this change only blocks unsafe import
+  requests earlier.
+
+## 2026-06-09 - ScryDex Live Smoke Env Loading
+
+### What Changed
+
+- Updated the read-only ScryDex live-smoke helper to load ignored local env
+  files before reading ScryDex credentials.
+- Added contract coverage for the env-file loading behavior.
+- Documented the safe local env-file path for live ScryDex credential checks.
+- Added a placeholder-only `.env.example` template for production helpers,
+  ScryDex configuration, live smoke, and bounded catalog indexing.
+
+### Why
+
+Live ScryDex verification should be easy to run without placing API keys in
+shell history, commit history, or test output.
+
+### Files Affected
+
+- `scripts/scrydex-live-smoke.mjs`
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+- `.env.example`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/CHANGELOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `scripts/tests/scrydex-live-smoke-contract.mjs` now verifies local env-file
+  loading markers.
+
+### Rollback Notes
+
+- Revert this helper change to require process environment variables only.
+- No WordPress data or database rollback is required; this helper is read-only.
+
+## 2026-06-09 - ScryDex Reference Metadata Persistence
+
+### What Changed
+
+- Included normalized ScryDex reference metadata in card persistence writes:
+  year, rarity code, language, language code, and release date.
+- Added a unit test proving ScryDex set metadata survives normalization and is
+  included in the reference-card insert payload.
+- Bumped the plugin/package version to `0.161.0`.
+
+### Why
+
+The website-owned ScryDex catalog needs complete set/version context for local
+search, inventory intake, condition/variant selection, and future filters. The
+normalizer already captured these fields, but the persistence planner omitted
+them from insert/update payloads.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistencePlannerTest.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `docs/CHANGELOG.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. The columns already exist in database version `12`.
+
+### Tests Added
+
+- `ScryDexPersistencePlannerTest::test_planner_persists_scrydex_set_metadata_fields`
+
+### Rollback Notes
+
+- Reinstall the prior plugin package to stop writing these metadata fields.
+- No data rollback is required for safe metadata values. If needed, restore the
+  database backup created before a production catalog import.
+
+## 2026-06-09 - ScryDex By-Set Production Indexing
+
+### What Changed
+
+- Added `skip_cards` support to the authenticated ScryDex catalog index
+  endpoint so production tooling can refresh expansion metadata without also
+  importing a global card page.
+- Extended the production ScryDex index runner to follow the requested
+  game-to-set-to-card flow: refresh expansion metadata, read stored ScryDex set
+  IDs from WordPress, then run bounded card imports per set with checkpoint
+  resume.
+- Added bounded controls for by-set indexing:
+  `SCRYDEX_INDEX_BY_SET`, `SCRYDEX_INDEX_SET_LIMIT`, and
+  `SCRYDEX_INDEX_SET_OFFSET`.
+- Bumped the plugin/package version to `0.160.0`.
+
+### Why
+
+The website catalog mirror should be built by game and set so card versions,
+set membership, images, and prices can be synchronized predictably instead of
+depending only on broad provider search pages.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This release uses the existing database target version `12`.
+
+### Tests Added
+
+- Production ScryDex index contract coverage for by-set controls, WordPress
+  reference-set lookup, expansion-only `skip_cards` batches, and redacted
+  output.
+- Catalog controller contract coverage for `skip_cards` and skipped-card
+  summary output.
+
+### Rollback Notes
+
+- Reinstall the prior plugin package to remove `skip_cards` endpoint behavior.
+- Disable by-set production indexing by setting `SCRYDEX_INDEX_BY_SET=false`
+  before running the production helper.
+- If by-set imports wrote unwanted rows, restore the database backup created by
+  the production index runner before the batch.
+
+## 2026-06-09 - ScryDex Catalog Admin Workspace
+
+### What Changed
+
+- Added a WordPress admin **ScryDex Catalog** submenu under the Pug platform
+  admin menu.
+- Staff with inventory access can view secret-free catalog counts and latest
+  ScryDex checkpoints.
+- Managers with settings access can run bounded catalog import batches through
+  the existing authenticated REST catalog index endpoint.
+- The import form includes game, optional expansion ID, card page size/page
+  limit, expansion page/page limit, expansion refresh, and explicit database
+  write confirmation controls.
+- Bumped the plugin/package version to `0.159.0`.
+
+### Why
+
+Operators need a first-class WordPress screen to see whether the website-owned
+ScryDex catalog is filling and to start bounded imports without using shell
+scripts for every batch.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogAdminWorkspaceTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This release uses the existing database target version `12`.
+
+### Tests Added
+
+- ScryDex catalog admin workspace contract coverage for submenu registration,
+  REST endpoint usage, bounded import controls, manager-only write controls,
+  and absence of rendered credential fields.
+
+### Rollback Notes
+
+- Reinstall the prior plugin package to remove the admin workspace.
+- No database rollback is required because this revision adds no migration.
+- Any catalog rows created through the admin import form are covered by the
+  existing ScryDex catalog rollback notes and should be reset from the latest
+  pre-import database backup when a clean reset is required.
+
+## 2026-06-09 - Production ScryDex Catalog Indexing Path
+
+### What Changed
+
+- Added production helpers for approved live WordPress package install,
+  production ScryDex settings configuration, and bounded production ScryDex
+  catalog indexing.
+- The production install helper creates a production database backup, can back
+  up `wp-content`, uploads the packaged plugin zip, installs and activates it,
+  runs pending migrations, verifies catalog REST routes, and prints no secrets.
+- The production ScryDex config helper reads credentials from environment
+  variables or ignored local env files, streams them to a temporary WP-CLI
+  runner over stdin, stores settings server-side, and reports only redacted
+  readiness.
+- The production ScryDex index helper creates a database backup before writes
+  and calls `/wp-json/tcg-store/v1/scrydex/catalog/index` in bounded rounds.
+- The catalog index endpoint now supports bounded expansion pagination with
+  `expansions_page`, `max_expansion_pages`, `next_page`, and continuation
+  metadata.
+
+### Why
+
+The live website needs a real card catalog mirror populated from ScryDex before
+the local server, employee app, kiosk, and storefront can trust card images,
+sets, variants, and prices from the website database.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogControllerContractTest.php`
+- `scripts/lib/local-env.mjs`
+- `scripts/production-install-wordpress-package.mjs`
+- `scripts/production-configure-scrydex.mjs`
+- `scripts/production-run-scrydex-index.mjs`
+- `scripts/tests/production-install-contract.mjs`
+- `scripts/tests/production-scrydex-config-contract.mjs`
+- `scripts/tests/production-scrydex-index-contract.mjs`
+- `docs/DEPLOYMENT.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `scripts/README.md`
+- `package.json`
+- `package-lock.json`
+
+### Migrations Added
+
+- None. This release uses the existing database target version `12`.
+
+### Tests Added
+
+- Production install, ScryDex config, and ScryDex index script contract tests.
+- Catalog controller contract coverage for bounded expansion pagination and
+  credential/raw-provider-body redaction markers.
+
+### Rollback Notes
+
+- Reinstall the prior packaged plugin zip if the production helper causes file
+  issues.
+- Use the production backup path printed by the helper if a database restore is
+  required after catalog writes.
+- If only catalog import rows need cleanup, prefer restoring the pre-index
+  database backup; targeted cleanup must account for reference sets, reference
+  cards, variants, provider price observations, provider price points, and
+  ScryDex checkpoints.
+- ScryDex keys are stored only in WordPress settings; rotate them if any
+  operator accidentally copies raw values into logs or artifacts.
+
+## 2026-06-09 - ScryDex Catalog Database Import Surface
+
+### What Changed
+
+- Added the `0012` ScryDex catalog migration for expansion metadata and
+  provider price points through `tcg_reference_sets` and
+  `tcg_provider_price_points`.
+- Registered authenticated admin/staff catalog endpoints:
+  `GET /wp-json/tcg-store/v1/scrydex/catalog/status` and
+  `POST /wp-json/tcg-store/v1/scrydex/catalog/index`.
+- The status endpoint reports catalog table counts, latest ScryDex
+  checkpoints, database-prefix readiness, and explicit credential redaction
+  flags without returning provider keys.
+- The index endpoint runs bounded ScryDex catalog batches for cards and,
+  optionally, expansions. It clamps ScryDex `page_size` to the documented
+  maximum of 100, caps `max_pages` at 25, checks usage before importing, and
+  keeps database writes behind the explicit `execute_database_writes` flag.
+- Card imports now persist provider set IDs, reference-card set lookup indexes,
+  provider price-point rows, and latest-price lookup indexes; worker
+  continuation also handles documented `page`, `pageSize`, and `totalCount`
+  pagination.
+- Cache-miss `/reference/search` fallback can persist normalized ScryDex rows
+  without writing synthetic checkpoint rows, and the catalog import write
+  endpoint now requires manager/settings-level permission.
+- Documentation now calls out that production ScryDex keys must not be stored
+  in the repository; use environment variables, deployment secrets, or
+  WordPress administrator settings only.
+
+### Why
+
+The website needs a server-owned ScryDex catalog mirror with observable import
+state before the local app and LAN server can rely on website catalog data at
+store scale. The catalog import endpoints give staging operators a bounded,
+credential-redacted way to build and inspect that mirror without exposing
+ScryDex keys to clients.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/ScryDexCatalogSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0012ScryDexCatalog.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCatalogSchemaTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- `0012_scrydex_catalog` creates `tcg_reference_sets` and
+  `tcg_provider_price_points` and refreshes existing reference-card and
+  provider-price-observation table definitions through dbDelta.
+
+### Tests Added
+
+- ScryDex catalog schema coverage for the reference-set table, provider
+  price-point table, and rollback drop order.
+- Existing ScryDex normalizer, worker, planner, query-builder, and repository
+  tests now cover provider price-point planning/execution and checkpoint-safe
+  fallback behavior.
+
+### Verification
+
+- `php tests\run.php` from `apps/wordpress-plugin`: 938 tests, 0 failures.
+- `npm.cmd run verify:no-production-secrets`: passed.
+
+### Rollback Notes
+
+- Run a staging database export before enabling `execute_database_writes`.
+- To roll back the catalog schema, roll migrations back below version `12` or
+  run the `Version0012ScryDexCatalog::down()` path, which drops
+  `tcg_provider_price_points` before `tcg_reference_sets`.
+- If an import has already executed, restore the staging database backup for a
+  clean reset. If a targeted cleanup is approved instead, remove imported
+  ScryDex rows from `tcg_reference_sets`, `tcg_provider_price_points`, and any
+  card, variant, price-observation, or checkpoint rows written by the same
+  import scope.
+- Revert the catalog controller registration to remove the status/import
+  endpoints. Calling the status endpoint alone has no data rollback
+  requirement.
+- If a ScryDex key is ever accidentally committed, printed, or copied into a
+  log, rotate it immediately; production keys must remain outside Git.
+
+## 2026-06-08 - LAN Inventory Search Hydration Preview
+
+### What Changed
+
+- Offline app inventory search now calls the central LAN sync server
+  `/inventory/search` route as the user types, merges returned rows into the
+  local app cache, and keeps the existing device-cache filter as fallback.
+- Added visible inventory search status copy showing LAN cache, searching, and
+  device-cache fallback states.
+- Renamed the ScryDex intake control copy to a broader card catalog lookup
+  while preserving the server-side local-cache-first, WordPress proxy, and
+  ScryDex-backed catalog flow.
+- Expanded LAN inventory search matching to include location, set code, card
+  number, printed number, condition, provider card ID, barcode, public ID, card
+  name, and set name.
+
+### Why
+
+The preview needed the employee app to behave like it is connected to the
+central local database, not just filtering whatever rows React happened to
+have already loaded. This also makes location and condition searches match the
+visible placeholder and staff expectations.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline UI contract markers for LAN inventory search hydration and catalog
+  lookup labeling.
+- LAN runtime coverage for inventory search by WordPress location and
+  condition.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps\offline-app\tests\ui-shell-contract.mjs`
+- `node apps\offline-app\tests\local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+- Browser QA at `http://127.0.0.1:1420/`: PIN login, Inventory workspace,
+  LAN search for `Charizard`, catalog search for `Charizard`, Use Card, image
+  preview, and Add Inventory to a pending local intake row.
+
+### Rollback Notes
+
+- Revert this revision to return the main inventory search to device-cache-only
+  filtering and restore the narrower LAN search predicate.
+- No database rollback is required; local pending-intake rows created during
+  preview can be voided from the Queue if needed.
+
+## 2026-06-08 - Square Inventory Batch Endpoint Alignment
+
+### What Changed
+
+- Updated the WordPress Square sync request planner and shared API-client
+  adapter to prepare inventory count requests against
+  `/v2/inventory/changes/batch-create`.
+- Kept the internal `inventory_batch_change`/`inventoryBatchChange` request
+  keys stable so downstream audit payloads and UI consumers do not need a
+  broad contract rename.
+- Updated POS/Square documentation and tests to match the current request path.
+
+### Why
+
+Square inventory projection is still sandbox/deferred, but the staged request
+envelopes should match the current Square Inventory API before live inventory
+write plumbing is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncRequestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncRequestPlannerTest.php`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `docs/PAYMENTS_POS.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated existing Square request planner and adapter assertions for the
+  current inventory batch-create path.
+
+### Verification
+
+- `php -l apps\wordpress-plugin\src\Square\SquareInventorySyncRequestPlanner.php`
+- `node packages\api-client\tests\square-inventory-adapter.mjs`
+- `php tests\run.php` from `apps/wordpress-plugin`
+- `npm.cmd run verify:no-production-secrets`
+
+### Rollback Notes
+
+- Revert this revision to restore the prior staged Square inventory request
+  path.
+- No database rollback is required because this revision only changes deferred
+  request envelopes, tests, and documentation.
+
+## 2026-06-08 - PIN Session Timeout Enforcement
+
+### What Changed
+
+- Offline app PIN login now sends the configured timeout value as `ttlMinutes`
+  to the LAN local sync server.
+- Offline app stores the returned LAN session expiration, shows the auto-lock
+  time in the manager/session panel, and locks the app when the session
+  expires.
+- LAN runtime coverage now proves a requested short TTL is reflected in the
+  issued session expiration.
+
+### Why
+
+The setup/settings UI exposed a session timeout value, but the app was not
+using it when authenticating with the LAN server. Staff sessions now follow the
+admin-configured timeout instead of always using the LAN default.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline client contract coverage for `ttlMinutes`.
+- Offline app shell coverage for expiration state, auto-lock copy, and
+  requested TTL login call.
+- LAN runtime coverage for requested TTL expiration.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:runtime`
+
+### Rollback Notes
+
+- Revert this revision to return to fixed LAN-default session durations.
+- No data migration is required; existing in-memory LAN sessions will continue
+  until their already-issued expiration times.
+
+## 2026-06-08 - Local Sync Secret Verification Contract Cleanup
+
+### What Changed
+
+- Renamed the local sync safety contract field from a false-positive secret
+  marker to `live_credentials_blocked_in_local_server`.
+- Updated the local sync server contract test to assert the new positive
+  safety field.
+
+### Why
+
+The root no-production-secrets verifier was correctly scanning the codebase but
+flagged a safety-property name that contained the blocked marker text. This
+blocked the verification gate even though no production secret was present.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Updated existing local sync server contract coverage for the renamed safety
+  property.
+
+### Verification
+
+- `npm.cmd run verify:no-production-secrets`
+- `npm.cmd --prefix apps/local-sync-server run test:contract`
+
+### Rollback Notes
+
+- Revert this revision only if downstream tooling depends on the old field
+  name; doing so will likely reintroduce the no-production-secrets false
+  positive unless the scanner is separately allowlisted.
+
+## 2026-06-08 - ScryDex Reference Import Idempotency
+
+### What Changed
+
+- Changed ScryDex reference-card insert SQL templates to use
+  `ON DUPLICATE KEY UPDATE` against the provider identity key.
+- Preserved existing reference card `public_id` values on duplicate provider
+  cards while refreshing metadata, images, search text, timestamps, and row
+  versions.
+- Added query-builder contract coverage requiring idempotent reference-card
+  write templates for resumable paginated imports.
+
+### Why
+
+The ScryDex scheduled runner can receive the same provider card again when a
+page is retried or a paginated staging import resumes. Provider-price
+observations and reference variants already tolerate repeat writes; reference
+cards also need to be idempotent so long-running catalog imports do not fail on
+duplicate provider keys.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses the existing unique provider identity key on
+  `tcg_reference_cards`.
+
+### Tests Added
+
+- Updated ScryDex persistence query-builder coverage to require
+  `ON DUPLICATE KEY UPDATE`, row-version advancement, and the
+  `reference_card_insert_idempotent` audit flag for reference-card writes.
+
+### Verification
+
+- `php -l apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `php -l apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+
+### Rollback Notes
+
+- Revert this revision to restore pure reference-card inserts.
+- If rollback happens after a staging import retry, no data migration is
+  required, but future repeated ScryDex pages may again fail on duplicate
+  provider-card rows until existing rows are supplied to the planner.
+
+## 2026-06-08 - Event Check-In Push to WordPress
+
+### What Changed
+
+- Added a staff-only WordPress `POST /tcg-store/v1/events/{slug}/check-ins`
+  route that records check-ins in `tcg_event_checkins` and updates the matching
+  event registration to `checked_in`.
+- Added matching by registration public ID, email, or attendee name, with
+  idempotent handling for duplicate local check-in operations.
+- Added a LAN sync server WordPress event check-in push adapter and wired
+  `/sync/status` plus `/sync/push` to report and process
+  `wordpress_event_checkin_push_connected`.
+- Updated the offline app sync visibility panel and local sync types so event
+  check-ins display as WordPress-capable when the LAN connector is configured.
+
+### Why
+
+Staff can already queue event check-ins locally from shared cached event data.
+Those check-ins must now reach WordPress so the website remains the event
+registration and attendance source of truth across employee stations.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/EventsController.php`
+- `apps/wordpress-plugin/tests/Unit/ApiRouteContractTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/local-sync-server/src/wordpressEventCheckinPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-event-checkin-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The route uses the existing `tcg_event_registrations`,
+  `tcg_event_checkins`, and `tcg_event_registration_logs` tables.
+
+### Tests Added
+
+- WordPress route contract and integration-smoke coverage for the protected
+  event check-in route.
+- LAN event check-in push adapter coverage for request mapping, idempotency
+  headers, response parsing, invalid payload blocking, and secret-safe output.
+- LAN runtime coverage proving queued `event_checkin` operations are accepted
+  and removed from the local queue during `/sync/push`.
+- Offline local-sync client contract coverage for the event check-in push
+  status flag.
+
+### Verification
+
+- `php -l apps/wordpress-plugin/src/Api/V1/EventsController.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the WordPress check-in route and LAN
+  `event_checkin` push adapter; local check-ins will remain queued locally.
+- Check-ins already accepted on staging should be reviewed before rollback
+  because their registrations will have `status` and `checkin_status` set to
+  `checked_in`.
+- No payment capture, Square integration, or inventory movement is affected by
+  this revision.
+
+## 2026-06-08 - Kiosk Pickup Order Reservation Push
+
+### What Changed
+
+- Added a WordPress `POST /tcg-store/v1/kiosk/orders` route for kiosk pickup
+  orders that reserves exact inventory rows in the existing reservation table.
+- Added a LAN sync server WordPress kiosk order push adapter.
+- Updated `/sync/status` and `/sync/push` to report
+  `wordpress_kiosk_order_push_connected`, push queued `kiosk_order`
+  operations, and clear matching local kiosk inventory reservation rows when
+  WordPress accepts the pickup order.
+- Updated the offline app sync visibility panel and local sync types to show
+  kiosk order push capability when configured.
+
+### Why
+
+The in-store kiosk needs to let customers choose available cards and submit a
+pickup request using only first and last name. The website remains the source
+of truth for inventory, so accepted kiosk orders must become exact inventory
+reservations on WordPress rather than staying only in the local LAN queue.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/KioskOrderController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/KioskOrderRouteContractTest.php`
+- `apps/local-sync-server/src/wordpressKioskOrderPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-kiosk-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The route uses the existing `tcg_inventory_items` and
+  `tcg_reservations` tables.
+
+### Tests Added
+
+- WordPress route contract coverage proving the kiosk route reserves exact
+  inventory and does not expose payment capture or checkout creation methods.
+- LAN kiosk push adapter coverage for request mapping, idempotency headers,
+  response parsing, invalid payload blocking, and secret-safe output.
+- LAN runtime coverage proving kiosk orders are accepted and matching local
+  inventory reservation rows are cleared during `/sync/push`.
+- Offline UI shell coverage for kiosk push visibility text.
+
+### Verification
+
+- `php -l src/Api/V1/KioskOrderController.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the kiosk pickup route and LAN kiosk push
+  adapter; local kiosk orders will remain queued only.
+- Kiosk reservations already created on staging should be released or allowed
+  to expire before rollback if they are blocking inventory from testing.
+- This route does not capture payment, create WooCommerce orders, or modify
+  Square payments; Square/POS completion remains a separate staff action.
+
+## 2026-06-08 - Customer Upsert Before Credit Sync
+
+### What Changed
+
+- Added a staff-only WordPress `POST /tcg-store/v1/customers` route that
+  creates or updates rows in `tcg_customers`.
+- Added `manage_customers` to the platform capability registry and bumped the
+  role installer version from 2 to 3 so staff, managers, administrators, and
+  shop managers can receive the new customer identity capability.
+- Added a LAN sync server WordPress customer upsert adapter and wired
+  `/sync/push` to process `customer_upsert` operations before credit
+  adjustments/redemptions.
+- Updated local customer snapshots to include `wordpress_customer_id`, refresh
+  accepted credit balances from WordPress credit posting responses, and report
+  `wordpress_customer_push_connected` in sync status.
+- Updated the offline app sync visibility panel and TypeScript models for
+  customer upsert connectivity and accepted credit ledger rows.
+
+### Why
+
+Credit sync was only complete for customers that already existed on the
+website. New in-store customers could be created locally, but their credit
+operations stayed queued because there was no WordPress customer ID. This
+revision creates the smallest useful customer identity write path so local
+customer creation can unlock credit sync without expanding into deletes,
+merges, portal account linking, or payment capture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/CustomerController.php`
+- `apps/wordpress-plugin/src/Auth/CapabilityRegistry.php`
+- `apps/wordpress-plugin/src/Auth/RoleManager.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/CapabilityRegistryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/local-sync-server/src/wordpressCustomerUpsertPush.mjs`
+- `apps/local-sync-server/src/wordpressCreditPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-customer-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The customer upsert route writes to the existing `tcg_customers`
+  schema. The role installer version was bumped to refresh capabilities.
+
+### Tests Added
+
+- WordPress customer route contract coverage for the staff-only upsert surface.
+- Capability registry coverage proving staff can manage customer identity
+  while still lacking credit adjustment permission.
+- LAN customer push adapter coverage for request mapping, idempotency header
+  handling, response parsing, blocked invalid payloads, and secret-safe output.
+- LAN runtime coverage proving customer upsert runs before credit adjustment
+  and redemption in the same push attempt.
+- Offline UI shell coverage for the new customer-upsert sync visibility text.
+
+### Verification
+
+- `php -l src/Api/V1/CustomerController.php`
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove the customer upsert route, `manage_customers`
+  capability, LAN customer push adapter, and customer-upsert sync visibility.
+- If the role installer already ran on staging, rerun role installation after
+  rollback or remove `manage_customers` from staging roles manually.
+- Customers created on staging through this route can remain harmless test
+  rows, be merged later, or be removed from `tcg_customers` after confirming no
+  related credit ledger rows are needed.
+- Credit postings accepted after customer upsert should be reviewed before
+  rollback because they represent real staging ledger history.
+
+## 2026-06-08 - LAN Event and Credit Push Visibility
+
+### What Changed
+
+- Added LAN sync server WordPress push adapters for queued local event
+  registrations and customer credit ledger operations.
+- Added staff-only WordPress customer credit REST write endpoints for manager
+  adjustments and purchase redemptions using the existing ledger parser,
+  service, repository, presenter, permissions, and idempotency boundary.
+- Updated `/sync/status` and `/sync/push` to report channel-specific
+  WordPress push connectivity for inventory, events, and credit.
+- Updated the offline app Sync and Queue views with an operation visibility
+  panel that shows what can push to WordPress now and what still remains local.
+
+### Why
+
+Inventory push alone was not enough for a useful preview. Staff workflows also
+need event registrations and store credit actions to move from the shared LAN
+queue toward the website while keeping Square payment capture delegated to the
+official Square POS/WooCommerce integration. This revision connects the next
+two highest-value write paths without exposing WordPress credentials to client
+apps and without inventing a custom payment gateway.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressEventRegistrationPush.mjs`
+- `apps/local-sync-server/src/wordpressCreditPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/wordpress-event-registration-push.mjs`
+- `apps/local-sync-server/tests/wordpress-credit-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/wordpress-plugin/src/Api/V1/CustomerCreditController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/CustomerCreditRouteContractTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses the existing event registration and customer credit
+  ledger tables.
+
+### Tests Added
+
+- LAN event registration push adapter coverage for authenticated WordPress
+  request mapping, idempotency headers, response parsing, payload validation,
+  and secret-safe failure output.
+- LAN credit push adapter coverage for adjustment/redemption endpoint mapping,
+  WordPress customer ID requirements, idempotency headers, ledger payload
+  shaping, and secret-safe failure output.
+- LAN runtime coverage for pushing inventory, event registrations, and credit
+  operations while leaving unsupported operation types queued.
+- WordPress route contract coverage for the live customer credit write
+  controller methods and permission callbacks.
+- Offline UI shell contract coverage for the operation visibility panel.
+
+### Verification
+
+- `php tests/run.php` from `apps/wordpress-plugin`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+
+### Rollback Notes
+
+- Revert this revision to remove customer credit REST write routes and return
+  LAN push to inventory-only behavior.
+- Event registration and credit operations already accepted by WordPress should
+  be reviewed in staging before rollback; queued local retry rows can remain in
+  `store-sync.sqlite` for later replay or be voided from the offline app Queue
+  workspace.
+- New local-only customers still cannot post credit to WordPress until the
+  customer upsert route is implemented; those operations intentionally stay
+  queued with `wordpress_customer_id_required`.
+- The currently running LAN preview server must be restarted with WordPress
+  event/credit credential environment variables before this new push behavior
+  is visible in the live `http://127.0.0.1:1420` preview.
+
+## 2026-06-08 - Guarded Staging ScryDex Catalog Import Runner
+
+### What Changed
+
+- Added `npm run staging:run-scrydex-sync`, a staging-only SSH/WP-CLI runner
+  that configures the existing ScryDex scheduled worker for a bounded batch and
+  executes it through WordPress.
+- Added explicit confirmation, game/page-size/max-page environment controls,
+  staging environment enforcement, and redacted result summaries.
+- Added packaging contract coverage for the staging ScryDex sync runner.
+
+### Why
+
+The website needs to build and refresh the ScryDex catalog mirror rather than
+having local apps query ScryDex directly. The existing plugin worker already
+had provider, checkpoint, persistence, and safety gates; this revision gives us
+a repeatable staging operation to run small verified batches and later scale up
+page counts deliberately.
+
+### Files Affected
+
+- `scripts/staging-run-scrydex-sync.mjs`
+- `scripts/tests/staging-scrydex-sync-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for npm script availability, explicit
+  confirmation, staging-only execution, bounded page controls, redaction
+  markers, and absence of credential-printing patterns.
+
+### Verification
+
+- `node scripts/tests/staging-scrydex-sync-contract.mjs`
+- `npm.cmd run staging:run-scrydex-sync -- --dry-run`
+- `npm.cmd run staging:configure-scrydex -- --status` confirmed staging
+  ScryDex provider and usage budget are configured and ready without printing
+  credentials.
+- `npm.cmd run scrydex:live-smoke` confirmed the live ScryDex provider returns
+  Pokémon card data for a tiny read-only Charizard query.
+- Live staging bounded import: `SCRYDEX_SYNC_GAMES=pokemon`,
+  `SCRYDEX_SYNC_PAGE_SIZE=5`, `SCRYDEX_SYNC_MAX_PAGES=1`,
+  `PUG_STAGING_CONFIRM_SCRYDEX_SYNC=run-staging-scrydex-sync`; result wrote 5
+  new reference rows, used 1 provider request, processed 1 page, deferred no
+  database writes, and printed no raw provider body or credential values.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging runner and contract test.
+- The live smoke created staging ScryDex reference/price/checkpoint rows only;
+  remove staging rows from the ScryDex reference, variant, price observation,
+  and checkpoint tables or restore a staging database backup if a clean catalog
+  seed is needed.
+- Do not run the staging sync runner with large page counts until provider
+  budget and desired game list are confirmed.
+
+## 2026-06-08 - LAN Inventory Pull From WordPress
+
+### What Changed
+
+- Added a server-held WordPress inventory pull adapter for
+  `/wp-json/tcg-store/v1/inventory/search`.
+- Connected local `/sync/pull` to import available website inventory rows into
+  the LAN SQLite inventory cache.
+- Added pull connectivity metadata to `/sync/status`.
+- Updated offline app Sync Now to run LAN pull before LAN push and show the
+  last LAN sync result in the Sync workspace.
+
+### Why
+
+The website is the source of truth, but staff/kiosk stations need a fresh local
+copy for offline use. This revision opens the website-to-LAN direction so local
+stations can refresh available inventory, images, prices, and status before
+queued local work is pushed back to WordPress.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressInventoryPull.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-pull.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/src/App.tsx`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. Existing local SQLite inventory columns already store provider IDs,
+  prices, status, image URLs, source, and row versions.
+
+### Tests Added
+
+- WordPress inventory pull adapter coverage for authenticated request mapping,
+  response item/meta parsing, bounded page sizes, secret redaction, and
+  unavailable HTTP responses.
+- Local sync runtime coverage for `/sync/pull`, website row insertion,
+  price/image mapping, pull connectivity status, and preserving queued
+  local-only inventory rows.
+- Offline app local sync client contract coverage for `pullWebsiteInventory`
+  and `wordpress_pull_connected`.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- Restarted the running LAN sync server on `http://127.0.0.1:8787` with
+  staging WordPress pull/push credentials and default staging location.
+- Live `/sync/pull` smoke pulled 5 available staging inventory rows into the
+  LAN cache, including a Charizard row with image preserved.
+- Browser smoke at `http://127.0.0.1:1420`: PIN `1420`, Sync Now displayed
+  the Last LAN sync result with LAN pull and push summaries and no new console
+  errors.
+
+### Rollback Notes
+
+- Revert this revision to return `/sync/pull` to a deferred scaffold and
+  remove the Sync workspace LAN pull result card.
+- Pulled rows are local cache rows only; deleting the local preview SQLite file
+  or replacing it from backup resets them.
+- Revoke staging WordPress application passwords created for preview restarts
+  after the preview window if they are no longer needed.
+
+## 2026-06-08 - Location-Aware LAN Inventory Acceptance
+
+### What Changed
+
+- Added a LAN sync server default WordPress location setting for inventory
+  pushes.
+- Updated queued local inventory intake payloads to send `available` status
+  plus `location_id` when the configured website location is present, while
+  retaining `pending_intake` behavior when no location is configured.
+- Updated WordPress intake parsing to preserve ScryDex provider identity and
+  front/back image URLs from local app inventory pushes.
+
+### Why
+
+The preview flow needs staff-added inventory to become live website inventory
+when a real staging location is configured, and the website row must retain the
+ScryDex reference ID and card art URL used by the local app so local, kiosk,
+and web views can stay visually consistent.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeParser.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeParserTest.php`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Local sync server WordPress inventory push assertions for default-location
+  acceptance and fallback pending-intake behavior.
+- WordPress intake parser assertions for ScryDex provider IDs and remote image
+  URL preservation.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `php apps/wordpress-plugin/tests/run.php --filter 'InventoryIntakeParserTest|InventoryIntakePersistencePlannerTest|InventoryIntakeRouteHandlerFactoryTest'`
+- Rebuilt and installed `tcg-store-platform-0.156.0.zip` on GoDaddy staging;
+  direct remote file check confirmed deployed `InventoryIntakeParser.php`
+  contains the ScryDex provider/image fields.
+- Live local sync smoke created disposable barcode `PUG-CE34879C`, pushed it
+  from the LAN server to staging, and confirmed the WordPress database row is
+  `available`, has a location ID, preserves `provider_name=scrydex`,
+  preserves `provider_card_id=scrydex-stage-charizard-004`, and preserves the
+  card front image URL.
+
+### Rollback Notes
+
+- Revert this revision to restore pending-intake-only local inventory pushes
+  and omit provider/image fields from WordPress intake parsing.
+- Any disposable staging inventory rows created during smoke testing can be
+  removed by their generated `PUG-*` barcode.
+- Revoke staging WordPress application passwords created for preview smoke
+  tests after the preview window if they are no longer needed.
+
+## 2026-06-08 - LAN Inventory Push To WordPress
+
+### What Changed
+
+- Added a local sync server WordPress inventory push adapter that maps queued
+  `inventory_intake` operations to the staging WordPress `/inventory` REST
+  create route with server-held WordPress authorization.
+- Wired `/sync/push` to replay manager-authorized queued inventory intake
+  operations, mark accepted local rows as `accepted`, and clear accepted queue
+  rows while leaving unsupported operation types queued.
+- Added an offline app local sync client method for `/sync/push`.
+- Updated the offline app Sync Now action to call the LAN server push route
+  when a PIN session is active and reflect accepted inventory rows in the local
+  UI.
+
+### Why
+
+The local app and LAN server already could search website-backed ScryDex
+references and create local pending inventory. This revision closes the first
+write loop by letting the LAN server send accepted inventory intake rows back
+to WordPress, keeping the website as the source of truth and keeping WordPress
+credentials off the client.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressInventoryPush.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/wordpress-inventory-push.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/src/App.tsx`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- WordPress inventory push adapter contract for request mapping, idempotency
+  header use, credential redaction, accepted responses, and rejected responses.
+- Local sync server runtime coverage for manager-only inventory push replay,
+  accepted queued inventory rows, preserved image URL, queue-depth reduction,
+  and unsupported operation retention.
+- Offline app local sync client contract coverage for `/sync/push`.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- Live local server restart against GoDaddy staging with server-held WordPress
+  application password; `/sync/push` accepted the pending Charizard intake row
+  with WordPress code `inventory_item_created` and reduced LAN queue depth from
+  1 to 0.
+- Browser smoke at `http://127.0.0.1:1420`: PIN `1420`, Inventory, ScryDex
+  lookup, Use Card, Add Inventory, then Sync Now accepted 1 LAN inventory item
+  into WordPress with no console errors.
+
+### Rollback Notes
+
+- Revert this revision to return `/sync/push` to a deferred/scaffold state.
+- Any disposable staging inventory rows created during live push smoke can be
+  removed from the WordPress staging inventory table by barcode if a clean
+  staging catalog is needed.
+- Revoke staging WordPress application passwords created for LAN push smoke
+  after the preview window if they are no longer needed.
+
+## 2026-06-08 - Offline ScryDex Image Intake Preview
+
+### What Changed
+
+- Updated the offline app selected-card preview to render the selected
+  ScryDex/website reference image when available, falling back to the existing
+  placeholder art only when no image URL exists.
+- Adjusted the ScryDex Use Card action to keep the card reference attached but
+  leave the physical-copy barcode blank by default, allowing the LAN sync
+  server to auto-generate a unique barcode per inventory copy.
+- Added responsive image styling so live card photos fit inside the selected
+  card frame without cropping the title/footer.
+
+### Why
+
+Staff need the searched card photo, market price, condition, and quantity
+review visible before adding inventory. ScryDex provider IDs are reference
+identifiers, not unique physical-copy barcodes, so the intake flow should let
+the local server issue unique copy codes unless staff enter one manually.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None. This revision tightens an existing UI path and was verified through the
+  running browser preview.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- Browser smoke at `http://127.0.0.1:1420`: PIN `1420`, Inventory, ScryDex
+  lookup for `scrydex-stage-charizard-004`, verified the result and selected
+  card pane loaded `https://images.pokemontcg.io/base1/4_hires.png`.
+- Browser smoke continued through Use Card and Add Inventory, creating a
+  pending local Charizard inventory copy with an auto-generated `PUG-*` barcode,
+  `$250.00` price, queued sync source, and preserved card image.
+
+### Rollback Notes
+
+- Revert this revision to restore the placeholder-only selected-card preview
+  and the previous ScryDex suggested-barcode prefill behavior.
+- Remove any disposable pending-intake rows created in the local preview SQLite
+  database if a clean demo state is needed.
+
+## 2026-06-08 - Local Sync WordPress Catalog Connector Auth
+
+### What Changed
+
+- Added server-side WordPress catalog authorization support to the LAN sync
+  server fallback client.
+- Added CLI environment inputs for either a complete catalog authorization
+  header or a WordPress username plus application password.
+- Updated catalog fallback tests to verify authorization headers are sent to
+  WordPress, redacted from responses, and never synced to clients.
+
+### Why
+
+The staging website keeps public inventory/catalog reads disabled. The local
+sync server therefore needs its own per-company connector credential so offline
+clients can still search the website catalog through the LAN server without
+opening public endpoints or storing ScryDex credentials on clients.
+
+### Files Affected
+
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- WordPress catalog fallback assertions for Bearer/app-password authorization
+  handling and redacted response metadata.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- Staging smoke: local sync server in-memory API used a staging WordPress
+  application password to fetch `/reference/search` after a local cache miss.
+
+### Rollback Notes
+
+- Revert this revision to remove authenticated WordPress catalog fallback
+  support.
+- Revoke any staging WordPress application passwords created for connector
+  smoke testing if the staging connector path is disabled.
+
+## 2026-06-08 - Staging Reference Search Runtime Verification
+
+### What Changed
+
+- Added a guarded staging inventory runtime configurator for the
+  `inventory_pricing` feature flag and staff inventory/reference search gates.
+- Added a guarded staging pending-migrations runner that exports a staging
+  database backup before applying plugin migrations.
+- Expanded the staging inventory smoke test to seed a disposable Charizard
+  reference card with image URL, market price, and variants, then verify
+  `/tcg-store/v1/reference/search` returns that payload.
+- Exposed `reference_search_handler_ready` in the inventory route dependency
+  health payload so staging/status screens can show the add-card lookup route.
+
+### Why
+
+The add-to-inventory preview needs proof that the website, database schema, and
+REST route are actually ready to provide card photos, prices, and versions to
+the LAN sync server/offline app path.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `scripts/staging-configure-inventory-runtime.mjs`
+- `scripts/staging-run-pending-migrations.mjs`
+- `scripts/tests/staging-inventory-runtime-config-contract.mjs`
+- `scripts/tests/staging-pending-migrations-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The staging runner applies existing pending migrations and confirmed
+  `Version0011ReferenceCardImages` on staging.
+
+### Tests Added
+
+- Staging inventory runtime configuration contract.
+- Staging pending migrations contract.
+- Expanded staging inventory smoke assertions for reference search image,
+  price, and variant response data.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/lint.php`
+- `php apps/wordpress-plugin/tests/run.php`
+- `node scripts/tests/staging-inventory-runtime-config-contract.mjs`
+- `node scripts/tests/staging-pending-migrations-contract.mjs`
+- `node scripts/tests/staging-inventory-smoke-contract.mjs`
+- `npm.cmd run staging:run-pending-migrations`
+- `npm.cmd run staging:configure-inventory-runtime`
+
+### Rollback Notes
+
+- Revert this revision to remove the staging helper scripts and smoke
+  assertions.
+- Staging migration rollback for the existing reference-image columns can use
+  `MigrationRunner::rollback_to(10)` after restoring or confirming the staging
+  backup export.
+- The staging runtime gates can be disabled from plugin settings or by rerunning
+  the configurator with the staff search/create env flags set to false.
+
+## 2026-06-08 - ScryDex Variant Catalog Sync
+
+### What Changed
+
+- Extended ScryDex normalization to extract provider variants, versions,
+  printings, and finishes into normalized reference-variant rows.
+- Added reference-variant upsert planning, SQL generation, staged repository
+  results, transaction-backed execution, and audit counters to the ScryDex
+  sync pipeline.
+- Updated `/tcg-store/v1/reference/search` to return card variants alongside
+  image, stock, and latest price data.
+- Added LAN sync server variant caching in `reference_cards.variants_json`,
+  local search matching across variant/version fields, and seeded preview
+  variant rows.
+- Added offline app typing and lookup display for version/finish labels.
+
+### Why
+
+Inventory intake needs more than a flat card name. Staff must be able to see
+which version/finish/printing they are adding, while the website remains the
+source of truth and offline stations keep enough cached data for disconnected
+work.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizationResult.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepository.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPagePlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPageProcessor.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistencePlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncPageProcessorTest.php`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `fixtures/mocks/scrydex/cards-page-1.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL migration was added; this uses the existing
+  `tcg_reference_variants` table.
+- Local SQLite cache adds/ensures a `reference_cards.variants_json` column.
+
+### Tests Added
+
+- ScryDex normalizer, page processor, persistence planner, query builder,
+  repository, worker planner, and reference-search route assertions for
+  variant/version rows.
+- Existing LAN sync server persistence/runtime tests now exercise the expanded
+  reference-card cache shape.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+
+### Rollback Notes
+
+- Revert this revision to remove provider variant extraction, variant upsert
+  SQL, WordPress reference-search variant payloads, and local
+  `variants_json` caching.
+- No WordPress schema rollback is needed because the existing
+  `tcg_reference_variants` table remains valid.
+- Local SQLite rollback can leave `reference_cards.variants_json` in place; it
+  is ignored by older code and can be dropped manually only if a clean local
+  cache rebuild is desired.
+
+## 2026-06-08 - WordPress Reference Search Route
+
+### What Changed
+
+- Added a connected WordPress `/tcg-store/v1/reference/search` handler under
+  the existing inventory staff-search read gate.
+- Returned catalog-safe reference-card data for local fallback lookups:
+  provider card id, game, set/version fields, image URLs, latest provider price
+  observation, catalog timestamps, and secret-free metadata.
+- Added a local sync server WordPress catalog fallback client configured by
+  `PUG_WORDPRESS_URL`, with bounded result limits and secret-safe unavailable
+  responses.
+- Updated inventory route runtime configuration so reference search registers
+  alongside staff inventory search when connected reads are enabled.
+- Updated route dependency and route handler factory tests for the third staged
+  read handler.
+
+### Why
+
+The LAN sync server needs a website-owned catalog fallback before it can keep
+employee app and kiosk lookups local-first. This route provides the website
+surface that serves mirrored ScryDex catalog rows without exposing provider
+credentials to local clients.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/wordpressCatalogFallback.mjs`
+- `apps/local-sync-server/tests/wordpress-catalog-fallback.mjs`
+- `apps/local-sync-server/README.md`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL migration was added.
+- No local SQLite migration was added.
+
+### Tests Added
+
+- Reference search handler coverage for catalog card identity, image URL,
+  provider price conversion, count query, and credential-free response flags.
+- Reference search request validation coverage for empty query rejection.
+- Factory/route dependency coverage for connected reference search registration.
+- Local sync server WordPress catalog fallback coverage for URL normalization,
+  response parsing, unavailable HTTP responses, and secret-safe status output.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+- `npm.cmd --prefix apps/local-sync-server run test`
+
+### Rollback Notes
+
+- Revert this revision to remove the connected reference-search handler and
+  return `/reference/search` to a disabled/staged contract only, and to remove
+  `PUG_WORDPRESS_URL` fallback wiring from the LAN sync server.
+- No data rollback is required because this revision only reads existing
+  reference-card and provider-price tables.
+
+## 2026-06-08 - Local-First ScryDex Lookup Cache
+
+### What Changed
+
+- Updated the LAN sync server ScryDex lookup route to search persisted local
+  reference cards before using a website catalog/ScryDex proxy fallback.
+- Added a local `reference_cards` SQLite cache with normalized card identity,
+  set, price, image, barcode, and catalog timestamp fields.
+- Persisted fallback proxy results into the local cache so repeated employee
+  app lookups are served locally.
+- Added lookup-order, cache-hit, proxy-performed, proxy-required, and reference
+  card count status metadata.
+- Seeded preview PIN `1420` as a manager user in the local sync server and
+  offline app fallback profile.
+
+### Why
+
+The employee app and kiosk must mirror the website catalog instead of calling
+ScryDex directly from every client. This revision makes lookup behavior match
+the requested rule: local/web catalog first, ScryDex fallback only through the
+server path when the card is missing, then cache the result.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added local SQLite `reference_cards` table for the LAN sync server.
+- No WordPress/MySQL production migration was added in this revision.
+
+### Tests Added
+
+- Runtime coverage for cache-hit ScryDex lookup, cache-miss website proxy
+  fallback, fallback card normalization, persistence into local reference
+  cache, and second-search local cache reuse.
+- Contract coverage for local-first ScryDex lookup responsibilities and
+  app-side lookup/status metadata.
+- Persistence coverage for reference-card cache presence after restart.
+
+### Verification
+
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `npm.cmd --prefix apps/offline-app run test:package-contract`
+
+### Rollback Notes
+
+- Revert this revision to remove the local `reference_cards` cache and
+  website-proxy fallback behavior from the LAN sync server.
+- Local preview databases created during this revision may contain
+  `reference_cards`; deleting the local `store-sync.sqlite` file resets the
+  development cache.
+- No production rollback is required because this revision does not add or
+  execute WordPress production database writes.
+
+## 2026-06-08 - ScryDex Scheduled Refresh Controls
+
+### What Changed
+
+- Added ScryDex daily refresh settings for game keys, cards page size, max
+  pages per game, network-request enablement, database-write enablement, and
+  explicit persistence execution confirmation.
+- Added a ScryDex scheduled refresh planner that blocks production, checks the
+  `scrydex_sync` feature flag, validates the active database prefix, and emits
+  secret-free status output.
+- Added a daily refresh runner subscribed to the existing platform daily
+  dispatch hook.
+- Exposed ScryDex schedule/readiness details in health and System Status
+  output.
+- Added unit coverage for schedule sanitization, default deferrals, staging
+  readiness, and production blocking.
+
+### Why
+
+The website must become the authoritative ScryDex catalog mirror, but scheduled
+provider pulls need visible controls and strict non-production gates before
+they can run. This revision gives staging/local a resumable daily entry point
+without allowing production ScryDex execution.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Settings/ScryDexScheduleSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexScheduledRefreshPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexScheduledRefreshRunner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexScheduleSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexScheduledRefreshPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex schedule settings tests for default deferrals and configured
+  secret-free readiness.
+- ScryDex scheduled refresh planner tests for default blocking, ready staging
+  gates, and production blocking.
+- Settings sanitizer coverage for schedule game keys and execution gates.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+- `php apps/wordpress-plugin/tests/lint.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the scheduled ScryDex daily dispatch runner
+  and schedule settings.
+- If staging executed ScryDex database writes before rollback, restore the
+  staging database backup or remove staged ScryDex reference-card,
+  price-observation, and checkpoint rows written by that run.
+- No production rollback is required because production still cannot enable
+  `scrydex_sync` or scheduled refresh execution.
+
+## 2026-06-08 - ScryDex Worker Execution Mode
+
+### What Changed
+
+- Made the `scrydex_sync` feature flag available in local, development, and
+  staging environments while keeping it unavailable in production.
+- Added explicit database-execution mode to the ScryDex cards worker page
+  planner.
+- Threaded `execute_database_writes` through the paginated ScryDex worker so a
+  future staging cron wrapper can request real catalog writes only after all
+  gates pass.
+- Updated worker and planner status output so executed pages distinguish
+  database writes from staged/deferred pages.
+- Added unit coverage for explicit ScryDex worker/page planner persistence
+  execution and staging-only feature-flag availability.
+
+### Why
+
+The project needs the website to own the ScryDex catalog mirror. The previous
+checkpoint added a safe persistence execution boundary; this revision connects
+the paginated worker to that boundary without enabling production access or
+making database writes the default behavior.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlagRegistry.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex page planner executes persistence when explicitly requested.
+- Paginated ScryDex worker executes persistence when explicitly requested.
+- ScryDex feature flag is available in local/development/staging and forced off
+  in production.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+
+### Rollback Notes
+
+- Revert this revision to return ScryDex sync to unavailable and keep the
+  paginated worker staged-only.
+- If staging used `execute_database_writes` before rollback, restore the
+  staging database backup or remove rows written by that staging sync job from
+  ScryDex reference-card, price-observation, and checkpoint tables.
+- No production rollback is required because production still cannot enable
+  `scrydex_sync`.
+
+## 2026-06-08 - ScryDex Persistence Execution Boundary
+
+### What Changed
+
+- Added an explicit execution path to the ScryDex persistence repository.
+- Added transaction handling for accepted reference-card inserts/updates,
+  provider price-observation inserts, and checkpoint upserts.
+- Added WordPress table-prefix validation before any ScryDex persistence query
+  can run.
+- Expanded repository audit output to distinguish deferred, executed, and
+  rejected states, including transaction start/commit/rollback metadata.
+- Added rollback behavior when any ScryDex persistence query fails.
+
+### Why
+
+The paginated ScryDex worker needs a safe persistence boundary before it can
+be connected to WordPress cron or staging refresh controls. This revision keeps
+the existing staged/dry-run path intact while adding the separate, explicit
+database execution method future worker code can call after all gates pass.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepository.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex persistence execution commits accepted query plans in a transaction.
+- ScryDex persistence execution rejects WordPress table-prefix mismatches
+  before preparing or running queries.
+- ScryDex persistence execution rolls back on a failed reference-card write.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the explicit ScryDex persistence execution
+  method and return to staged/deferred repository behavior only.
+- If staging has already executed ScryDex catalog writes using this boundary,
+  rollback requires restoring the staging database backup or truncating the
+  staging-only ScryDex reference-card, price-observation, and checkpoint rows
+  created by the affected sync job.
+- No Square/POS, customer credit, payment, event, local SQLite, offline app, or
+  production rollback is required from this code change alone.
+
+## 2026-06-08 - ScryDex Paginated Worker Shell
+
+### What Changed
+
+- Added a gated ScryDex cards sync worker shell that can call the configured
+  provider for bounded paginated card pages.
+- Added worker continuation metadata so a scheduled refresh can stop at a
+  configured page limit and resume from the next checkpoint.
+- Expanded checkpoint parsing to support common nested pagination cursor,
+  current-page, and high-water-mark response shapes.
+- Kept raw provider response bodies, credentials, image downloads, checkpoint
+  upserts, reference-card writes, and price-observation writes out of worker
+  output.
+- Added unit coverage for blocked worker gates, paginated provider calls,
+  continuation checkpoints, and nested pagination metadata.
+
+### Why
+
+The website needs to become the source-owned ScryDex catalog mirror. This
+revision adds the first executable worker step: safely fetching staged pages
+only after explicit gates pass, then feeding those pages through the existing
+normalization and persistence-planning path. It stops short of database writes
+until the WordPress cron route and persistence execution boundary are accepted
+in staging.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorker.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncCheckpointTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- ScryDex worker blocks before provider calls when execution gates are not
+  ready.
+- ScryDex worker runs two paginated mocked provider pages and exposes safe
+  resume/checkpoint state.
+- ScryDex worker respects the max-page cap and returns a continuation
+  checkpoint.
+- ScryDex checkpoint planner reads nested pagination cursor shapes.
+
+### Verification
+
+- `php apps/wordpress-plugin/tests/run.php`
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex worker shell and return to
+  injected-result-only orchestration planning.
+- No ScryDex data, WordPress database rows, Square/POS data, customer credit,
+  inventory, payment, event, or production rollback is required because this
+  checkpoint still leaves database writes deferred.
+
+## 2026-06-08 - Offline App Status Workspace
+
+### What Changed
+
+- Added Status to the offline app navigation model.
+- Added Status to offline app and LAN local sync server access-section policy.
+- Added a compact active-workspace pill that remains visible across workspaces.
+- Moved detailed activity and sync status panels into a dedicated Status
+  workspace that is hidden from the other app sections.
+- Updated Status browser behavior so Inventory/Settings pages no longer show
+  the detailed workflow message block.
+
+### Why
+
+The app had been showing every workflow message globally, which crowded the
+main workspaces and made the operational surface feel noisy. Staff need a
+single place for activity/status review while keeping high-frequency sections
+like Inventory and Kiosk focused on the task at hand.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No local SQLite schema migration was added.
+
+### Tests Added
+
+- Offline app UI shell contract markers for Status workspace text and CSS.
+- Local sync server runtime coverage updated for Status access grants.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- Browser smoke: PIN `1420` login, Status nav visible, activity/status block
+  hidden on Settings, Status page opens the activity block, Inventory content
+  stays hidden on Status, and zero recent browser console errors.
+
+### Rollback Notes
+
+- Revert this revision to return activity/status messages to the global app
+  header area.
+- If a staff access policy already includes Status, removing this revision
+  leaves that section ignored by older app builds.
+- No WordPress database, ScryDex, Square, payment, POS, inventory, customer,
+  event, or production rollback is required.
+
+## 2026-06-08 - ScryDex Catalog Intake Images And Quantities
+
+### What Changed
+
+- Added `front_image_url` and `back_image_url` to the WordPress reference-card
+  schema and registered migration version 11 for existing installs.
+- Updated ScryDex card normalization, persistence planning, and persistence SQL
+  staging to carry provider image URLs into reference-card rows.
+- Expanded the local sync server ScryDex catalog search payload with catalog
+  source, image URL, price-observed timestamps, and local stock counts by card
+  and condition.
+- Expanded local sync server inventory rows with provider card identity, game,
+  set code, card number, printed number, and image URL metadata.
+- Updated LAN inventory intake to accept a quantity and create one pending
+  inventory row per physical copy, using suffixed unique barcodes when quantity
+  is greater than one.
+- Updated the offline app ScryDex intake UI to show card art, market price,
+  local stock count, stock-by-condition text, a condition selector, and a
+  quantity field before Add Inventory.
+- Added a Refresh LAN Events action to the offline app Events workspace and
+  refreshes event snapshots from the local sync server when staff open Events.
+
+### Why
+
+Inventory intake needs to be driven from the website-owned ScryDex catalog
+mirror, not an ad hoc workstation lookup. Staff must see the card image,
+variant/set identity, current market price, and current stock before adding
+copies. Multiple copies also need distinct provisional inventory rows so local
+reservations, kiosk orders, labels, and later WordPress acceptance can operate
+per physical card.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/wordpress-plugin/src/Migrations/InventoryPricingSchema.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Migrations/Version0011ReferenceCardImages.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardNormalizer.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryPricingSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/Unit/ReferenceCardImagesMigrationTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardNormalizerTest.php`
+- `fixtures/mocks/scrydex/cards-page-1.json`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- WordPress database migration version 11:
+  `reference_card_images`.
+- Adds nullable `front_image_url` and `back_image_url` columns to
+  `tcg_reference_cards`.
+- Rollback drops those two columns.
+- Local development SQLite migration-on-open adds catalog metadata columns to
+  `inventory_items`.
+
+### Tests Added
+
+- Local sync server runtime coverage for ScryDex catalog image/stock metadata
+  and multi-copy inventory intake response rows.
+- Offline app client contract coverage for catalog stock metadata and
+  quantity-added intake payloads.
+- Offline app UI shell coverage for ScryDex image cards, selected catalog
+  state, and quantity intake control.
+- WordPress schema coverage for reference-card image URL columns.
+- WordPress migration plan coverage for database version 11.
+- WordPress migration metadata coverage for `reference_card_images`.
+- ScryDex normalizer coverage for provider image URL extraction.
+
+### Verification
+
+- `npm.cmd --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `php apps/wordpress-plugin/tests/run.php --filter 'ScryDexCardNormalizerTest|ScryDexPersistencePlannerTest|ScryDexPersistenceQueryBuilderTest|InventoryPricingSchemaTest|MigrationRunnerPlanTest|ReferenceCardImagesMigrationTest'`
+  (the local runner executed the full PHP suite: 904 tests, 0 failures).
+- Browser smoke: PIN `1420` login, Inventory page, ScryDex search for Iono,
+  visible card image/price/stock metadata from `wordpress_catalog_cache`, Use
+  Card, condition set to NM, quantity set to 2, Add Inventory, two pending
+  local inventory rows verified through the LAN API, queue depth increased by
+  two, and zero recent browser console errors.
+
+### Rollback Notes
+
+- Before rollback, preserve `apps/local-sync-server/store-sync.sqlite` if staff
+  created local inventory rows that have not yet synced to WordPress.
+- Revert migration 11 to remove `front_image_url` and `back_image_url` from
+  `tcg_reference_cards` if the release is rolled back before catalog image
+  persistence is needed.
+- Reverting the app/server changes returns ScryDex intake to single-copy
+  metadata fill behavior and removes image/stock/quantity display from the
+  offline app.
+- No Square, payment capture, POS, customer-credit, or production deployment
+  rollback is required for this checkpoint.
+
+## 2026-06-08 - LAN Event Registration Runtime
+
+### What Changed
+
+- Added a durable local sync server `event_snapshots` SQLite table.
+- Seeded cached event snapshots for the local LAN server runtime.
+- Added `GET /events`, `POST /events/registrations`, and
+  `POST /events/check-ins` routes to the LAN sync server.
+- Enforced Events workspace access before local event registration and
+  check-in operations.
+- Updated shared event snapshots when local registrations/check-ins are queued,
+  including row-version bumps, capacity counters, source state, and local notes.
+- Added typed offline app client methods for listing events, event
+  registrations, and event check-ins.
+- Wired the offline app Events workflow to call the LAN server before staging
+  the existing event queue preview operations.
+
+### Why
+
+The employee app can already stage event operations, but multiple local
+stations need a shared middleman so capacity and check-in activity do not drift
+between computers. This revision moves event registration/check-in state into
+the LAN server while keeping WordPress as the final event authority after sync.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local development SQLite schema creation for `event_snapshots`.
+- No WordPress/MySQL production migration was added.
+
+### Tests Added
+
+- Local sync server contract coverage for shared event list, registration, and
+  check-in routes.
+- Local sync server runtime coverage for event listing, Events access
+  enforcement, queued registration, queued check-in, and sync status event
+  counts.
+- Local sync server persistence coverage proving queued event snapshot changes
+  survive reopening the same SQLite database.
+- Offline app client contract coverage for event route types and request
+  payload fields.
+- Offline app UI shell coverage proving the Events workflow calls the LAN event
+  endpoints before using existing event queue builders.
+
+### Verification
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- Browser smoke: PIN `1420` login, Events page, LAN event registration, LAN
+  event check-in, queue-depth increase from 9 to 11, updated capacity display,
+  event queue preview rows, and zero new browser console errors.
+
+### Rollback Notes
+
+- Revert this revision to return Events to app-local queue preview behavior.
+- If reverting after staff used LAN event registration/check-in, preserve
+  `store-sync.sqlite` first so queued event operations are not lost.
+- No WordPress database, Square, payment, POS, ScryDex, customer, inventory, or
+  production rollback is required because this revision only affects the local
+  LAN server and offline app runtime.
+
+## 2026-06-08 - ScryDex-Assisted Local Intake Lookup
+
+### What Changed
+
+- Added a LAN sync server `GET /scrydex/cards/search` route for inventory
+  reference lookup from employee app clients.
+- Added a secret-free local ScryDex reference cache for development/offline
+  lookup results.
+- Enforced Inventory workspace access on ScryDex lookup requests.
+- Returned explicit safety metadata showing credentials stay in
+  WordPress/server settings, credentials are not synced to clients, and the
+  local scaffold did not perform a live provider request.
+- Added a typed offline app local sync client method for ScryDex card search.
+- Added an Inventory-page ScryDex lookup panel with game selection, result
+  rows, and a Use Card action that fills local intake fields.
+- Kept final inventory creation as a separate Add Inventory action so staff
+  review the ScryDex-assisted values before queueing a local intake operation.
+
+### Why
+
+Staff need ScryDex-assisted card metadata while adding inventory in the local
+employee app, but ScryDex credentials must never be stored in the app or
+browser preview. This revision gives the app a server-mediated lookup surface
+that can later be backed by the WordPress ScryDex proxy while preserving the
+current credential boundary.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No WordPress/MySQL production migration was added.
+- No new SQLite migration was added; the lookup uses static local reference
+  fixtures in the LAN sync server scaffold.
+
+### Tests Added
+
+- Local sync server contract coverage for the ScryDex lookup route and
+  server-side credential boundary.
+- Local sync server runtime coverage for successful lookup, Inventory session
+  enforcement, no live provider request, and no API-key-shaped fields in the
+  response.
+- Offline app client contract coverage for the ScryDex search route, response
+  type, and credential-boundary markers.
+- Offline app UI shell coverage for ScryDex lookup controls and Use Card
+  intake handoff.
+
+### Verification
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- Browser smoke: PIN `1420` login, Inventory page, ScryDex lookup for Iono,
+  Use Card populating intake fields, Add Inventory queueing a pending-intake
+  card through the LAN server, queue-depth increase, and zero new browser
+  console errors after reload.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex-assisted lookup from the local app
+  while keeping manual local inventory intake intact.
+- No local queued inventory rows need rollback unless staff used the Add
+  Inventory action after selecting a lookup result.
+- No WordPress database, Square, payment, POS, customer, event, production, or
+  ScryDex credential rollback is required because this revision does not store
+  provider credentials in the app and does not perform live ScryDex requests.
+
+## 2026-06-08 - LAN Inventory Intake Runtime
+
+### What Changed
+
+- Added a local sync server `POST /inventory/intake` route for employee app
+  card intake through the in-store LAN middleman.
+- Added SQLite-backed inventory intake creation with card name, set,
+  condition, barcode, price, and location fields.
+- Added duplicate-barcode blocking and positive-price validation before local
+  inventory intake rows are created.
+- Saved newly added local cards as `pending_intake` with `queued` source until
+  WordPress accepts the synced operation.
+- Queued an `inventory_intake` operation for later WordPress acceptance without
+  writing directly to production inventory.
+- Wired the offline app Inventory workspace to submit intake cards to the LAN
+  server and immediately show the queued card in the local inventory table.
+- Added a distinct `Pending Intake` status and filter so locally queued cards
+  are not shown as accepted available website stock.
+
+### Why
+
+Staff need to add inventory from the local employee app while the store is
+online or offline, but WordPress must remain the final inventory authority.
+This revision lets the LAN middleman capture new card intake safely, share it
+with local devices, and queue the website sync operation for later acceptance.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No new WordPress/MySQL production migration was added.
+- No new SQLite table was added; the intake workflow uses the existing local
+  `inventory_items` and `operation_queue` tables.
+
+### Tests Added
+
+- Local sync server runtime coverage for successful inventory intake,
+  duplicate-barcode blocking, pending-intake status, and queued website
+  acceptance metadata.
+- Local sync server persistence coverage proving a locally added intake card
+  remains searchable after reopening the same SQLite database.
+- Offline app client contract coverage for the `/inventory/intake` route and
+  intake response metadata.
+- Offline app UI shell coverage for the inventory intake form and
+  `Pending Intake` status markers.
+
+### Verification
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/local-sync-server run test`
+- Browser smoke: manager PIN login, Inventory page, local card intake through
+  the LAN server, queue-depth increase, card row display with barcode, price,
+  location, `queued` source, `Pending Intake` status, and zero new browser
+  console errors after reload.
+
+### Rollback Notes
+
+- Revert this revision to remove LAN inventory intake and return the offline
+  app Inventory page to existing scan/hold/adjust workflows only.
+- If reverting after staff used local intake, preserve `store-sync.sqlite`
+  first so pending intake operations are not lost.
+- No WordPress database, Square, ScryDex, payment, POS, customer, event, or
+  production rollback is required because this revision only affects the local
+  LAN server and offline app runtime.
+
+## 2026-06-08 - LAN Customer Credit Runtime
+
+### What Changed
+
+- Added durable local sync server customer and credit-ledger SQLite tables.
+- Added LAN server routes for customer search, local customer creation,
+  manager-approved credit adjustment, and customer credit redemption.
+- Enforced manager-only credit adjustment and staff/manager Customers workspace
+  access for customer creation and credit redemption.
+- Added Square POS handoff metadata to credit redemption responses while
+  keeping Square payment capture unsupported in the local server.
+- Wired the offline app Customer workspace to call the LAN customer-credit
+  routes for customer creation, manager credit add, and credit use.
+- Added visible Customer workspace controls for local customer creation,
+  manager credit add, and pending LAN ledger entries.
+
+### Why
+
+The local employee app needs usable customer and credit workflows while the
+store is offline, but WordPress must remain the final ledger authority. This
+revision lets the LAN middleman lock local customer-credit changes, show staff
+the Square handoff, and queue operations for later WordPress acceptance.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/README.md`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local development SQLite schema creation for `customers` and
+  `credit_ledger_entries`.
+- No WordPress/MySQL production migration was added.
+
+### Tests Added
+
+- Local sync server runtime coverage for customer search, customer creation,
+  staff-blocked credit adjustment, manager-approved credit add, credit
+  redemption, Square handoff metadata, and overspend blocking.
+- Local sync server persistence coverage for customer creation, credit add,
+  redemption, restart balance persistence, and credit ledger counts.
+- Offline app contract coverage for customer public IDs, LAN customer-credit
+  client routes, and Customer workspace controls.
+
+### Verification
+
+- `npm --prefix apps/local-sync-server run test`
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- Browser smoke: manager PIN login, local customer creation, manager credit
+  add, LAN ledger row display, credit redemption, balance reduction, redemption
+  ledger row display, LAN queue-depth increase, and zero new browser console
+  errors after reload.
+
+### Rollback Notes
+
+- Revert this revision to remove the LAN customer-credit runtime and return
+  the offline app Customer page to local preview-only behavior.
+- If reverting after staff used the LAN server in-store, preserve
+  `store-sync.sqlite` first so pending customer/credit operations are not lost.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because this revision only affects the local
+  LAN server and offline app runtime.
+
+## 2026-06-08 - Local Sync Server SQLite Persistence
+
+### What Changed
+
+- Replaced the local sync server's in-memory store with a SQLite-backed
+  `store-sync.sqlite` runtime.
+- Added database migration/seed logic for cached PIN users, cached inventory,
+  queued operations, and kiosk pickup orders.
+- Persisted manager-created PIN users, role/access edits, local inventory
+  reservation locks, kiosk pickup orders, and queued operations across server
+  restarts.
+- Added `PUG_LOCAL_SYNC_DB` support so development, tests, and future installers
+  can choose the local database path.
+- Hardened kiosk order creation so a multi-card kiosk request validates item
+  availability before reserving any item.
+
+### Why
+
+The local server is the in-store middleman for multiple employee and kiosk
+devices. It needs durable shared state so local reservations, PIN users, and
+queued work survive restarts and stay consistent while WordPress remains the
+global source of truth.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/README.md`
+- `.gitignore`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Local development SQLite schema creation for `users`, `inventory_items`,
+  `operation_queue`, and `kiosk_orders`.
+- No WordPress/MySQL production migration was added.
+
+### Tests Added
+
+- Local sync server persistence test proving a staff PIN, inventory
+  reservation, row version, and operation queue depth survive closing and
+  reopening the same SQLite database.
+- Runtime test assertion that sync status reports `persistence_mode: sqlite`.
+
+### Verification
+
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `node --check apps/local-sync-server/tests/local-sync-server-persistence.mjs`
+- `npm --prefix apps/local-sync-server run test`
+
+### Rollback Notes
+
+- Revert this revision to return the LAN server to the previous in-memory
+  development store.
+- Delete the local `store-sync.sqlite` file only after confirming it contains
+  no unsynced local operations that staff need to preserve.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because this revision only affects the local
+  LAN server development runtime.
+
+## 2026-06-08 - Offline App LAN Sync Client Wiring
+
+### What Changed
+
+- Added a typed offline app local sync server client for PIN authentication,
+  access policy, user creation/access updates, inventory search, inventory
+  reservations, kiosk pickup orders, and sync status.
+- Extended saved website setup profiles with a configurable LAN sync server URL
+  while preserving WordPress as the global website authority.
+- Wired PIN login to verify against the LAN local sync server first, falling
+  back only to cached preview policy when the LAN server is unavailable.
+- Wired manager Users & Access creation and role/access edits through the LAN
+  server session instead of only mutating local React state.
+- Wired inventory holds and kiosk pickup orders to acquire local sync server
+  locks before staging app queue operations.
+- Added CORS/preflight support to the local sync HTTP server so browser-based
+  app clients can call the LAN server during development.
+
+### Why
+
+The offline app must behave as a client of the in-store middleman server, not
+as its own independent inventory authority. This revision moves critical flows
+toward that architecture while preserving current app queue previews and
+WordPress final acceptance boundaries.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/package.json`
+- `apps/offline-app/tests/local-sync-client-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app local sync client contract covering route paths, bearer-session
+  handoff, no-secret response markers, unavailable-server handling, and sync
+  status shape.
+- Local sync server CORS preflight assertion for browser client access.
+
+### Verification
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/local-sync-client-contract.mjs`
+- `node apps/offline-app/tests/workspace-state-contract.mjs`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `npm --prefix apps/offline-app run test:package-contract`
+- `npm run test:offline-app`
+- `npm run test:sync-engine`
+- `npm --prefix apps/local-sync-server run test`
+- `npm run test`
+- Browser smoke: LAN manager PIN login, LAN-backed user creation, LAN-backed
+  cashier PIN login, inventory hold lock through `127.0.0.1:8787`, and queue
+  count refresh in the offline app.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to local-only PIN/user
+  scaffolding and remove browser CORS support from the local sync server.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because this revision only affects local app
+  and LAN server development runtime behavior.
+
+## 2026-06-08 - Local Sync Server Runtime Scaffold
+
+### What Changed
+
+- Added a runnable Node HTTP local sync server scaffold with `npm start`.
+- Implemented local PIN session verification, manager-only user/access policy
+  reads and mutations, inventory search, employee reservation locks, kiosk
+  pickup orders, and sync status endpoints.
+- Added an in-process store behind the local sync server API boundary so the
+  future `store-sync.sqlite` adapter can replace storage without changing
+  client route contracts.
+- Added runtime tests that exercise manager PIN auth, user creation, new-user
+  login, inventory double-sell prevention, kiosk order locking, and sync status.
+
+### Why
+
+The offline app now expects all in-store employee and kiosk clients to share a
+single LAN middleman. A runnable local server gives the clients a real target
+for PIN policy, reservation locks, kiosk pickup orders, and future shared cache
+sync instead of leaving those behaviors as UI-only scaffolding.
+
+### Files Affected
+
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/tests/local-sync-server-runtime.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/README.md`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Local sync server runtime test covering auth, user policy, inventory
+  reservation collision, kiosk order, and sync-status behavior.
+
+### Verification
+
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `npm --prefix apps/local-sync-server run test`
+- `npm run test:sync-engine`
+
+### Rollback Notes
+
+- Revert this revision to return the local sync server to a contract-only
+  scaffold and remove the runtime HTTP handlers.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required because the runtime server does not connect
+  to live external systems.
+
+## 2026-06-08 - Offline PIN Login And LAN Access Policy
+
+### What Changed
+
+- Changed the offline app login flow to a 4-digit staff/manager PIN with a
+  keypad, masked PIN status, session lock control, and section-level workspace
+  access gating.
+- Added a manager-only Users & Access panel in Settings for viewing saved PIN
+  users, changing staff/manager role, assigning allowed workspaces, and adding
+  new PIN users.
+- Added LAN sync server contract endpoints and safety requirements for PIN
+  verification, cached user/access policy, manager-only user mutations, and
+  hashed PIN credential storage.
+- Updated offline app product requirements and architecture docs to make
+  WordPress the global policy authority, the LAN sync server the local cached
+  policy authority, and clients current-session-only.
+
+### Why
+
+Store staff need a fast in-store sign-in flow that does not require long
+usernames/passwords on every register or kiosk station. The app also needs a
+clear manager-controlled access model before inventory, customer credit,
+events, kiosk, and sync tools are made fully functional across multiple local
+devices.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/OFFLINE_APP_PRODUCT_REQUIREMENTS.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app UI shell contract markers for PIN login, session lock, disabled
+  workspace navigation, Users & Access, and manager access controls.
+- Local sync server contract markers for PIN auth and user/access policy
+  endpoints and hashed PIN safety requirements.
+
+### Verification
+
+- `npm --prefix apps/offline-app run typecheck`
+- `node apps/offline-app/tests/ui-shell-contract.mjs`
+- `node apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `npm --prefix apps/offline-app run test:package-contract`
+- `npm run test:sync-engine`
+- `npm run test:packaging`
+- `npm run test:offline-app:rust`
+- `npm run test:offline-app`
+- `npm run test`
+- Browser smoke: staff PIN login, Kiosk navigation, app lock, manager PIN
+  login, Users & Access add-user flow, and newly added PIN access gating.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the prior login/session
+  scaffold and remove the LAN user/access policy contract extensions.
+- No WordPress database, Square, ScryDex, payment, POS, inventory, customer, or
+  production rollback is required.
+
+## 2026-06-08 - Offline App Single-Site Setup And Square Credit Handoff
+
+### What Changed
+
+- Added offline app product requirements covering single-website setup,
+  online/offline behavior, page-based navigation, login/session manager locks,
+  ScryDex app lookup through WordPress, customer creation/credit-add needs, and
+  Square POS store-credit handoff.
+- Replaced the user-facing top-bar company dropdown with a website setup
+  control that opens the Settings/setup workspace for the installed website.
+- Updated setup copy and actions from connector/profile language toward website
+  setup and website connection language while preserving the underlying
+  connector profile model for staging/support.
+- Added a customer-credit Square POS handoff planner and visible credit panel
+  guidance showing the remaining amount due in Square, the `Pug Store Credit`
+  recording label, and the boundary that Pug is authoritative for credit
+  balances while Square records/tenders the in-store payment.
+
+### Why
+
+The offline app should behave like a single-site business tool, not a developer
+profile switcher. Store credit also needs a precise cashier flow: redeem or
+hold credit in Pug, collect the remainder in Square POS, and reconcile the Pug
+ledger after sync acceptance without pretending Square owns the Pug credit
+balance.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/OFFLINE_APP_PRODUCT_REQUIREMENTS.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for the single-site website setup entry point
+  replacing the dropdown.
+- Offline app workspace/UI contract coverage for the Square POS store-credit
+  handoff planner and visible credit authority boundaries.
+
+### Verification
+
+- `npm run test:offline-app`
+- `npm run test:packaging`
+
+### Rollback Notes
+
+- Revert this revision to restore the previous visible connector/profile
+  dropdown and remove the Square POS handoff panel/planner.
+- No WordPress database, Square, ScryDex, POS, payment, or production rollback
+  is required.
+
+## 2026-06-08 - Route-Connected Offline Sync And Staging Install Helper
+
+### What Changed
+
+- Wired runtime-enabled offline pull/push route registration to repository-aware
+  route handlers instead of validation-only defaults.
+- Added a regression test proving staging-enabled offline push routes persist
+  queue rows while canonical inventory mutation execution remains deferred.
+- Added `npm run staging:offline-sync-smoke` for a redacted staging proof that
+  temporarily opens pairing, pull, and push route gates, exercises public REST
+  sync routes, cleans smoke sync rows, and restores previous settings.
+- Added `npm run staging:install-package` for the confirmed WP-CLI
+  install/activate path, separate from the existing upload-only ZIP transfer
+  helper.
+- Fixed staging pairing/sync smoke dry-run URL parsing so `--dry-run` is not
+  treated as a site URL.
+
+### Why
+
+The standalone app needs the website connector to support real staging pull
+and push route execution before the broader offline workflow can be trusted.
+The staging deployment tooling also needed to distinguish a ZIP uploaded to
+`wp-content/uploads` from a package actually installed and active in WP Admin.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapper.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteBootstrapperRuntimeWiringTest.php`
+- `scripts/staging-run-offline-sync-smoke.mjs`
+- `scripts/staging-install-wordpress-package.mjs`
+- `scripts/staging-run-offline-pairing-smoke.mjs`
+- `scripts/tests/staging-offline-sync-smoke-contract.mjs`
+- `scripts/tests/staging-install-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `scripts/README.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- PHP unit regression coverage for runtime offline route wiring and deferred
+  canonical mutation execution.
+- Packaging contract coverage for the staging install helper and the staging
+  offline sync smoke runner.
+
+### Verification
+
+- `node --check scripts/staging-install-wordpress-package.mjs`
+- `node --check scripts/staging-run-offline-sync-smoke.mjs`
+- `node --check scripts/staging-run-offline-pairing-smoke.mjs`
+- `node scripts/tests/staging-install-contract.mjs`
+- `node scripts/tests/staging-offline-sync-smoke-contract.mjs`
+- `node scripts/tests/staging-offline-pairing-smoke-contract.mjs`
+- `npm run staging:install-package -- --dry-run`
+- `npm run staging:offline-sync-smoke -- --dry-run`
+- `npm run test:packaging`
+- `cd apps/wordpress-plugin && php tests/run.php` (`902 tests, 0 failures`)
+
+### Rollback Notes
+
+- Revert this revision to return offline pull/push runtime registration to the
+  previous validation-only handler wiring and remove the new staging helpers.
+- If a staging offline sync smoke run is interrupted, rerun the smoke cleanup
+  or delete rows matching the generated `offline-sync-*` device, batch, and
+  client operation IDs from `tcg_offline_devices`, `tcg_offline_sync_queue`,
+  and `tcg_sync_conflicts`, then restore the backed-up
+  `offline_pairing_authorization`, `offline_route_runtime`, and `offline_sync`
+  feature flag settings from the temporary backup option.
+- No database migration rollback is required. Canonical inventory writes,
+  Square writes, payment capture, POS writes, ScryDex sync writes, and
+  production deployment remain deferred by default.
+
+## 2026-06-08 - Staging ScryDex Configuration Verification
+
+### What Changed
+
+- Configured the GoDaddy staging site's ScryDex provider settings through the
+  redacted staging helper.
+- Enabled the staging usage-budget settings used by ScryDex sync planning.
+- Verified the public offline connector manifest reports ScryDex as configured
+  while keeping credential values redacted and unsynced to the offline app.
+
+### Why
+
+The staging website needs ScryDex readiness before card-reference sync can move
+from mock planning to controlled live smoke testing. The offline app also needs
+to see that each company connector can advertise provider readiness without
+copying API keys into the app profile.
+
+### Files Affected
+
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None. This was a staging configuration and verification checkpoint using
+  existing helper scripts.
+
+### Staging Verification
+
+- Ran `npm run staging:configure-scrydex -- --status` before configuration and
+  confirmed ScryDex was blocked because no team/key values were saved.
+- Ran `npm run staging:configure-scrydex` with the explicit staging
+  confirmation flag. The helper reported provider status `ready`, primary and
+  secondary keys configured, usage budget `ready`, `healthStatus = 200`,
+  `writesWordPressData = false`, `runsProviderNetworkRequest = false`, and
+  `credentialsPrinted = false`.
+- Verified the public connector manifest with a cache-busting request. It
+  reported ScryDex `configured = true`, `environment = staging`, active key slot
+  `primary`, `credential_values_redacted = true`, and
+  `credentials_synced_to_app = false`.
+- Ran the read-only live ScryDex smoke against a tiny card query. It returned
+  HTTP `200`, two summarized card records, `writesWordPressData = false`,
+  `credentialsPrinted = false`, and `rawResponsePrinted = false`.
+
+### Rollback Notes
+
+- Re-run `npm run staging:configure-scrydex -- --status` to confirm current
+  staging state before rollback.
+- Clear the ScryDex provider values from **Pug Cards -> Settings -> ScryDex**
+  in staging, or run a temporary WP-CLI settings update that disables
+  `scrydex_provider.enabled` and clears the saved team/key values.
+- No card-reference rows were imported and no database migrations were run, so
+  there is no data rollback for this checkpoint.
+
+## 2026-06-08 - Staging Offline Pairing Smoke Runner
+
+### What Changed
+
+- Added `scripts/staging-run-offline-pairing-smoke.mjs` and `npm run
+  staging:offline-pairing-smoke`.
+- The smoke runner generates a one-time pairing code in memory, temporarily
+  enables the `offline_sync` feature flag and only the device-pairing route
+  gate, posts to `/wp-json/tcg-store/v1/offline/devices/register`, verifies a
+  one-time device token was returned, removes the smoke device row, restores
+  the previous pairing/route/feature settings, and removes the temporary
+  WP-CLI runner.
+- Output redacts pairing codes and device tokens, and explicitly reports that
+  pull, push, conflict routes, business-data writes, and production behavior
+  remain closed.
+
+### Why
+
+The project needed evidence that the standalone app can pair against staging
+through the actual public WordPress REST route, not only local unit tests and
+settings readiness. This adds an end-to-end proof while keeping the staging
+route gates temporary and reversible.
+
+### Files Affected
+
+- `scripts/staging-run-offline-pairing-smoke.mjs`
+- `scripts/tests/staging-offline-pairing-smoke-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `scripts/README.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for the staging pairing smoke npm script, dry
+  run metadata, environment gates, temporary pairing-only route enablement,
+  redacted one-time-token handling, smoke-device cleanup, gate restoration, and
+  no production/business-data writes.
+
+### Staging Verification
+
+- Ran `npm run staging:offline-pairing-smoke` against the GoDaddy staging URL.
+- The smoke temporarily enabled `offline_sync` and only
+  `POST /offline/devices/register`.
+- The public REST pairing request returned `offline_device_registered` with
+  response status `registered`, internal status code `201`, a 64-character
+  one-time token present, `first_sync_required = true`, and
+  `branding_sync_required = true`.
+- The smoke output redacted the generated pairing code and token.
+- Cleanup restored the previous gates, removed the temporary runner, and
+  deleted one smoke device row.
+- A post-cleanup public probe to `/offline/devices/register` returned
+  `404 rest_no_route`, confirming the pairing route closed again.
+- `npm run staging:route-check` still passed after the smoke.
+
+### Rollback Notes
+
+- Revert this revision to remove the smoke runner and contract.
+- If a smoke run is interrupted, run the script again or restore the
+  `offline_pairing_authorization`, `offline_route_runtime`, and
+  `offline_sync` feature flag settings from the temporary backup option named
+  in the failed run. Smoke device rows are keyed by `staging-smoke-*`
+  installation IDs and can be deleted from `tcg_offline_devices`.
+- No inventory, Square, payment, POS, ScryDex, customer credit, event, or
+  production rollback is required.
+
+## 2026-06-08 - WordPress Admin Branding Visibility
+
+### What Changed
+
+- Renamed the human-facing WordPress plugin header from `TCG Store Platform` to
+  `Pug Game Shop Card Manager`.
+- Updated default branding settings to `Pug Game Shop` and `Pug Cards`.
+- Updated the WordPress admin menu, settings title, and system-status title to
+  read from configured branding so future company installs can override the
+  visible labels without changing source files.
+- Updated install docs and staging route-check guidance to point staff/admins
+  to the visible plugin name.
+
+### Why
+
+The staging plugin was already active, but the old internal label made it easy
+to miss in WP Admin. The project needs a visible Pug-branded default while
+still preserving the white-label company/profile model for future stores.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Settings/BrandingSettings.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `docs/BRANDING.md`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `scripts/staging-check-routes.mjs`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- None. Existing PHP and packaging checks cover settings/admin syntax and the
+  package output.
+
+### Staging Verification
+
+- Uploaded corrected package:
+  `/html/wp-content/uploads/tcg-store-platform-0.156.0-20260608T155816Z.zip`.
+- Saved pre-update staging plugin backup:
+  `/html/wp-content/uploads/tcg-store-platform-before-pug-branding-20260608T155834Z.tgz`.
+- WP-CLI reports `tcg-store-platform` active at version `0.156.0` with title
+  `Pug Game Shop Card Manager`.
+- Updated staging branding settings to `Pug Game Shop` / `Pug Cards`.
+- Re-ran `npm run staging:route-check`; REST namespace, health route signal,
+  public connector manifest, and staging noindex controls passed.
+
+### Rollback Notes
+
+- Revert this revision to restore the old visible plugin/admin labels.
+- Reinstall the pre-update staging backup above if the staging package update
+  needs to be reversed before the next package deployment.
+- No database, inventory, Square, payment, ScryDex, offline SQLite, or staging
+  route rollback is required.
+
+## 2026-06-08 - Staging Offline Pairing Configuration Helper
+
+### What Changed
+
+- Added `scripts/staging-configure-offline-pairing.mjs` and `npm run
+  staging:configure-offline-pairing`.
+- The helper supports a dry run, redacted `--status` check, and confirmed
+  staging configuration mode.
+- Offline connector pairing codes are read from environment variables, streamed
+  over stdin to a temporary non-secret WP-CLI runner, hashed on the staging
+  server, stored in WordPress settings, and reported only as redacted policy
+  counts/status.
+- The helper can enable the device-pairing route gate while leaving pull,
+  push, and conflict routes disabled by default.
+- The helper removes the temporary runner after execution and reports that it
+  does not issue device tokens, run sync network requests, write WordPress
+  business data, or sync credentials to the offline app.
+
+### Why
+
+The standalone offline app needs a safe, repeatable staging path for pairing
+future company/site connectors, but pairing readiness must stay separate from
+live pull/push execution and from any raw credential exposure. This helper
+lets staging prepare short-lived pairing policy without opening data-moving
+routes by accident.
+
+### Files Affected
+
+- `scripts/staging-configure-offline-pairing.mjs`
+- `scripts/tests/staging-offline-pairing-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/TESTING.md`
+- `scripts/README.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for the staging offline pairing npm script,
+  required environment gates, stdin-based WP-CLI handoff, redacted policy
+  output, temporary runner removal, default-closed sync route gates, and no
+  device-token issuance or data writes.
+
+### Rollback Notes
+
+- Revert this revision to remove the helper and contract.
+- If staging pairing settings need to be cleared, remove the configured pairing
+  hashes and disable the offline route runtime gates through WordPress
+  settings or a staging-only WP-CLI settings reset. No production, Square,
+  payment, POS, ScryDex, offline SQLite, or inventory data rollback is
+  required.
+
+## 2026-06-08 - Staging ScryDex Configuration Helper
+
+### What Changed
+
+- Added `scripts/staging-configure-scrydex.mjs` and `npm run
+  staging:configure-scrydex`.
+- The helper supports a dry run, redacted `--status` check, and confirmed
+  staging configuration mode.
+- ScryDex credentials are read from environment variables, streamed over stdin
+  to a temporary non-secret WP-CLI runner, stored in WordPress settings, and
+  reported only as configured/missing booleans plus the existing short
+  fingerprint.
+- The helper removes the temporary runner after execution and reports that it
+  does not run provider network requests, write reference-card data, enqueue
+  workers, or sync credentials to the offline app.
+
+### Why
+
+Staging needs ScryDex server-side configuration before live provider smoke
+testing and future reference-card sync acceptance, but those keys must not be
+committed, echoed in logs, sent to the offline app, or mixed with database
+write workers. This gives the project a repeatable, secret-redacted staging
+setup path.
+
+### Files Affected
+
+- `scripts/staging-configure-scrydex.mjs`
+- `scripts/tests/staging-scrydex-config-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Packaging contract coverage for the staging ScryDex npm script, required
+  environment gates, stdin-based WP-CLI handoff, redacted status output,
+  temporary runner removal, and no provider network/data writes.
+
+### Rollback Notes
+
+- Revert this revision to remove the helper and contract.
+- If staging ScryDex settings need to be cleared, use the WordPress settings
+  screen clear controls or update the `scrydex_provider` settings back to the
+  defaults. No production, Square, payment, POS, offline SQLite, or reference
+  card data rollback is required.
+
+## 2026-06-08 - Queue Refresh And Staging Route Check
+
+### What Changed
+
+- Added `Refresh Desktop Queue` to the offline app queue panel so staff can
+  merge pending durable desktop SQLite queue rows on demand.
+- Added `Void Selected Operation` to remove one selected queued operation from
+  the current profile queue and mark the matching desktop row `rejected` when
+  the Tauri queue adapter is available.
+- Added `scripts/staging-check-routes.mjs` and `npm run staging:route-check`
+  for a credential-free staging probe covering the WordPress REST root,
+  `tcg-store/v1` namespace, authenticated health route registration signal,
+  public offline connector manifest, and staging noindex controls.
+- Ran the staging route check against the current GoDaddy staging URL. The
+  WordPress REST root and noindex checks passed, while the `tcg-store/v1`
+  namespace, `/health`, and `/offline/connector-manifest` checks failed with
+  `404 rest_no_route`.
+- Inspected staging through read-only SSH/SFTP/WP-CLI and confirmed the package
+  zips existed in uploads but **TCG Store Platform** was not installed under
+  `wp-content/plugins`.
+- Uploaded the current package and installed it into the staging plugins
+  directory without activation. WP-CLI now reports `tcg-store-platform` as
+  active version `0.156.0`.
+- Added staging constants to `wp-config.php` after saving a timestamped config
+  backup at `/html/wp-config.php.codex-staging-backup-20260608T153554Z`.
+- Re-ran staging route and health checks. Route check now passes, authenticated
+  health reports database version `10`, role version `2`, environment
+  `staging`, customer emails disabled, public indexing blocked, payment capture
+  deferred, provider inventory deferred, staff banner enabled, and a
+  secret-safe staging connector manifest.
+
+### Why
+
+The offline queue panel needed more operational controls for real staff review:
+refresh durable desktop rows without restarting the app, and remove one bad
+queued action without clearing every staged operation. The staging route check
+turns plugin activation verification into a repeatable test that proves whether
+the custom package is active before authenticated smoke tests or connector
+pairing.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `scripts/staging-check-routes.mjs`
+- `scripts/tests/staging-route-check-contract.mjs`
+- `package.json`
+- `scripts/README.md`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging route-check contract coverage for the npm script, public endpoints,
+  `rest_no_route` guidance, noindex checks, and secret-free behavior.
+- Offline app UI/queue bridge contract coverage for queue refresh and
+  selected-operation void controls.
+
+### Rollback Notes
+
+- Revert this revision to remove the new offline queue controls and staging
+  route-check script.
+- No WordPress database, staging data, Square, ScryDex, payment, POS, or
+  production rollback is required because the route check is read-only and the
+  UI changes operate on local queue state.
+- To roll back the staging config constants, restore the backed-up
+  `/html/wp-config.php.codex-staging-backup-20260608T153554Z` file or remove
+  the staging constants with WP-CLI. Deactivate **TCG Store Platform** on
+  staging if route registration must be disabled during troubleshooting.
+
+## 2026-06-08 - Offline Desktop Queue Void Command
+
+### What Changed
+
+- Added a Tauri `void_offline_operations` command for selected pending local
+  queue rows.
+- Added Rust request/response contracts, command registration, SQLite update
+  planning, and in-memory SQLite tests.
+- The command marks matching pending queue rows as `rejected` rather than
+  deleting them, so staff-cleared rows stop restoring as pending while leaving
+  an auditable local status.
+- Added a TypeScript bridge function, `voidOfflineOperations`, and wired the
+  offline app `Clear Session Queue` action to call it when the Tauri queue
+  adapter is available.
+
+### Why
+
+The queue UI could clear browser/session state, but the standalone desktop app
+also needs a local persistence boundary for staff-cleared pending rows. Marking
+rows rejected keeps the action reversible/auditable at the database level while
+preventing accidental replay of bad local queue work.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The existing offline SQLite schema already allows `rejected` queue
+  statuses.
+
+### Tests Added
+
+- Rust coverage for voiding pending rows, excluding them from pending restore,
+  preserving the row with `rejected` status, and rejecting empty/unsafe
+  operation IDs.
+- Offline app bridge, local queue persistence, Tauri command, and UI shell
+  contract coverage for the void command and React handoff.
+
+### Rollback Notes
+
+- Revert this revision to remove desktop queue voiding and return
+  `Clear Session Queue` to browser/session-only clearing.
+- No WordPress database, staging, Square, ScryDex, payment, or production
+  rollback is required.
+
+## 2026-06-08 - Offline App Queue Management Actions
+
+### What Changed
+
+- Added selectable queued operation cards to the offline app queue panel.
+- Added a selected queue operation review card with entity, row-version, queued
+  timestamp, and payload summary details.
+- Added `Copy Operation JSON`, `Export Queue JSON`, and `Clear Session Queue`
+  controls for staff review and support handoff, including a manual JSON
+  preview fallback when browser clipboard permissions are unavailable.
+- Added secret-safe queue export payloads with `credentials_synced_to_app:
+  false` and no raw credential fields.
+- Added clear-session behavior that resets the current browser/session queue
+  and staged preview state without website, Square, ScryDex, payment, or
+  production writes.
+
+### Why
+
+The offline app had queue staging and sync preview behavior, but the queue panel
+still felt too passive. Staff need to inspect queued local work, hand off a safe
+operation payload when troubleshooting, and clear current-session preview rows
+after review.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app UI shell contract coverage for queue selection, review, copy,
+  export, clear controls, styling hooks, and secret-safe export markers.
+
+### Rollback Notes
+
+- Revert this revision to remove queue management actions and return the queue
+  panel to a passive pending-operation list.
+- No WordPress database, SQLite schema, staging, or production rollback is
+  required because this affects only React UI state and browser/session storage.
+
+## 2026-06-08 - WordPress Staging Safety Controls
+
+### What Changed
+
+- Added a dedicated `StagingSafety` class for staging-only safeguards.
+- Registered staging noindex meta, `X-Robots-Tag` headers, robots.txt blocking,
+  staff/admin staging banner output, admin staging notices, and default
+  `wp_mail()` suppression.
+- Added authenticated health output under `staging_safety` for public indexing,
+  customer email, payment capture, provider inventory, banner, and override
+  status.
+- Added explicit sandbox overrides for staging email and indexing tests.
+
+### Why
+
+The staging requirements call for public indexing to be blocked, real customer
+emails to be disabled, real payment/POS side effects to stay disabled, and a
+visible `STAGING` banner for staff/admin users. Those safeguards were
+documented, but the plugin did not yet enforce or report them.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Staging/StagingSafety.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/StagingSafetyTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/API.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- PHP unit coverage for staging active behavior, noindex header/meta/robots
+  output, email suppression, staff/admin banner rendering, explicit sandbox
+  overrides, and inactive production behavior.
+- WordPress integration smoke coverage for the authenticated health
+  `staging_safety` payload.
+
+### Rollback Notes
+
+- Revert this revision to remove plugin-enforced staging safety controls and
+  return staging safeguards to documentation/configuration only.
+- No WordPress database, SQLite schema, staging data, or production rollback is
+  required.
+
+## 2026-06-08 - Public Connector Identity
+
+### What Changed
+
+- Added a public-safe `connector_identity` block to the WordPress offline
+  connector manifest.
+- Added stable connector identity fields for profile ID, company key, company
+  name, site host, environment, site fingerprint, REST base URL, manifest URL,
+  and credential boundary.
+- Updated the offline app connector manifest type, local preview builder,
+  validation rules, and profile import path to understand the identity block
+  while remaining backward compatible with older manifests.
+
+### Why
+
+The same desktop/offline app may be used for multiple company websites. The
+connector manifest needs enough public identity to distinguish the correct
+website and company without syncing WordPress, ScryDex, Square, SSH, payment,
+or device credentials into the app.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestPlannerTest.php`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- PHP unit coverage for the manifest `connector_identity` fields and
+  no-secret credential boundary.
+- Offline app contract coverage proving manifest previews include connector
+  identity and validation/import keeps using the correct profile ID.
+
+### Rollback Notes
+
+- Revert this revision to remove the optional identity block from manifests and
+  return profile import to top-level manifest fields only.
+- No WordPress database, SQLite schema, staging data, or production rollback is
+  required.
+
+## 2026-06-08 - Offline App Event Queue Review
+
+### What Changed
+
+- Added a typed event queue preview entry model for offline registrations and
+  check-ins.
+- Added event queue helpers that parse queued event operation payloads into
+  staff-readable event title, attendee, status, payment/check-in, timestamp,
+  source, and payload summary details.
+- Updated Review Event Queue so it opens the queue panel and renders readable
+  rows instead of raw event/operation IDs.
+
+### Why
+
+The offline app could already stage event registrations and check-ins, but the
+review panel exposed raw queued operation IDs. Staff need to confirm which
+attendee, event, payment/check-in method, and registration ID are waiting for
+sync before reconnecting a device.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for event queue preview entries built
+  from queued `event_reservation` and `event_checkin` operations.
+- UI/workspace contract markers proving Review Event Queue renders readable
+  entries and stays wired to queued operations.
+- Browser verification staged event queue rows in the local app and confirmed a
+  fresh reload/review pass had no console warnings or errors.
+
+### Rollback Notes
+
+- Revert this revision to return Review Event Queue to raw operation ID display.
+- No WordPress, SQLite schema, staging data, or production rollback is required.
+
+## 2026-06-08 - Offline App Customer Credit Ledger Review
+
+### What Changed
+
+- Added a local customer credit ledger entry model and cached seed ledger rows.
+- Added helpers for selected-customer ledger filtering, pending queued
+  redemption entries, and pending-hold totals derived from queued operations.
+- Expanded Review Ledger to show pending local redemption rows and cached
+  website ledger rows for the selected customer.
+- Changed Review Ledger to open the ledger panel instead of toggling it closed.
+
+### Why
+
+The customer credit panel previously showed only balance summaries. Staff need
+to see what cached website ledger rows exist and which offline redemptions are
+waiting in the local queue. Pending-hold totals also need to reflect restored
+queue rows after a browser or desktop session reload.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for customer ledger filtering, pending
+  queued-redemption rows, and pending total derivation from queued operations.
+- UI/workspace contract markers proving the ledger entry list and selected
+  customer ledger panel remain wired.
+
+### Rollback Notes
+
+- Revert this revision to return Review Ledger to balance-summary-only display.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Offline App Customer Credit Directory
+
+### What Changed
+
+- Added a local customer credit directory to the offline workspace seed.
+- Added active customer account selection, lookup display, and customer display
+  helpers.
+- Changed pending credit holds from a single global value to a per-customer map.
+- Updated desktop pull credit refresh handling so refreshed selected credit rows
+  upsert into the local directory.
+
+### Why
+
+The offline app previously treated customer credit as a single cached sample
+account. Staff need to switch among cached customers while disconnected, and a
+redemption staged for one customer must not reduce another customer's visible
+credit balance.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for customer credit display names,
+  fallback selection, and directory upsert behavior.
+- UI/workspace contract markers proving the selector, lookup display, and
+  per-customer pending-hold state remain wired.
+
+### Rollback Notes
+
+- Revert this revision to return customer credit to a single cached account.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Offline App Structured Label Jobs
+
+### What Changed
+
+- Added a typed offline label print job model with card, barcode, price,
+  location, company profile, timestamp, format, and printable payload text.
+- Updated `Print Label` so it prepares a structured label job instead of only
+  storing a barcode string.
+- Updated the prepared-labels panel to show the current label payload staff can
+  use while the desktop hardware adapter is still deferred.
+
+### Why
+
+Staff need a useful offline label preview when the counter is disconnected or
+before the Windows printer adapter is attached. A structured payload also gives
+the future printer adapter a stable contract to consume.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for label print job payload generation.
+- UI/workspace contract markers proving `Print Label` uses structured label
+  jobs and renders payload text.
+
+### Rollback Notes
+
+- Revert this revision to return `Print Label` to the barcode-only preview
+  list.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Offline App Quantity Adjustment Workflow
+
+### What Changed
+
+- Added quantity delta and adjustment-reason inputs to the selected inventory
+  detail workflow.
+- Validated quantity adjustments as non-zero whole numbers from -99 to 99,
+  including signed values such as `+1` and `-2`.
+- Updated the offline quantity adjustment action so queued inventory operation
+  payloads include the exact `quantity_delta`, sanitized `adjustment_reason`,
+  and staff quantity sync intent.
+
+### Why
+
+The previous `Adjust Qty` button always staged a generic `+1` correction. Staff
+need offline cycle counts, receiving corrections, and shelf fixes to capture
+the actual quantity change and reason before reconnecting to the website.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for quantity delta parsing, reason
+  sanitization, and queued inventory quantity payloads.
+- UI/workspace contract markers proving the quantity controls and blocked-state
+  path remain wired into the offline app.
+
+### Rollback Notes
+
+- Revert this revision to restore the fixed `+1` quantity staging behavior.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Offline App Connector Route Readiness Guidance
+
+### What Changed
+
+- Added a connector-manifest unavailable guidance helper for missing route,
+  timeout, and non-JSON manifest failures.
+- Updated website connector testing so failed live manifest fetches include the
+  specific next step: install/activate the staging plugin package and confirm
+  offline route gates before pairing.
+- Added contract coverage for the route-missing guidance.
+
+### Why
+
+The staging WordPress REST index is reachable, but the `tcg-store/v1` routes
+are not currently registered. Staff need the offline app to distinguish a
+missing plugin route from an invalid local connector profile or credential
+problem.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for route-missing and non-JSON manifest
+  guidance.
+- UI/workspace contract markers proving failed connector tests surface the new
+  staging activation guidance.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Live credential-free staging check: `/wp-json/` returned HTTP 200 and did
+  not list `tcg-store`; `/wp-json/tcg-store/v1/offline/connector-manifest` and
+  `/wp-json/tcg-store/v1/health` returned HTTP 404.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for live
+  connector test failure guidance and no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to return to the generic live manifest failure message.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Offline App Event Detail Workflow
+
+### What Changed
+
+- Added reusable offline event sanitizers for attendee labels and check-in
+  registration public IDs.
+- Added event detail controls for attendee label, payment status, and check-in
+  lookup/public ID.
+- Updated offline event registration staging so queued `event_reservation`
+  payloads include staff-entered attendee and payment details.
+- Updated offline check-in staging so queued `event_checkin` payloads include a
+  sanitized registration public ID and attendee label.
+
+### Why
+
+The event buttons previously staged generic "Offline walk-in" and fallback
+check-in records. Staff need event operations queued with the real customer or
+lookup value collected while the device is offline.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for attendee label and check-in public ID
+  sanitization.
+- Event registration/check-in payload assertions for attendee label, payment
+  status, and registration public ID.
+- UI shell markers for the event detail controls and sanitized operation
+  wiring.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for attendee
+  registration, pay-at-store selection, check-in ID normalization, event badge
+  increments, and no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to return event registration/check-in staging to the
+  default generic attendee and fallback registration IDs.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Offline App Credit Amount Workflow
+
+### What Changed
+
+- Added reusable customer-credit currency input helpers for formatting,
+  parsing, and pending-hold availability checks.
+- Added a customer-credit redemption amount field to the offline app.
+- Updated credit staging so the queued `credit_redemption` operation uses the
+  staff-entered minor-unit amount and a specific redemption reason.
+- Added validation that blocks blank, malformed, zero, and over-balance amounts
+  before any local queue operation is staged.
+
+### Why
+
+The customer-credit button previously staged the seeded preview amount only.
+Staff need to enter the actual redemption amount during offline checkout while
+still respecting the cached balance and existing local holds.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for credit input formatting/parsing and
+  pending-hold balance checks.
+- Credit redemption operation coverage proving the staff-entered amount is
+  written into `amount_minor_units`.
+- UI shell markers for the amount field, validation state, and custom
+  amount-based operation builder call.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for `$12.50`
+  staging, pending local hold display, over-balance blocking, and no console
+  warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to return `Stage Credit Use` to the default seeded
+  redemption preview amount.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Offline App Scan Target Workflow
+
+### What Changed
+
+- Added an exact scanner lookup helper for cached inventory barcodes and public
+  inventory IDs.
+- Updated `Add Scan` and Enter key handling so the scanner/search value
+  determines the staged card when it exactly matches a cached barcode/public ID
+  or narrows search to one cached item.
+- Added a no-match guard that tells staff to enter an exact barcode/public ID or
+  narrow the search instead of staging the previously selected card.
+
+### Why
+
+The offline app search box filtered visible cards, but scan staging still used
+the previously selected card. Staff scanning a different card could therefore
+queue the wrong inventory item. The workflow now makes scan input the source of
+truth for `Add Scan`.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract coverage for exact barcode/public-ID scan lookup.
+- UI shell contract markers for scan-target resolution, Enter-to-stage, and the
+  unmatched-scan guard.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for exact barcode
+  Enter-to-stage, queue badge increment, matched-card detail selection, no-match
+  guard display, and no console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to restore the prior selected-card-based `Add Scan`
+  behavior.
+- No WordPress, SQLite schema, or staging data rollback is required.
+
+## 2026-06-08 - Staging SSH Compatibility Helper
+
+### What Changed
+
+- Added a shared staging SSH/SFTP connection helper with the OpenSSH-compatible
+  algorithm set verified against the GoDaddy Managed WordPress staging host.
+- Updated package upload, inventory smoke, migration rehearsal, and search
+  benchmark scripts to use the shared connection config.
+- Added a packaging contract that requires the helper, safe algorithm markers,
+  and helper usage across all staging SSH scripts.
+- Updated existing staging script contracts to require helper usage.
+
+### Why
+
+The staging host is reachable and accepts password authentication, but the
+default `ssh2` negotiation timed out unless the client pinned a compatible
+algorithm set. Centralizing that setting makes future uploads and WP-CLI
+staging checks repeatable.
+
+### Files Affected
+
+- `scripts/lib/staging-ssh.mjs`
+- `scripts/staging-upload-wordpress-package.mjs`
+- `scripts/staging-run-inventory-smoke.mjs`
+- `scripts/staging-run-migration-rehearsal.mjs`
+- `scripts/staging-run-search-benchmark.mjs`
+- `scripts/tests/staging-ssh-contract.mjs`
+- `scripts/tests/staging-upload-contract.mjs`
+- `scripts/tests/staging-inventory-smoke-contract.mjs`
+- `scripts/tests/staging-migration-rehearsal-contract.mjs`
+- `scripts/tests/staging-search-benchmark-contract.mjs`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging SSH helper packaging contract.
+- Existing staging upload/smoke/rehearsal/benchmark contracts now assert helper
+  usage.
+
+### Tests Run
+
+- `npm run test:packaging`: passed.
+- `npm run test`: passed, including PHP/plugin tests, sync-engine tests,
+  POS/payment policy tests, API-client tests, offline app tests, packaging
+  contracts, staging contract scaffolds, and ScryDex live smoke contract.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore direct per-script `ssh2` connection configs.
+- No WordPress, staging, database, or remote file rollback is required.
+
+## 2026-06-08 - Offline App Conflict Resolution Execution
+
+### What Changed
+
+- Added typed offline app conflict resolution request bodies and per-conflict
+  resolution action/note fields.
+- Added connector-profile conflict resolution URLs for
+  `/offline/conflicts/{conflict_id}/resolve`.
+- Extended the Tauri desktop sync adapter and Rust command to support a guarded
+  `conflict_resolution` POST route with endpoint, device, idempotency, manager,
+  conflict-id, expected-version, action, and payload validation.
+- Updated the conflict review button to attempt live website resolution only for
+  paired, token-backed, non-production desktop profiles, fall back to local
+  queue staging when unavailable/deferred, and keep rejected/stale conflicts
+  open for retry.
+- Added the conflict resolution route to the Windows package manifest.
+
+### Why
+
+The WordPress route adapter existed, but the offline app still only staged
+conflict review locally. This connects the desktop client path while preserving
+offline-first behavior and the no-raw-secret/no-raw-response boundary.
+
+### Files Affected
+
+- `apps/offline-app/config/windows-package.manifest.json`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust command coverage for guarded conflict resolution route validation and
+  sanitized response summaries.
+- Offline app contract coverage for conflict resolution request body shaping,
+  route/manifest exposure, UI live-resolution markers, and pulled conflict
+  resolution action/note preservation.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 20 Rust/Tauri command tests.
+- `npm run test`: passed, including PHP/plugin tests, sync-engine tests,
+  POS/payment policy tests, API-client tests, offline app tests, packaging
+  contracts, staging contract scaffolds, and ScryDex live smoke contract.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to return conflict review buttons to local queue staging
+  only.
+- No schema rollback is required.
+- Website writes remain unavailable unless the packaged desktop app has a paired
+  stored token, the connector is non-production, and the WordPress conflict
+  route gate is enabled.
+
+## 2026-06-08 - Offline Conflict Resolution Route Adapter
+
+### What Changed
+
+- Added a current conflict row provider for the resolution route.
+- Added a route handler that validates conflict resolution requests, loads the
+  current row, plans the manager decision, applies the repository writeback, and
+  reports applied/stale/rejected outcomes.
+- Added a conflict route handler factory that keeps list/resolve handlers
+  parser-only by default and composes repository-backed resolution only when
+  explicitly enabled.
+- Added injectable manager conflict permission callbacks to offline route
+  permission planning.
+- Wired the offline route bootstrapper to include conflict handlers and the
+  WordPress `resolve_conflicts` capability callback under the existing runtime
+  conflict route gate.
+
+### Why
+
+The previous checkpoint added the writeback primitive, but the REST route layer
+still could not use it. This connects the route-facing adapter without enabling
+production behavior by default.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionCurrentRowProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineConflictRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapper.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRoutePermissionCallbackFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Current-row provider coverage for `tcg_sync_conflicts` lookups and resolution
+  option normalization.
+- Route-handler coverage for deferred validation, applied writeback, and stale
+  writeback.
+- Conflict route factory coverage for default deferred handlers and explicit
+  repository-backed route execution.
+- Permission and registration planner coverage for manager-only conflict route
+  callbacks.
+
+### Tests Run
+
+- `php apps/wordpress-plugin/tests/run.php`: passed, 898 tests and 0 failures.
+- `npm run test`: passed, including PHP/plugin tests, offline app contracts,
+  Rust command tests, packaging contracts, staging contract scaffolds, and
+  ScryDex live smoke contract.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove route-level conflict resolution writeback
+  wiring.
+- No schema rollback is required.
+- The route remains disabled unless the offline feature flag and conflict route
+  runtime setting are enabled, so rollback from the default local state only
+  removes staged code.
+
+## 2026-06-08 - Offline Conflict Resolution Writeback Foundation
+
+### What Changed
+
+- Added guarded SQL planning for offline conflict resolution updates against
+  `tcg_sync_conflicts`.
+- Added a `$wpdb` repository adapter that applies manager conflict decisions
+  with optimistic `conflict_id` and `row_version` guards.
+- Added applied, stale, and rejected repository result states with redacted
+  response and audit payloads.
+- Stored resolution metadata in `resolution_payload_json` without exposing the
+  raw payload in repository/query audits.
+- Added unit coverage for SQL template shape, row-version guards, payload JSON
+  shaping, stale updates, failed writes, unexpected row counts, and invalid
+  update plans.
+
+### Why
+
+Offline conflicts could be listed, staged, and planned, but the WordPress
+plugin did not yet have the writeback primitive needed to persist a
+manager-approved resolution. This adds the safe backend foundation while
+keeping live route registration disabled until staging activation is explicitly
+approved.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionQueryPlan.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionRepository.php`
+- `apps/wordpress-plugin/src/Offline/OfflineConflictResolutionRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictResolutionQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConflictResolutionRepositoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This revision uses the existing `tcg_sync_conflicts` columns:
+  `status`, `resolution_action`, `resolution_payload_json`,
+  `manager_user_id`, `resolved_at`, `updated_at`, and `row_version`.
+
+### Tests Added
+
+- Query-builder tests for safe table prefixes, guarded update SQL, expected
+  row-version matching, mutable status guards, UTC timestamp conversion, and
+  redacted audit output.
+- Repository tests for applied, stale, failed, invalid-plan, and unexpected
+  row-count outcomes.
+
+### Tests Run
+
+- `php apps/wordpress-plugin/tests/run.php`: passed, 890 tests and 0 failures.
+- `npm run test`: passed, including 890 WordPress/PHP unit tests, plugin
+  bootstrap smoke, 579 PHP lint checks, sync-engine policies, POS/payment
+  policies, API client contracts, offline app TypeScript/contracts, 18
+  Rust/Tauri command tests, packaging contracts, staging contracts, ScryDex
+  live smoke contract, and required matrix validation.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove conflict-resolution writeback planning and
+  repository execution.
+- No schema rollback is required.
+- Rows already resolved in a future explicitly enabled staging route should be
+  reviewed before manual reversal; the guarded update increments `row_version`
+  and records the manager decision in `resolution_payload_json`.
+
+## 2026-06-08 - Desktop Queue Accepted-State Persistence
+
+### What Changed
+
+- Added a Tauri `mark_offline_operations_synced` command for accepted push
+  operation IDs.
+- Added SQLite update handling that marks matching pending `operation_queue`
+  rows as `synced` without deleting the audit row.
+- Added a browser-safe queue bridge function that calls the desktop command
+  when available and remains preview-only outside Tauri.
+- Wired Sync Now push-result handling to mark accepted desktop queue rows
+  synced after clearing them from React state.
+- Extended Rust and contract coverage for status updates, duplicate ID
+  handling, unsafe ID rejection, and pending-restore behavior.
+
+### Why
+
+Accepted push operations were cleared from the visible React queue, but the
+desktop SQLite queue still stored them as `pending`. Without a local status
+update, accepted operations could reappear the next time the desktop app
+restored pending queue rows.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The existing `operation_queue.status` column already supports a
+  non-pending state; this revision only adds the guarded update command.
+
+### Tests Added
+
+- Rust coverage for marking accepted IDs `synced`, deduplicating request IDs,
+  leaving unresolved rows pending, and rejecting empty/unsafe operation IDs.
+- Contract coverage for the new command, SQL template, bridge function, and
+  Sync Now wiring.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 18
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Sync Now
+  plan preparation, sync surface visibility, queue text readiness, and no
+  page-level horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to stop marking accepted SQLite queue rows as `synced`.
+- No database schema rollback is required.
+- Rows already marked `synced` remain in `operation_queue` and can be audited;
+  changing them back to `pending` should only be done manually if staff confirm
+  the website did not accept those operations.
+
+## 2026-06-08 - Offline Push Queue Replay Application
+
+### What Changed
+
+- Added sanitized accepted, conflict, and rejected operation ID arrays to the
+  Tauri offline sync push response summary.
+- Added an offline workspace queue replay helper that removes accepted
+  operations from the local queue while keeping conflict/rejected operations
+  visible for staff review.
+- Updated the Sync Now desktop success path to update the visible local queue
+  and push summary when the website returns per-operation push outcomes.
+- Extended contract and Rust tests for sanitized push outcome IDs and local
+  queue replay behavior.
+
+### Why
+
+The offline app could send queued work and display push counts, but accepted
+operations still stayed in the visible local queue. Staff need accepted website
+pushes to disappear from the local pending list while unresolved conflicts and
+rejections remain actionable.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. This changes sanitized response metadata and local React queue state
+  handling only.
+
+### Tests Added
+
+- Rust coverage for accepted/conflict/rejected operation IDs in sanitized
+  Tauri push summaries.
+- Offline app behavior coverage for clearing accepted queue entries, retaining
+  conflict entries, and ignoring accepted IDs already absent from the local
+  queue.
+- Contract markers for the new sanitized operation ID arrays and queue replay
+  helper.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 16
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Sync Now
+  plan preparation, sync surface visibility, queue replay text readiness, and
+  no page-level horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to stop clearing accepted operations after desktop push
+  summaries.
+- No WordPress database, SQLite schema, or production data rollback is
+  required.
+- If accepted operations were cleared locally before rollback, staff should
+  rely on the website/offline push operation log as the source of truth rather
+  than re-adding those local operations manually.
+
+## 2026-06-08 - Profile-Scoped Offline Sessions
+
+### What Changed
+
+- Added profile-scoped offline app session storage keys for queued operations
+  and sync attempts.
+- Added `profile_id` to offline session snapshots so local session restore can
+  reject queue state saved for a different company connector.
+- Kept a legacy shared-session restore path so existing local browser data can
+  migrate into the active connector profile once.
+- Updated the offline app profile-switch behavior to restore the selected
+  company's queue/session state and clear staged push previews that belonged
+  to the previous profile.
+- Added behavior coverage for profile-specific restore, cross-profile
+  rejection, and legacy fallback.
+
+### Why
+
+The offline app can be reused across multiple company websites, but the local
+browser session key was shared. Profile-scoped sessions prevent one company's
+queued operations or sync attempts from appearing under another company's
+connector profile.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for WordPress or SQLite.
+- Browser/localStorage migration is automatic: the old shared
+  `tcg-store-offline-session-state-v1` snapshot is accepted only as a legacy
+  fallback for the active connector profile, then new saves use the scoped
+  `tcg-store-offline-session-state-v1:<profile-id>` key.
+
+### Tests Added
+
+- Offline app behavior coverage for profile-scoped session keys, matching
+  profile restore, mismatched profile rejection, and legacy shared-session
+  fallback.
+- Offline app shell/contract markers for profile-scoped session persistence.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 16
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Pug/Demo
+  connector profile switching, profile-specific visible queue messaging, and
+  no page-level horizontal overflow. The dev log surface retained an older
+  React hot-reload dependency-array warning from the live edit session; it did
+  not reproduce as a visible runtime failure after reload/build verification.
+
+### Rollback Notes
+
+- Revert this revision to return to the shared local session key.
+- No server, WordPress database, or SQLite rollback is required.
+- If staff created multiple company profiles after this revision, review
+  browser localStorage keys before rollback to avoid hiding queued work under
+  profile-specific keys.
+
+## 2026-06-08 - Offline Event Check-In Staging
+
+### What Changed
+
+- Added `event_checkin` as a supported offline push operation type.
+- Extended WordPress offline push parsing, server snapshot planning, operation
+  resolution, queue persistence validation, route readiness reporting, and
+  deferred canonical mutation planning/query templates for event check-ins.
+- Added stale event conflict handling for check-ins when the event row version
+  changed before reconnect sync.
+- Added a typed offline app check-in operation builder with registration public
+  ID, check-in method, checked-in status, and `offline_event_checkin` sync
+  intent payload fields.
+- Added a visible Check In action to the offline app Events panel and event
+  queue preview support for queued check-ins.
+- Extended Tauri queue validation to accept `event_checkin` with `event`
+  entity type.
+
+### Why
+
+Staff could stage event registrations, but offline attendee check-ins still had
+no accepted push contract. This revision makes check-ins a real queued
+operation while preserving the existing safety model: server writes remain
+planned/deferred until route-connected write execution is explicitly enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushPayloadParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushOperationResolver.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushServerSnapshotQueryPlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationPlanner.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationQueryBuilder.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteOperationOptionsProvider.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPayloadParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushOperationResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushServerSnapshotQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushServerSnapshotQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteOperationOptionsProviderTest.php`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None. The existing event registration/check-in schema already includes
+  `tcg_event_registrations` and `tcg_event_checkins`.
+
+### Tests Added
+
+- WordPress unit coverage for event check-in payload parsing, accepted
+  resolution, missing registration identity rejection, stale event conflict
+  handling, queue persistence SQL validation, server snapshot query planning,
+  canonical mutation planning, and deferred query-template generation.
+- Offline app contract coverage for check-in UI markers, typed check-in
+  envelope payloads, browser queue support, and Rust/Tauri queue acceptance.
+
+### Tests Run
+
+- `npm run test`: passed, including 883 WordPress/PHP unit tests, sync engine,
+  POS/payment policy, API client, offline app TypeScript/contracts, 16
+  Rust/Tauri command tests, packaging contracts, staging contracts, and ScryDex
+  live smoke contract.
+- `npm run build`: passed for the offline app Vite production build.
+- `npm run verify:no-production-secrets`: passed with no production secret
+  markers found.
+- `git diff --check`: passed.
+- Browser UI verification on `http://127.0.0.1:1420/`: passed for Events ->
+  Check In staging, queued operation visibility, no page-level horizontal
+  overflow, and no browser console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to remove `event_checkin` push support and the offline
+  app Check In action while keeping event registration staging intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+- If a queued check-in operation exists locally after rollback, leave it in the
+  offline queue and remove it manually only after staff confirm it was not
+  already handled through another check-in path.
+
+## 2026-06-08 - Offline App Event Registration Staging
+
+### What Changed
+
+- Added an Events section to the offline app navigation and workspace layout.
+- Added cached event rows with open/waitlist/full/closed status badges,
+  selected-event details, local capacity display, and event queue preview.
+- Added functional offline walk-in registration and waitlist staging actions.
+- Added a typed `event_reservation` operation builder for cached events with
+  event title, start time, registration source, seat snapshot, payment status,
+  and sync intent payload fields.
+- Updated local event snapshots optimistically after a staged registration so
+  staff can see pending local event work before reconnect sync.
+
+### Why
+
+Event snapshots could be pulled into the local app, but staff still had no
+functional event workflow button. This revision turns cached event data into a
+real local queue workflow while keeping WordPress capacity and registration
+acceptance authoritative at sync time.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for event registration UI markers.
+- Offline app behavior coverage for building `event_reservation` envelopes
+  from cached events with expected payload and authorization context fields.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the Events panel and event registration queue
+  action while keeping pulled event snapshot cache application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
+## 2026-06-08 - Offline App Pull Conflict Cache Apply
+
+### What Changed
+
+- Added bounded sanitized conflict snapshot extraction to the Tauri desktop
+  `run_offline_sync_request` pull response.
+- Added stable conflict IDs and row versions to local conflict items.
+- Added TypeScript conflict cache application for newer pulled conflict rows,
+  including inserted, updated, ignored-as-stale, and changed conflict ID counts.
+- Updated `Sync Now` to show separate conflict cache-apply counts alongside
+  inventory, customer credit, and events.
+- Updated conflict review payloads to include conflict ID and conflict row
+  version for future replay/writeback.
+
+### Why
+
+The offline app could stage local conflict reviews, but pulled website conflict
+snapshots did not refresh the visible conflict panel. This revision makes the
+conflict panel website-refreshable while preserving staged review behavior and
+leaving actual conflict resolution writeback gated for a later pass.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull conflict snapshot extraction.
+- Offline app behavior contract coverage for conflict cache updates, inserts,
+  stale row rejection, event conflict operation preservation, and manager
+  override preservation.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to stop applying pulled conflict rows into the local
+  conflict panel while keeping inventory, customer credit, and event cache
+  application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
+## 2026-06-08 - Offline App Pull Event Cache Apply
+
+### What Changed
+
+- Added bounded sanitized event snapshot extraction to the Tauri desktop
+  `run_offline_sync_request` pull response.
+- Added TypeScript event snapshot cache state and cache application for newer
+  pulled event rows, including inserted, updated, ignored-as-stale, and changed
+  event ID counts.
+- Updated `Sync Now` to show separate event cache-apply counts alongside
+  inventory and customer credit.
+- Added seed event snapshots so local pull preview and event cache counts have
+  realistic offline state before live pull rows arrive.
+
+### Why
+
+Inventory and active customer credit pull rows could now update the local app,
+but events were still represented only by a static preview count. This revision
+adds the first event cache mutation layer needed for future offline event
+registration and check-in workflows while keeping raw WordPress payloads out of
+React state.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull event snapshot extraction.
+- Offline app behavior contract coverage for event cache updates, inserts,
+  stale row rejection, changed event IDs, and registered-count capping to event
+  capacity.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to stop applying pulled event rows into the local event
+  cache while keeping inventory and customer credit cache application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
+## 2026-06-08 - Offline App Pull Customer Credit Cache Apply
+
+### What Changed
+
+- Added bounded sanitized customer credit account extraction to the Tauri
+  desktop `run_offline_sync_request` pull response.
+- Added TypeScript cache application for newer active-customer credit rows,
+  including updated and ignored-as-stale/unmatched counts.
+- Moved the displayed customer credit snapshot into React state so successful
+  desktop pulls can refresh the visible balance and ledger note.
+- Updated `Sync Now` to show separate inventory and credit cache-apply counts.
+
+### Why
+
+Inventory pull rows could now update the offline cache, but customer credit was
+still locked to the initial seed snapshot. This revision makes the active
+customer credit account refreshable from website pull responses while keeping a
+bounded, sanitized response shape and avoiding raw WordPress payload exposure.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/pull-inventory-cache-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull customer credit account extraction and
+  decimal balance conversion.
+- Offline app behavior contract coverage for active-customer credit updates,
+  stale row rejection, unmatched-customer rejection, and redemption preview
+  capping when the refreshed website balance is lower than the local preview.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to stop applying pulled customer credit rows into the
+  local credit snapshot while keeping inventory cache application intact.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
+## 2026-06-08 - Offline App Pull Inventory Cache Apply
+
+### What Changed
+
+- Added bounded sanitized inventory row extraction to the Tauri desktop
+  `run_offline_sync_request` pull response.
+- Added TypeScript cache application for newer pulled inventory rows, including
+  inserted, updated, ignored-as-stale, and changed-public-ID counts.
+- Updated `Sync Now` to apply live desktop pull inventory rows after successful
+  pull completion and show cache-apply counts in the Desktop sync execution
+  panel.
+- Kept browser mode in preview and kept raw WordPress response bodies out of
+  React state.
+
+### Why
+
+The desktop sync bridge could call WordPress pull routes and show sanitized
+counts, but inventory data from successful pull responses did not yet update
+the offline app's local workspace. This revision closes the first cache-mutation
+step for real website-to-app inventory sync while preserving the credential and
+raw-payload boundary.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for sanitized pull inventory row extraction from WordPress
+  response data.
+- Offline app contract coverage for the Tauri response field, TypeScript
+  cache-apply helper behavior, stale row rejection, inserted/updated counts,
+  and visible Sync Now cache-apply UI markers.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to return desktop pull responses to count-only summaries
+  and stop applying pulled inventory rows into the local cache.
+- No WordPress database, production data, or SQLite schema rollback is required.
+
+## 2026-06-08 - Offline App Authenticated Sync Bridge
+
+### What Changed
+
+- Added a Tauri `run_offline_sync_request` command for authenticated offline
+  pull/push route calls.
+- Added Rust validation for route, HTTPS/localhost endpoint, schema version,
+  device public ID, push idempotency key, stored desktop token presence, and
+  request body shape.
+- Added sanitized Rust response summaries for WordPress pull/push responses:
+  HTTP status, WordPress status/code, operation counts, pull record/tombstone
+  counts, cursor counts, and credential-boundary flags.
+- Added a React Tauri offline sync adapter and wired `Sync Now` to attempt
+  desktop live sync only when a non-production connector has a stored paired
+  device token.
+- Added a visible Desktop sync execution panel for preview/running/completed/
+  blocked states.
+- Updated push batch body construction to use the paired registered device
+  public ID when available.
+
+### Why
+
+Pairing and secure-store token persistence were in place, but `Sync Now` still
+only previewed pull/push. This bridge creates the guarded path needed for real
+desktop sync execution while keeping browser previews safe and preventing raw
+tokens or raw WordPress responses from entering React state.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriOfflineSyncAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for missing-token blocking, invalid sync endpoint/body
+  rejection, sanitized pull response summaries, and sanitized push outcome
+  summaries.
+- Contract coverage for the Tauri command, TypeScript adapter, pull request
+  body builder, desktop sync execution panel, and no raw-token/raw-response UI
+  markers.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 16 passing Rust/Tauri command tests.
+- Browser sanity check against `http://127.0.0.1:1420/`: `Sync Now` displayed
+  the Desktop sync execution panel in preview mode; no console warnings/errors;
+  no horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to remove the desktop authenticated pull/push bridge and
+  return `Sync Now` to local preview-only behavior.
+- Existing stored device tokens and paired-device metadata can remain; this
+  revision does not change their storage schema.
+- No WordPress database or SQLite schema rollback is required.
+
+## 2026-06-08 - Offline App Paired Device Metadata
+
+### What Changed
+
+- Added secret-free paired-device metadata storage for offline app connector
+  profiles.
+- Restored paired-device records from local storage across app reloads.
+- Queried the Tauri desktop secure store for token presence when a paired
+  device is active.
+- Updated Sync Now and local sync-attempt history to distinguish paired desktop
+  tokens from prepared local pairing requests.
+- Added connector settings and pairing-panel UI status for device public ID,
+  token status, and raw-token browser storage boundaries.
+
+### Why
+
+The desktop pairing command stores the real token in Windows Credential
+Manager, but the app still needed durable, non-secret readiness metadata so
+staff can tell whether a company connector is actually paired before live
+pull/push sync wiring is enabled.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Contract coverage for paired-device storage exports, storage keys, restore
+  markers, Sync Now token-readiness fields, UI status labels, secure-store
+  token status checks, and no raw-token browser/UI markers.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 12 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove paired-device metadata restore and token
+  status display from the offline app.
+- If local browser previews have saved metadata, remove
+  `tcg-store-offline-paired-devices-v1` from local storage.
+- No WordPress database or SQLite schema rollback is required.
+
+## 2026-06-08 - WordPress Offline Pairing Authorization Settings
+
+### What Changed
+
+- Added an Offline pairing authorization section to the WordPress settings UI.
+- Added fields for new one-time pairing code entry, pairing-code hashes,
+  manager IDs, location IDs, per-mode scopes, and UTC expiry.
+- Added a trusted Settings API save-path helper that hashes a submitted raw
+  pairing code, merges it into the saved hash list, and discards the raw code
+  before storage.
+- Added `OfflinePairingAuthorizationSettings::KEY` for consistent option field
+  names.
+
+### Why
+
+The desktop pairing command needs a configurable server-side policy before a
+manager code can authorize offline devices. The UI gives staging admins a way
+to configure that policy without storing raw pairing codes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Settings/OfflinePairingAuthorizationSettings.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Unit coverage for raw pairing code hashing through `Settings::sanitize()`
+  with raw-code redaction from saved policy output.
+
+### Tests Run
+
+- `php tests/run.php`: passed, 879 tests.
+- `php tests/bootstrap-smoke.php`: passed.
+- `php tests/lint.php`: passed, 573 PHP files.
+
+### Rollback Notes
+
+- Revert this revision to remove the admin pairing policy fields and raw-code
+  hashing save path.
+- Existing saved pairing-code hashes can be cleared through the settings page
+  or by resetting `tcg_store_platform_settings[offline_pairing_authorization]`
+  to defaults.
+- No database schema rollback is required.
+
+## 2026-06-08 - Offline App Desktop Pairing Command
+
+### What Changed
+
+- Added a Tauri-only `pair_offline_device` command that POSTs the WordPress
+  device registration request from the desktop backend.
+- Added HTTPS/localhost endpoint validation for
+  `/wp-json/tcg-store/v1/offline/devices/register`.
+- Added the missing server-required pairing fields to the offline app request
+  body: `location_id`, `manager_id`, `capabilities`, and `schema_version`.
+- Added a TypeScript Tauri device-pairing adapter and `Pair Device` UI control.
+- Kept browser preview pairing blocked so one-time device tokens are not
+  requested or stored outside the desktop secure-store path.
+
+### Why
+
+The app needed the live bridge from manager pairing code to secure device-token
+storage before pull/push sync can be safely connected.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriDevicePairingAdapter.ts`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for successful WordPress registration responses storing
+  the token without returning it, and rejected WordPress responses failing
+  without credential persistence.
+- TypeScript/contract coverage for the Tauri-only pairing adapter, required
+  request body fields, UI button/state markers, and continued browser-storage
+  avoidance.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 12 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove desktop pairing POST support and the `Pair
+  Device` UI action.
+- If any staging desktop device successfully paired during manual testing,
+  delete its stored token from Windows Credential Manager under the `Pug Game
+  Shop Offline Device Tokens` service.
+- No WordPress database rollback is required for this local app change; server
+  pairing route rows, if created during manual staging tests, should be revoked
+  through the offline device management workflow once that UI is available.
+
+## 2026-06-08 - Offline App Device Token Secure Store
+
+### What Changed
+
+- Added the Windows-native `keyring` crate to the Tauri app.
+- Added `store_device_token`, `get_device_token_status`, and
+  `delete_device_token` Tauri commands.
+- Added validation for device-token length, whitespace, profile/device
+  identity, and required `offline_pull`/`offline_push` scopes.
+- Added secret-free command responses that report keyring account metadata,
+  token length, scope count, and presence/deletion status without returning raw
+  tokens.
+- Added a TypeScript Tauri secure-store adapter and surfaced desktop secure
+  store availability in the pairing panel.
+
+### Why
+
+Live offline pairing cannot safely issue one-time device tokens until the
+desktop app has a secure place to store them. This creates the desktop secure
+store boundary needed before connecting live pairing POST responses to the app.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriSecureStoreAdapter.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust unit coverage for storing, checking, deleting, invalid short token
+  rejection, incomplete scope rejection, and missing device ID rejection.
+- Tauri command contract coverage for the keyring dependency, command names,
+  secret-free response markers, and no browser-storage/network fallback in the
+  TypeScript adapter.
+
+### Tests Run
+
+- `cd apps/offline-app/src-tauri && cargo fmt && cargo test`: passed, 10 Rust
+  tests.
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 10 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove device-token secure-store commands and the
+  TypeScript adapter.
+- If any staging desktop device stored a token during manual testing, remove it
+  from Windows Credential Manager under the `Pug Game Shop Offline Device
+  Tokens` service.
+- No database or local SQLite rollback is required.
+
+## 2026-06-08 - Offline App Pairing Route Index Check
+
+### What Changed
+
+- Added the exact future WordPress offline device pairing request body builder
+  for `pairing_code`, `installation_id`, `device_label`, `device_mode`,
+  `app_version`, `platform`, and `requested_scopes`.
+- Added a `Check Pairing Route` control that reads the credential-free
+  WordPress REST index and requires the active website connector's
+  `/tcg-store/v1/offline/devices/register` route key to exist.
+- Added loading, ready, and blocked pairing route status messaging that
+  explicitly reports raw pairing code transmission and credential sync as
+  disabled.
+- Kept live pairing POST, token issuance, and token persistence deferred until
+  desktop secure-store support is connected.
+
+### Why
+
+The offline app needs a real path toward website pairing, but it should not
+burn a manager pairing code or receive a one-time device token before the
+desktop secure-store adapter exists. The route-index check proves whether the
+website route is registered without sending secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for the pairing route REST-index check,
+  future POST body fields, no-raw-code status text, and continued credential
+  sync deferral.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the pairing route index-check control and
+  future POST body helper.
+- No database or local SQLite rollback is required.
+
+## 2026-06-08 - Offline App Live Connector Manifest Fetch
+
+### What Changed
+
+- Changed the offline app website connector test flow to fetch the public
+  WordPress `/offline/connector-manifest` endpoint with credential-free CORS
+  requests.
+- Added live manifest success, loading, and blocked states in the connector
+  profile panel.
+- Added accepted/warning live manifest import into the local multi-company
+  connector profile store.
+- Kept a separate local preview validation button for draft connector profiles
+  before a website endpoint is installed.
+- Reused a shared connector manifest URL helper so each company profile resolves
+  its own website endpoint.
+
+### Why
+
+The offline app needs to validate and import the correct company website
+connector instead of only validating a local mock preview. This moves the
+multi-company setup path closer to real use while keeping WordPress, ScryDex,
+Square, SSH, payment, and device secrets out of the desktop profile.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app contract coverage for live manifest fetch markers,
+  credential-free `fetch` options, timeout handling, local preview validation,
+  and reusable connector manifest URL modeling.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to return `Test Website Connector` to local preview-only
+  validation.
+- No database or local SQLite rollback is required.
+
+## 2026-06-08 - Public Offline Connector Manifest Route
+
+### What Changed
+
+- Added `OfflineConnectorManifestController`.
+- Registered `GET /wp-json/tcg-store/v1/offline/connector-manifest` as a
+  public-safe, read-only manifest endpoint.
+- Extended the connector manifest payload with `connector_manifest_url`.
+- Updated the offline app connector manifest model, validation, and settings
+  panel to surface and verify the exact manifest URL.
+- Kept device pairing, pull, push, conflict list, and conflict resolution
+  routes gated and unregistered by default.
+
+### Why
+
+The offline app needs a real per-company website endpoint it can validate
+before live pairing. This route exposes only the existing secret-free connector
+manifest so staff can point the app at the correct WordPress site without
+syncing ScryDex, Square, SSH, payment, or device credentials into the app.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestController.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestPlanner.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/ApiRouteContractTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestControllerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestPlannerTest.php`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/API.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Route contract coverage for the public-safe manifest endpoint.
+- Controller coverage proving the route does not register device pairing,
+  pull, push, or conflict routes.
+- Manifest planner coverage for `connector_manifest_url`.
+- Offline app contract coverage for manifest URL modeling and validation.
+
+### Tests Run
+
+- `cd apps/wordpress-plugin && php tests/run.php`: passed, 878 tests.
+- `npm run test:offline-app`: passed, including TypeScript checks, offline
+  app contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the public-safe manifest endpoint and the
+  offline app manifest URL validation.
+- No database rollback is required.
+
+## 2026-06-08 - Offline App Windows Build Helper
+
+### What Changed
+
+- Added `scripts/run-offline-app-windows-build.mjs`, a PATH-aware Tauri build
+  runner that prepends the user Cargo bin path.
+- Added root `npm run build:offline-app:windows`.
+- Updated the offline app `build:windows` and `package:windows` path to use
+  the helper while preserving the `x86_64-pc-windows-msvc` NSIS target.
+- Updated the Windows package contract to verify the helper, target, bundler,
+  Cargo PATH handling, and local Tauri CLI resolution.
+
+### Why
+
+The actual Windows package build succeeded only after manually adding Cargo to
+PATH. This helper makes the build repeatable from the same PowerShell context
+used by the rest of the project.
+
+### Files Affected
+
+- `package.json`
+- `apps/offline-app/package.json`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `scripts/run-offline-app-windows-build.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Windows package contract coverage for the PATH-aware Tauri build helper.
+
+### Tests Run
+
+- `npm --prefix apps/offline-app run build:windows`: passed and produced the
+  NSIS installer under `apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/`.
+
+### Rollback Notes
+
+- Revert this revision to restore the direct `tauri build` package script.
+- No schema or local data rollback is required.
+
+## 2026-06-08 - Offline App Desktop Queue Restore
+
+### What Changed
+
+- Added a `list_offline_operations` Tauri command that reads pending rows from
+  the local SQLite `operation_queue`.
+- Added bounded pending-operation listing with row validation, schema version
+  checks, and queue ordering by `queued_at_utc`.
+- Added a TypeScript queue-restore bridge that sanitizes desktop rows before
+  React merges them into local state.
+- Added a startup restore hook so the visible queue can hydrate from the
+  desktop SQLite queue when running inside Tauri.
+
+### Why
+
+Local queue writes are only useful if staff can close and reopen the offline
+app without losing visibility into pending work. This adds read-back without
+enabling network push, direct MySQL access, or canonical website mutations.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Rust command coverage for loading pending local queue rows.
+- Rust command coverage for bounded queue restore limits.
+- Contract coverage for the restore bridge, Tauri read command, and startup
+  restore hook.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 7 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove desktop queue read-back while leaving local
+  queue writes intact.
+- Existing `offline.sqlite` files do not require schema rollback because this
+  revision only reads the existing queue table.
+
+## 2026-06-08 - Offline App SQLite Queue Persistence
+
+### What Changed
+
+- Added `rusqlite` with bundled SQLite support to the Tauri app.
+- Changed the `queue_offline_operation` command from validation-only scaffold
+  to local SQLite persistence for accepted offline operation envelopes.
+- Added local `operation_queue` table creation and idempotent
+  `INSERT OR IGNORE` writes keyed by `client_operation_id`.
+- Extended the Tauri command response with database file and rows-affected
+  metadata while keeping queue replay, network push, and canonical WordPress
+  mutations deferred.
+
+### Why
+
+The offline app buttons need a real desktop queue boundary before reconnect
+sync can execute safely. This revision gives the desktop shell durable local
+operation persistence without enabling live website writes or direct MySQL
+access.
+
+### Files Affected
+
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None for WordPress.
+- The desktop command creates the local SQLite `operation_queue` table when
+  needed.
+
+### Tests Added
+
+- Rust command coverage now verifies accepted operation persistence, supported
+  operation types, duplicate `client_operation_id` idempotency, invalid payload
+  rejection, and unsupported operation rejection.
+- Offline app contract coverage now checks the SQLite dependency, table
+  creation SQL, database-file metadata, and rows-affected command metadata.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 5 passing Rust/Tauri SQLite command tests.
+
+### Rollback Notes
+
+- Revert this revision to return the desktop command to validation-only queue
+  planning.
+- Remove `rusqlite` from `Cargo.toml` and regenerate `Cargo.lock` if rolling
+  back.
+- Delete the local desktop `offline.sqlite` file only after exporting or
+  confirming no unresolved offline operations need recovery.
+
+## 2026-06-08 - Offline App Local Rust Test Runner
+
+### What Changed
+
+- Added `scripts/run-offline-app-rust-tests.mjs`, a PATH-aware Cargo runner for
+  the offline app Tauri command tests.
+- Added `npm run test:offline-app:rust`.
+- Extended root `npm run test:offline-app` so it now runs TypeScript checks,
+  offline app contracts, and the Tauri Rust command tests.
+
+### Why
+
+Rustup was installed on the machine but the active shell did not inherit the
+user Cargo path. This runner makes the local test path repeatable on Windows
+and keeps the Tauri command tests in the normal offline-app verification loop.
+
+### Files Affected
+
+- `package.json`
+- `scripts/run-offline-app-rust-tests.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Root script coverage for `cargo test` in `apps/offline-app/src-tauri`.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed, including TypeScript checks, offline app
+  contracts, and 4 passing Rust/Tauri command tests.
+
+### Rollback Notes
+
+- Revert this revision to remove Cargo from the root offline-app test command.
+- No schema rollback is required.
+
+## 2026-06-08 - Offline App Pull Refresh Preview
+
+### What Changed
+
+- Fixed the TypeScript sync-session contract so guarded inventory execution
+  fields live on the push route model instead of the pull route model.
+- Added TypeScript typechecking to the root `npm run test:offline-app` command.
+- Added `OfflinePullRefreshPreview` and `buildOfflinePullRefreshPreview`.
+- `Sync Now` now creates a visible pull-refresh preview with inventory,
+  customer-credit, event, conflict, cursor, and preserved queued-operation
+  counts.
+- Cached-only inventory rows are marked as accepted locally after the pull
+  preview, while queued rows remain preserved for future push acceptance.
+
+### Why
+
+The offline app needs to model reconnect as both pull and push work. This
+revision makes the pull side visible and typed without making live network
+requests, and it strengthens the test gate so type drift is caught before a
+future desktop adapter is connected.
+
+### Files Affected
+
+- `package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace-state contract coverage for
+  `OfflinePullRefreshPreview`, `buildOfflinePullRefreshPreview`, local cache
+  refresh flags, and queued-operation preservation.
+- Offline app UI shell contract coverage for the pull refresh panel.
+
+### Tests Run
+
+- `npm --prefix apps/offline-app run typecheck`: passed.
+- `npm run test:offline-app`: passed.
+- Browser verification at `http://127.0.0.1:1420/`: passed for `Sync Now`
+  pull refresh preview rendering and queued-operation preservation.
+- `npm run test`: passed, including PHP plugin tests, offline app contracts,
+  packaging contracts, and required test matrix.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed with line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove local pull-refresh preview behavior and return
+  `Sync Now` to push/session planning only.
+- No schema rollback is required.
+
+## 2026-06-08 - Offline App Connector Test Reports
+
+### What Changed
+
+- Added a secret-free offline connector test report model for reusable
+  company/site profiles.
+- `Test Website Connector` now records a visible checklist for manifest shape,
+  offline route map, pairing readiness, guarded inventory hold status,
+  credential boundaries, and deferred network reachability.
+- Added compact connector report UI styling and contract coverage for the new
+  report surface.
+
+### Why
+
+The offline app will be used by more than one company/site, so connector setup
+needs a repeatable local readiness report. This keeps credentials out of the
+desktop profile while giving staff a practical view of what is ready and what
+still needs pairing or live adapter work.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace-state contract coverage for
+  `OfflineConnectorTestReport` and `buildConnectorTestReport`.
+- Offline app UI shell contract coverage for the visible connector test report
+  and its checklist classes.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed.
+- `npm run build`: passed.
+- `npm run verify:no-production-secrets`: passed.
+- Browser verification at `http://127.0.0.1:1420/`: passed for the connector
+  test report checklist and `Needs review` warning state.
+- `npm run test`: passed, including PHP plugin tests, offline app contracts,
+  packaging contracts, and required test matrix.
+- `git diff --check`: passed with line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return `Test Website Connector` to manifest
+  validation only.
+- No schema rollback is required.
+
+## 2026-06-08 - Offline App Connector Inventory Holds
+
+### What Changed
+
+- Added WordPress public inventory IDs to the offline app cached inventory
+  model so reconnect operations can target website-side inventory rows.
+- Added a `Hold Item` action that stages an `inventory_reservation` operation
+  with an offline hold intent, guarded write metadata, and local reserved
+  status.
+- Extended multi-company connector profiles, manifest previews, sync sessions,
+  and push summaries with route-connected push readiness and canonical
+  inventory write/deferred status.
+- Updated the connector editor and sync panel to show whether guarded
+  inventory holds are enabled or deferred for the selected company/site.
+
+### Why
+
+The standalone app needs reusable company/site connectors while keeping staging
+and production-safe write gates clear. This revision lets staff stage a real
+offline inventory hold envelope that maps to the WordPress canonical inventory
+executor path, but still defers website writes until device pairing and the
+selected non-production connector explicitly allow them.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace-state contract coverage for public inventory IDs,
+  `inventory_reservation` hold operation envelopes, route-connected push
+  readiness, canonical inventory write gates, and production rejection.
+- Offline app UI shell contract coverage for `Hold Item`, website IDs,
+  guarded inventory hold controls, and inventory-write sync status.
+
+### Tests Run
+
+- `npm run test:offline-app`: passed.
+- `npm run build`: passed.
+- Browser verification at `http://127.0.0.1:1420/`: passed for the hold action,
+  queued reservation preview, and deferred staging sync status.
+
+### Rollback Notes
+
+- Revert this revision to remove offline app inventory hold staging and return
+  connector sync previews to generic deferred push status.
+- No schema rollback is required.
+
+## 2026-06-08 - Route-Connected Offline Inventory Canonical Execution
+
+### What Changed
+
+- Wired `OfflinePushCanonicalMutationTransactionExecutor` into the staged
+  offline push route persistence provider behind an explicit canonical mutation
+  execution switch.
+- Route-connected push responses now report canonical transaction execution
+  status, rows affected, operation IDs, block reasons, errors, and deferral
+  state when the executor is configured.
+- The push handler rejects failed canonical inventory execution results instead
+  of returning an accepted offline response after a guarded update failure.
+- Factory readiness summaries now distinguish route-connected push readiness
+  from route-connected canonical write readiness for multi-site connector
+  configuration.
+
+### Why
+
+The offline app needs a tested reconnect path that updates website inventory
+only when the target site has explicitly enabled the canonical write gate. This
+revision connects the existing transaction executor to the route while keeping
+default and production-safe behavior deferred.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRoutePersistenceProvider.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteProcessingResult.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `OfflinePushRouteHandlerFactoryTest::test_factory_executes_inventory_canonical_mutation_when_explicitly_enabled`
+- `OfflinePushRouteHandlerFactoryTest::test_factory_does_not_fail_replayed_operation_when_canonical_execution_is_enabled`
+
+### Tests Run
+
+- `php tests/run.php`: passed, 875 PHP unit tests with 0 failures.
+- `php tests/lint.php`: passed, 571 PHP files checked with 0 failures.
+- `npm run test`: passed, including plugin bootstrap smoke, sync-engine,
+  POS/payment, API-client, offline-app, packaging, and required-matrix checks.
+- `npm run build`: passed for the offline app production build.
+- `npm run verify:no-production-secrets`: passed.
+- `git diff --check`: passed with line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to disconnect route-level canonical inventory execution
+  and return the offline push route to queue/conflict persistence plus deferred
+  canonical write reporting.
+- No schema rollback is required.
+
+## 2026-06-08 - Offline Inventory Canonical Mutation Transaction Executor
+
+### What Changed
+
+- Added `OfflinePushCanonicalMutationTransactionExecutor` and
+  `OfflinePushCanonicalMutationTransactionExecutionResult`.
+- The executor runs only when the canonical mutation SQL plan is valid and the
+  transaction preflight result is ready.
+- Implemented explicit transaction handling for inventory
+  `inventory_status_guarded_update` queries: begin transaction, execute the
+  prepared guarded update, commit on exactly one affected row, and rollback on
+  zero rows, unexpected row counts, prepare failures, query failures, or commit
+  failure.
+- Added route/readiness metadata so health/admin diagnostics can report that
+  the transaction executor boundary exists while default route wiring remains
+  gated and deferred.
+- Documented the offline-sync and database posture.
+
+### Why
+
+The standalone offline app needs a real, auditable path to update website
+inventory after reconnect. This revision adds the first executable canonical
+write boundary for the safest case: inventory reservations protected by row
+version and `available` status guards, preserving double-sell prevention.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRegisteredDeviceSyncRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationTransactionExecutionResult.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushCanonicalMutationTransactionExecutor.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushCanonicalMutationTransactionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRegisteredDeviceSyncRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/README.md`
+- `apps/wordpress-plugin/readme.txt`
+- `docs/CHANGELOG.md`
+- `docs/DATABASE.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `OfflinePushCanonicalMutationTransactionExecutorTest`
+
+### Tests Run
+
+- `php tests/run.php`: passed, 873 PHP unit tests with 0 failures.
+- `php tests/lint.php`: passed, 571 PHP files checked with 0 failures.
+
+### Rollback Notes
+
+- Revert this revision to remove the explicit offline inventory canonical
+  mutation transaction executor and readiness metadata.
+- No schema migration, staging data cleanup, or production rollback action is
+  required because default offline route wiring still leaves transaction
+  execution gated unless an explicit future integration enables it.
+
+## 2026-06-08 - Gated Live ScryDex Smoke Helper
+
+### What Changed
+
+- Added `npm run scrydex:live-smoke` backed by
+  `scripts/scrydex-live-smoke.mjs`.
+- The helper performs a read-only cards search against `/pokemon/v1/cards`
+  only when ScryDex credential env vars and
+  `SCRYDEX_SMOKE_CONFIRM=pull-live-scrydex` are present.
+- Added sanitized output for HTTP status, result counts, and first-card summary
+  fields while refusing to print raw responses or credentials.
+- Added dry-run output and a contract test that enforces the confirmation gate,
+  credential-redaction posture, and no WordPress database/plugin side effects.
+- Documented the manual live-smoke workflow in the ScryDex integration notes.
+
+### Why
+
+The team needs a safe way to prove live ScryDex connectivity on demand without
+turning local or CI tests into live API consumers and without exposing API keys
+in logs, screenshots, commits, or pull request notes.
+
+### Files Affected
+
+- `package.json`
+- `scripts/scrydex-live-smoke.mjs`
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- `scripts/tests/scrydex-live-smoke-contract.mjs`
+
+### Tests Run
+
+- `npm.cmd run package:wordpress`: passed and produced
+  `dist/tcg-store-platform-0.156.0.zip` at 518,082 bytes.
+- `npm.cmd run staging:upload-package -- --dry-run`: passed with upload-only
+  staging metadata and no activation/overwrite behavior.
+- `npm.cmd run scrydex:live-smoke -- --dry-run`: passed.
+- `node scripts/tests/scrydex-live-smoke-contract.mjs`: passed.
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run test`: passed, including 869 PHP unit tests with 0 failures,
+  WordPress bootstrap/lint checks, sync-engine, POS/payment policy, API client,
+  offline app, packaging, and required matrix coverage.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the manual live ScryDex smoke command.
+- No WordPress data, staging files, database migrations, or production rollback
+  actions are required.
+
+## 2026-06-08 - Offline Queue And Sync Attempt Local Persistence
+
+### What Changed
+
+- Added a versioned `tcg-store-offline-session-state-v1` local-storage
+  envelope for queued offline operations and local sync-attempt history.
+- Added snapshot and restore helpers that sanitize operation envelopes, reject
+  malformed or credential-looking payloads, preserve deferred-network metadata,
+  and cap restored rows.
+- Updated the offline app to restore queued operations and sync attempts at
+  startup, persist them after local changes, and show a visible local-save note
+  in the sync queue.
+- Moved sync-attempt history into a standalone visible panel so restored sync
+  attempts appear immediately after reload.
+- Updated offline app contract coverage and detailed changelog notes.
+
+### Why
+
+The standalone app needs to remain useful when disconnected or restarted.
+Connector profiles and prepared pairings already persisted; queued operations
+and sync-attempt history now survive reloads too, without storing WordPress,
+ScryDex, Square, SSH, or device-token secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract markers for `OfflineSessionStorageSnapshot`,
+  `OfflineSessionStorageRestoreResult`, `OfflineSyncAttemptRecord`,
+  `OFFLINE_SESSION_STORAGE_KEY`, snapshot/restore helpers, invalid/parse-failed
+  restore issues, credential-marker filtering, and deferred network/direct
+  MySQL metadata.
+- Offline UI shell contract markers for the visible local-save note and
+  standalone sync-attempt panel.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser QA at `http://127.0.0.1:1420/`: passed for stage-scan, sync-attempt,
+  reload, restored queue operation, restored sync-attempt panel, restored
+  status message, local-save note, and console health.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to make queued operations and sync-attempt history
+  session-only again.
+- Clear local-storage key `tcg-store-offline-session-state-v1` to discard
+  persisted offline session state.
+- No database migration, staging cleanup, or production rollback is required.
+
+## 2026-06-08 - Gated Staging Inventory Search Benchmark Runner
+
+### What Changed
+
+- Added `npm run staging:search-benchmark` backed by
+  `scripts/staging-run-search-benchmark.mjs`.
+- The runner uploads the existing WordPress 50,000-row inventory search
+  benchmark PHP script to staging uploads, runs it through WP-CLI `eval-file`
+  with `TCG_ALLOW_INVENTORY_SEARCH_BENCHMARK=1`, then removes only that
+  temporary benchmark file through SFTP.
+- Required explicit acknowledgement before seeding 50,000 deterministic
+  disposable staging rows.
+- Set `TCG_INVENTORY_SEARCH_BENCHMARK_CLEANUP=1` by default so fixture rows
+  are removed after the baseline run unless the caller explicitly opts to keep
+  rows for investigation.
+- Added `scripts/tests/staging-search-benchmark-contract.mjs` and wired it
+  into `npm run test:packaging`.
+- Updated staging documentation and detailed changelog notes.
+
+### Why
+
+Phase 2 acceptance requires search and pagination baselines on the target
+GoDaddy staging database. This makes the benchmark repeatable and gated while
+keeping production, plugin activation, and active plugin files untouched.
+
+### Files Affected
+
+- `package.json`
+- `scripts/staging-run-search-benchmark.mjs`
+- `scripts/tests/staging-search-benchmark-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging search benchmark contract coverage for required SSH/WP-CLI
+  environment gates, explicit benchmark confirmation, 50,000-row staging seed
+  acknowledgement, default fixture cleanup, optional benchmark threshold
+  wiring, temporary SFTP upload, WP-CLI `eval-file`, scoped temporary-file
+  cleanup, output tailing, no plugin activation, no active plugin overwrite,
+  no production deployment, and no credential printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:search-benchmark -- --dry-run` with placeholder
+  staging env values, 50,000-row acknowledgement, and benchmark confirmation:
+  passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging search benchmark runner, contract
+  test, npm script, and documentation.
+- No staging cleanup is required for dry-run verification.
+- A real benchmark run removes its own temporary PHP file and, by default,
+  removes benchmark fixture rows after collecting baselines.
+- If benchmark cleanup is intentionally disabled or interrupted, delete rows
+  with barcode/SKU prefixes `PUG-BENCH-SEARCH-*` and the benchmark location
+  code `PUG-BENCH-SEARCH` from staging.
+
+## 2026-06-08 - Backup-Gated Staging Migration Rehearsal Runner
+
+### What Changed
+
+- Added `npm run staging:migration-rehearsal` backed by
+  `scripts/staging-run-migration-rehearsal.mjs`.
+- The runner uploads the existing WordPress migration rollback/restore
+  rehearsal PHP script to staging uploads, runs it through WP-CLI `eval-file`
+  with `TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL=1`, then removes only that
+  temporary rehearsal file through SFTP.
+- Required a staging backup confirmation and backup reference before a real
+  run can connect.
+- Added `scripts/tests/staging-migration-rehearsal-contract.mjs` and wired it
+  into `npm run test:packaging`.
+- Updated staging documentation and detailed changelog notes.
+
+### Why
+
+Inventory/card-management route acceptance depends on proving staged database
+migrations can roll back and restore safely on the target staging environment.
+This makes that proof repeatable while preserving the project rule that major
+database migration checks require a verified backup or staging clone first.
+
+### Files Affected
+
+- `package.json`
+- `scripts/staging-run-migration-rehearsal.mjs`
+- `scripts/tests/staging-migration-rehearsal-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging migration rehearsal contract coverage for required SSH/WP-CLI
+  environment gates, explicit destructive rehearsal confirmation, required
+  backup confirmation/reference, temporary SFTP upload, WP-CLI `eval-file`,
+  scoped temporary-file cleanup, output tailing, no plugin activation, no
+  active plugin overwrite, no production deployment, and no credential
+  printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:migration-rehearsal -- --dry-run` with placeholder
+  staging env values, backup confirmation, backup reference, and migration
+  confirmation: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging migration rehearsal runner,
+  contract test, npm script, and documentation.
+- No staging cleanup is required for dry-run verification.
+- A real rehearsal run removes its own temporary PHP file. If a network
+  interruption prevents cleanup, delete the timestamped
+  `wordpress-migration-rehearsal-*.php` file from staging uploads.
+- If a real rehearsal fails after rollback and before restore, restore staging
+  from the backup reference recorded in `PUG_STAGING_BACKUP_REFERENCE`.
+
+## 2026-06-08 - Offline Button Intents And Sync Attempt History
+
+### What Changed
+
+- Added distinct local inventory operation intents for scan, quantity
+  adjustment, and generic inventory update actions.
+- Updated `Add Scan` to stage an `offline-inventory-scan-*` queue operation and
+  fill the search field with the selected barcode.
+- Updated `Adjust Qty` to stage an `offline-inventory-quantity-*` queue
+  operation with a quantity delta and adjustment reason in the payload.
+- Updated `Sync Now` to record a visible local sync-attempt history entry for
+  the active company/site connector, operation count, pairing state, and
+  deferred network status.
+- Updated offline app contract coverage and UI styling for the new behavior.
+
+### Why
+
+The offline app buttons were technically wired, but several actions still felt
+identical in the local UI. This gives staff clearer feedback, gives QA concrete
+operation IDs to inspect, and keeps multi-company website connector behavior
+visible while live network sync remains deferred.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline workspace contract markers for scan/quantity inventory operation
+  kinds, scan/quantity sync intents, quantity delta payloads, and sync-attempt
+  recording.
+- Offline UI shell contract markers for visible local sync attempts and the new
+  scan/quantity button behavior.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser QA at `http://127.0.0.1:1420/`: passed for `Adjust Qty`,
+  `Add Scan`, and `Sync Now`, with no console warnings or errors.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to return `Add Scan`, `Adjust Qty`, and generic
+  inventory updates to the prior shared queue behavior and remove sync-attempt
+  history.
+- No database migration or staging cleanup is required.
+- Any queued local operation envelopes created in the app preview are local
+  test state only and are not sent to WordPress until future paired sync
+  execution is explicitly enabled.
+
+## 2026-06-08 - Gated Staging Inventory Smoke Runner
+
+### What Changed
+
+- Added `npm run staging:inventory-smoke` backed by
+  `scripts/staging-run-inventory-smoke.mjs`.
+- The runner uploads the existing WordPress staging inventory smoke PHP script
+  to staging uploads, runs it through WP-CLI `eval-file`, then removes only
+  that temporary smoke file through SFTP.
+- Added `scripts/tests/staging-inventory-smoke-contract.mjs` and wired it into
+  `npm run test:packaging`.
+- Updated staging documentation and detailed changelog notes.
+
+### Why
+
+The staging upload path and live ScryDex pull were proven manually. This makes
+the next staging acceptance check repeatable while keeping it gated, explicit,
+and separate from deployment, plugin activation, active plugin overwrite,
+production changes, and external provider side effects.
+
+### Files Affected
+
+- `package.json`
+- `scripts/staging-run-inventory-smoke.mjs`
+- `scripts/tests/staging-inventory-smoke-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging inventory smoke contract coverage for required SSH/WP-CLI
+  environment gates, explicit smoke confirmation, temporary SFTP upload,
+  WP-CLI `eval-file`, scoped temporary-file cleanup, output tailing, no plugin
+  activation, no active plugin overwrite, no production deployment, and no
+  credential printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:inventory-smoke -- --dry-run` with placeholder staging
+  env values and smoke confirmation: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending normalization warnings
+  only.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging inventory smoke runner, contract
+  test, npm script, and documentation.
+- No staging cleanup is required for dry-run verification.
+- A real smoke run removes its own temporary PHP file. If a network
+  interruption prevents cleanup, delete the timestamped
+  `wordpress-staging-inventory-smoke-*.php` file from staging uploads.
+
+## 2026-06-08 - Upload-Only Staging Package Transfer Script
+
+### What Changed
+
+- Added `npm run staging:upload-package` backed by
+  `scripts/staging-upload-wordpress-package.mjs`.
+- Added `ssh2` as a dev dependency for password-based SFTP upload from the
+  local development machine to the staging WordPress filesystem.
+- Added `scripts/tests/staging-upload-contract.mjs` and wired it into
+  `npm run test:packaging`.
+- Updated staging documentation with required environment variables and
+  upload-only behavior.
+
+### Why
+
+The prior staging package transfer was proven manually through a scratch
+script. This makes the workflow repeatable while keeping it intentionally short
+of activation, migration, production deployment, active plugin overwrite, or
+secret disclosure.
+
+### Files Affected
+
+- `package.json`
+- `package-lock.json`
+- `scripts/staging-upload-wordpress-package.mjs`
+- `scripts/tests/staging-upload-contract.mjs`
+- `docs/STAGING.md`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Staging upload contract coverage for required environment variable gates,
+  explicit upload confirmation, default `/html/wp-content/uploads` remote
+  target, SFTP `fastPut`, remote size verification, dry-run output, no
+  activation, no active plugin overwrite, and no credential printing.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- `npm.cmd run staging:upload-package -- --dry-run` with placeholder staging
+  env values and upload confirmation: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the SFTP upload script, contract test, npm
+  script, and `ssh2` dev dependency.
+- No staging cleanup is required for this revision because only dry-run was
+  executed during verification.
+- A real upload, when run later, leaves a timestamped zip under staging
+  uploads; remove that zip manually if it is no longer needed.
+
+## 2026-06-08 - Offline Prepared Pairing Local Persistence
+
+### What Changed
+
+- Added a versioned `tcg-store-offline-prepared-pairings-v1` local-storage
+  envelope for redacted prepared device pairing requests.
+- Added restore/snapshot helpers that reject malformed storage, reject raw-code
+  storage, and keep only prepared pairing records tied to known connector
+  profiles.
+- Updated offline app startup and save behavior so prepared-local pairing state
+  survives reloads and is available to the connector sync session plan.
+- Updated offline app contracts and changelog coverage for the new storage
+  path.
+
+### Why
+
+The multi-company offline app should not forget a prepared pairing request
+after a restart. Persisting only redacted pairing metadata keeps the sync panel
+accurate while avoiding local storage of manager codes, device tokens,
+WordPress credentials, ScryDex keys, or Square secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for
+  `PreparedPairingStorageSnapshot`,
+  `PreparedPairingStorageRestoreResult`, storage key markers, restore/snapshot
+  helpers, and invalid-storage fallback markers.
+- Offline app UI contract checks for prepared-pairing storage wiring.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: passed. A fake pairing code
+  created a redacted prepared pairing, reload preserved the prepared-local
+  state, and `Sync Now` showed `Prepared locally` with only the fingerprint and
+  token-storage label. No console warnings/errors appeared.
+
+### Rollback Notes
+
+- Revert this revision to make prepared pairing requests session-only again.
+- Clear local-storage key `tcg-store-offline-prepared-pairings-v1` to discard
+  persisted prepared pairing metadata.
+- No database migration or staging cleanup is required.
+
+## 2026-06-08 - Offline Connector Sync Session Plan
+
+### What Changed
+
+- Added `OfflineConnectorSyncSessionPlan` and
+  `buildOfflineConnectorSyncSessionPlan()` to tie active connector profiles to
+  offline pull/push endpoint URLs and queued operation counts.
+- Updated staged offline operations and `Sync Now` to create a website-specific
+  sync session plan for the active company connector.
+- Added a compact sync session panel that shows the active website connector,
+  pull route, push route, operation count, pairing readiness, and desktop
+  secure-token storage.
+- Updated offline app contracts and changelog coverage for the new plan.
+
+### Why
+
+The standalone app needs to make website sync behavior concrete for multiple
+companies/sites. This moves `Sync Now` from a generic preview toward an
+auditable connector-specific sync plan while keeping live network execution,
+device tokens, provider credentials, and direct database access deferred.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for
+  `OfflineConnectorSyncSessionPlan`,
+  `buildOfflineConnectorSyncSessionPlan`, sync-session action metadata,
+  no-local-operation plans, pairing readiness, and device-pairing markers.
+- Offline app UI contract checks for the visible sync session panel and
+  `Sync Now` session planning state.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: passed. `Sync Now`
+  rendered the active staging website connector, `/offline/pull`,
+  `/offline/push`, zero-operation push plan, required pairing status, and no
+  console warnings/errors.
+
+### Rollback Notes
+
+- Revert this revision to remove connector-specific sync session planning and
+  return `Sync Now` to the previous generic push preview.
+- No database migration, remote staging cleanup, or local storage cleanup is
+  required.
+
+## 2026-06-08 - Offline Connector Profile Local Persistence
+
+### What Changed
+
+- Added a versioned `tcg-store-offline-connector-profiles-v1` local-storage
+  envelope for offline app connector profiles.
+- Added restore/snapshot helpers that reject malformed storage and any payload
+  that does not explicitly keep credentials out of the app.
+- Updated the offline app startup path to restore saved company/site profiles
+  and the active connector, then persist profile changes automatically.
+- Updated Settings copy and contract tests for saved-local connector profiles.
+
+### Why
+
+Multi-company connector setup needs to survive app reloads. This makes the
+offline app usable for repeated staff workflows without syncing API keys,
+WordPress passwords, ScryDex credentials, or Square secrets into browser/app
+profile state.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for the storage key, versioned action,
+  restore/snapshot helpers, invalid-storage fallback markers, and ScryDex
+  credential redaction enforcement.
+- Offline app UI contract checks for local-storage use and saved-local
+  connector copy.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: reload passed, connector
+  panel rendered saved-local copy, and no console warnings/errors appeared.
+  The Browser plugin read-only page scope did not expose `localStorage`, so
+  storage value inspection was verified by TypeScript/contracts instead.
+
+### Rollback Notes
+
+- Revert this revision to return connector profiles to session-only React
+  state.
+- Users can clear the browser/app local-storage key
+  `tcg-store-offline-connector-profiles-v1` if they need to discard saved
+  profile drafts.
+- No database migration or staging cleanup is required.
+
+## 2026-06-08 - Offline Connector Pairing Request History
+
+### What Changed
+
+- Added a `PreparedDevicePairingRequest` model and builder for local,
+  redacted device pairing requests.
+- Updated the offline app Settings panel so `Prepare Pairing` creates a
+  visible prepared-request record for the selected website connector, clears
+  the raw pairing code from the input, and keeps the live token request
+  deferred.
+- Added compact prepared-pairing request styling and contract checks for the
+  new UI state and workspace helper.
+
+### Why
+
+The offline app needs to support multiple companies and websites without
+storing real secrets locally. This gives staff a concrete pairing workflow and
+audit trail while live WordPress token issuance remains gated behind staging
+settings.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline app workspace contract checks for `PreparedDevicePairingRequest`,
+  `buildPreparedDevicePairingRequest`, redacted request IDs, and raw-code
+  storage prevention.
+- Offline app UI contract checks for prepared pairing request copy, CSS, and
+  state mutations.
+
+### Tests Run
+
+- `npm.cmd --prefix apps/offline-app run test:package-contract`: passed.
+- Browser render QA at `http://127.0.0.1:1420/`: passed for Settings pairing
+  flow; keypress entry was used because the in-app browser text-entry helper
+  reported a virtual clipboard limitation.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- `git diff --check`: passed with Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove prepared pairing request state and UI.
+- No database migration or remote staging cleanup is required.
+- Existing connector profiles remain unchanged because the new pairing history
+  is local React session state only.
+
+## 2026-06-08 - WordPress Plugin Package Smoke Path
+
+### What Changed
+
+- Added `npm run package:wordpress` to create a staging-ready
+  `tcg-store-platform` plugin zip under `dist/`.
+- Added `scripts/package-wordpress-plugin.mjs`, which uses `git archive` from
+  the committed WordPress plugin tree and includes only runtime plugin files.
+- Added `scripts/tests/wordpress-package-contract.mjs` and wired it into
+  `npm run test`.
+- Updated `.gitignore`, testing docs, and changelog for generated package
+  output and packaging coverage.
+- Verified a package-sized SFTP upload to staging by uploading the generated
+  zip to `/html/wp-content/uploads`, checking the remote byte size, and
+  removing the file.
+
+### Why
+
+Staging deployments need a repeatable package artifact before any plugin file
+upload or activation happens. The packaging smoke proves the zip can be built
+and transferred to the staging WordPress filesystem without changing active
+plugin code.
+
+### Files Affected
+
+- `.gitignore`
+- `package.json`
+- `scripts/package-wordpress-plugin.mjs`
+- `scripts/tests/wordpress-package-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- WordPress plugin package contract coverage for archive root, plugin entry
+  files, runtime route-gate files, and absence of tests/vendor/dev config.
+
+### Tests Run
+
+- `npm.cmd run test:packaging`: passed.
+- Staging SFTP package upload smoke to `/html/wp-content/uploads`: passed,
+  remote size matched, zip removed.
+
+### Rollback Notes
+
+- Revert this revision to remove the package script and package contract test.
+- Delete any local `dist/tcg-store-platform-*.zip` files if desired; `dist/`
+  is ignored.
+- No staging cleanup is required because the uploaded smoke zip was removed,
+  and no plugin activation or file replacement occurred.
+
+## 2026-06-08 - Staging Offline Route Gates And Live ScryDex Endpoint Verification
+
+### What Changed
+
+- Installed and verified the local Rust/Cargo and MSVC linker toolchain for
+  Tauri command tests.
+- Fixed the Tauri Windows NSIS config key from `installerMode` to `installMode`,
+  added a Windows `.ico`, and committed the generated `Cargo.lock` for
+  reproducible desktop-shell testing.
+- Added offline route runtime settings, admin controls, and a runtime
+  configurator for staging-gated device pairing, pull, push, and conflict
+  routes.
+- Updated offline route bootstrap and health planning to use runtime route
+  contracts, pairing policy readiness, registered-device permissions, and
+  handler availability before any offline REST route can register.
+- Kept `offline_sync` unavailable in production while allowing local,
+  development, and staging environments to opt in behind explicit settings.
+- Updated the ScryDex HTTP provider and dry-run diagnostics to target the
+  current `/pokemon/v1/cards` endpoint and normalize live response rows that
+  omit game context.
+- Added a root `build` script and made the production-secret scanner skip
+  generated/binary artifact directories.
+- Added a root `CHANGELOG.md` pointer to the detailed docs changelog.
+- Verified staging SSH/SFTP upload access by writing and removing a harmless
+  marker under `/html/wp-content/uploads`; no plugin files were activated or
+  overwritten.
+- Verified a live ScryDex pull with sanitized output only: `GET
+  /pokemon/v1/cards` returned HTTP 200, two Charizard rows, and `total_count`
+  metadata.
+
+### Why
+
+The offline app needs a safe, company-configurable staging path before live
+pairing, pull, or push routes are exposed. ScryDex credentials are now
+available for staging checks, so the provider adapter also needed to match the
+current documented endpoint before worker execution is enabled.
+
+### Files Affected
+
+- `CHANGELOG.md`
+- `.gitignore`
+- `package.json`
+- `scripts/wp-env/verify-no-production-secrets.mjs`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `apps/offline-app/README.md`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/offline-app/src-tauri/icons/icon.ico`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/tests/windows-package-contract.mjs`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteBootstrapper.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlagRegistry.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexHttpProvider.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncDryRunPlanner.php`
+- `apps/wordpress-plugin/src/Settings/OfflineRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexHttpProviderTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncDryRunPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline route runtime settings sanitization coverage.
+- Offline route runtime configurator coverage for default-off routes, device
+  pairing enablement, and conflict-route enablement.
+- Offline route registration/readiness coverage proving a runtime-enabled
+  pairing route can register only when permission and handler dependencies are
+  ready.
+- ScryDex provider coverage for the live endpoint shape and game-context
+  normalization.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 869 tests.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 568 PHP files.
+- `npm.cmd run test:offline-app`: passed.
+- `cargo test` in `apps/offline-app/src-tauri`: passed, 4 Rust tests.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `npm.cmd run build`: passed.
+- Staging SSH/SFTP upload smoke to `/html/wp-content/uploads`: passed, marker
+  removed.
+- Live ScryDex read smoke to `/pokemon/v1/cards`: passed with sanitized
+  summary output only.
+
+### Rollback Notes
+
+- Revert this revision to return offline routes to static default-off planning
+  and remove the new runtime route settings.
+- Remove `apps/offline-app/src-tauri/Cargo.lock` and
+  `apps/offline-app/src-tauri/icons/icon.ico` only if the Tauri Windows shell
+  is no longer being tested locally.
+- Reverting the ScryDex provider change restores the older mock-only endpoint
+  behavior, but live ScryDex reads will no longer match the documented current
+  `/pokemon/v1/cards` route.
+- No database migration rollback, WordPress plugin deactivation, staging file
+  cleanup, or provider-side cleanup is required. The staging upload smoke file
+  was removed during the test, and no live WordPress route was enabled by
+  default.
+
+## 2026-06-08 - Offline App Functional Connector And Local Action State
+
+### What Changed
+
+- Added connector draft types and helpers for creating, validating, and
+  upserting multi-company website profiles from local form input.
+- Added a Settings connector editor for company name, short name, website
+  host/URL, environment, and ScryDex display label.
+- Changed `Save Profile Draft` from a message-only button into a local
+  profile add/update workflow that validates the secret-free connector
+  manifest and selects the saved profile.
+- Added live local state for queued operations, open/reviewed conflicts,
+  customer-credit pending holds, and prepared print-label jobs.
+- Updated queue, conflict, customer credit, and selected-card panels to show
+  visible results after button clicks.
+- Added accessible names to compact sidebar navigation buttons so mobile and
+  automated testing can target hidden-label nav items.
+- Extended offline app contract tests for connector draft helpers, local
+  session state markers, and compact nav accessibility.
+
+### Why
+
+The offline app preview had several controls that prepared status messages but
+did not leave enough visible state behind. The app also needed a reusable
+connector model so it can target the correct WordPress/WooCommerce site per
+company instead of being hardwired to one shop.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Contract coverage for connector profile draft types/helpers and profile
+  upsert behavior markers.
+- Contract coverage for visible queue rows, connector editor, ledger preview,
+  print-label jobs, local conflict/credit state, and compact nav accessible
+  labels.
+
+### Tests Run
+
+- `npm.cmd run typecheck` in `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run build` in `apps/offline-app`: passed.
+- Playwright desktop functional pass at `1440x1000`: staged inventory update,
+  prepared print label, reviewed and approved both conflicts, staged customer
+  credit hold, added and validated a second company connector, with zero
+  console warnings/errors and zero horizontal overflow.
+- Playwright mobile functional pass at `390x844`: opened Settings through
+  compact nav, saved a connector draft, with zero console warnings/errors and
+  zero horizontal overflow.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to seed-only connector
+  profiles and message-only local action previews.
+- No database migrations, live website writes, live Tauri SQLite writes,
+  provider calls, payment capture, credential persistence, or production
+  mutations are introduced.
+- Rust/Cargo are not installed on this workstation, so the Tauri command could
+  not be compiled locally in this checkpoint; the existing Rust command
+  remains scaffolded behind contract tests.
+
+## 2026-06-08 - WordPress App Pairing Contract Diagnostics
+
+### What Changed
+
+- Added `app_pairing_contract` to offline device pairing route readiness
+  health output.
+- Included the planned `POST /offline/devices/register` REST path, permission
+  strategy, redacted pairing-code transport/storage, requested app scopes,
+  desktop secure token storage, and live execution deferrals.
+- Updated the pairing route readiness admin summary to surface app token
+  storage.
+- Aligned the offline app route preview with WordPress's staged offline route
+  contracts for device register, pull, push, conflict list, and conflict
+  resolve.
+- Extended unit and WordPress smoke tests for the app pairing contract.
+
+### Why
+
+The offline app now has a local pairing-code preview. WordPress needed to
+publish the same secret-free contract so staging can verify the app is
+pairing against the correct website route and scope model before live pairing
+or token issuance is enabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflineDevicePairingRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineDevicePairingRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Pairing readiness planner assertions for app contract action, REST path,
+  requested scopes, desktop secure token storage, pairing-code redaction,
+  raw pairing-code storage blocking, network/token deferrals, and no
+  credential sync to the app.
+- Pairing readiness presenter assertion for admin summary token storage.
+- WordPress integration smoke assertions for authenticated health app pairing
+  contract output.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 862 tests and 0
+  failures.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Api\V1\OfflineDevicePairingRouteReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\OfflineDevicePairingRouteReadinessStatusPresenter.php`:
+  passed after formatting.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 565 PHP files checked
+  and 0 failures.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove app pairing contract diagnostics from
+  pairing readiness health/admin output and restore the prior offline app route
+  preview.
+- No database migrations, live pairing route registration, token issuance,
+  credential persistence, website network calls, provider calls, or production
+  mutations are introduced.
+- Existing pairing readiness, connector manifest diagnostics, and offline app
+  local pairing preview remain available if only this diagnostic alignment is
+  rolled back.
+
+## 2026-06-08 - Offline App Pairing Request Preview
+
+### What Changed
+
+- Added `OfflineDeviceProfile` and `DevicePairingRequestPlan` types.
+- Added `buildDevicePairingRequestPlan` to shape a deferred
+  `POST /offline/devices/register` request for the selected connector profile.
+- Added a pairing-code field and `Prepare Pairing` button to the Settings
+  connector panel.
+- Added redacted pairing-code fingerprinting so entered manager codes are not
+  echoed back in visible UI.
+- Updated contract tests and documentation for the pairing request preview.
+
+### Why
+
+The multi-company connector flow needs a staff-facing next step after manifest
+validation: preparing a device registration request for the correct website.
+This checkpoint provides that local workflow while keeping live token issuance,
+network submission, and credential storage disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for pairing request planning,
+  redacted pairing-code markers, scoped offline permissions, and production
+  token issuance deferral.
+- Extended UI shell contracts for `Pairing code`, `Prepare Pairing`,
+  `handlePairingPreview`, and pairing state updates.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- In-app browser DOM/interaction QA against `http://127.0.0.1:1420/`: passed
+  for empty-code required messaging, filled-code pairing preview,
+  `/offline/devices/register` request shaping, hidden raw pairing code, no
+  console warnings/errors, and no horizontal overflow.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline app pairing-code form and local
+  pairing request preview.
+- No database migrations, live route registration, live token issuance,
+  credential persistence, website network calls, ScryDex/Square provider
+  calls, or production mutations are introduced.
+- Existing connector manifest validation, inventory queue staging, and
+  credit/conflict operation previews remain available if only this pairing
+  preview layer is rolled back.
+
+## 2026-06-08 - Offline App Credit And Conflict Staged Actions
+
+### What Changed
+
+- Added structured customer-credit and conflict metadata to the offline app
+  workspace state.
+- Added `buildCustomerCreditRedemptionOperation` and
+  `buildConflictReviewOperation` so customer-credit and conflict controls
+  produce real offline operation envelopes.
+- Refactored the React app to route inventory, credit, and conflict actions
+  through a shared local queue staging path.
+- Added `Stage Credit Use` and `Review Ledger` controls to the customer credit
+  panel.
+- Wired conflict `Review`/`Approve` buttons to queue staged conflict-review
+  envelopes instead of only selecting the row.
+- Updated contract tests and documentation for these newly functional buttons.
+
+### Why
+
+The offline app needed more visible controls to perform useful local workflow
+state changes. This checkpoint extends the operation-envelope preview beyond
+inventory so staff can stage customer-credit and conflict work while the app is
+offline.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for customer-credit
+  redemption and conflict-review operation builders, `credit_redemption`,
+  `customer_credit`, `offline_credit_redemption`, and `staff_conflict_review`
+  markers.
+- Extended UI shell contracts for `Stage Credit Use`, `Review Ledger`,
+  `handleCreditRedemption`, and conflict operation staging.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- In-app browser DOM/interaction QA against `http://127.0.0.1:1420/`: passed
+  for `Stage Credit Use`, `Approve`, and `Review Ledger`, confirming staged
+  `offline-credit-*` and `offline-conflict-*` queue envelopes, no console
+  warnings/errors, and no horizontal overflow.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove customer-credit and conflict-review local
+  operation staging from the offline app.
+- No database migrations, live SQLite writes, website network calls, customer
+  ledger mutations, manager-approval writes, payment capture, Square writes,
+  ScryDex calls, or production mutations are introduced.
+- Existing inventory queue staging and connector manifest validation remain
+  available if only this credit/conflict action layer is rolled back.
+
+## 2026-06-08 - Offline App Connector Manifest Validation
+
+### What Changed
+
+- Added typed offline connector manifest models and validation helpers in the
+  offline app workspace state.
+- Added local manifest preview building from the selected company/site profile
+  and normalization back into a reusable connector profile.
+- Wired `Test Website Connector` to validate the selected manifest shape and
+  show accepted/warning/rejected state in the Settings connector panel.
+- Added route-count, WordPress device-token auth, desktop secure credential
+  storage, official WooCommerce Square payment authority, ScryDex redaction,
+  HTTPS/environment, and no-credential-sync checks.
+- Updated offline app contracts and documentation for reusable multi-company
+  website connector validation.
+
+### Why
+
+The offline app needs to support more than one company or website without
+hardcoding secrets or assuming the current staging host forever. This
+checkpoint lets the app validate WordPress connector metadata locally while
+keeping pairing, token exchange, ScryDex keys, Square tokens, and provider
+network execution deferred.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for connector manifest types,
+  route preview, preview building, manifest validation, site parsing, safe
+  connector IDs, and no-credential-sync markers.
+- Extended UI shell contracts for manifest validation status text and the
+  `Test Website Connector` interaction handler.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- In-app browser DOM/interaction QA against `http://127.0.0.1:1420/`: passed
+  for page identity, no framework overlay, connector button click,
+  manifest-accepted state, no console warnings/errors, and no horizontal
+  overflow. Screenshot capture through the in-app browser runtime timed out,
+  so this checkpoint relies on DOM/console evidence instead of a rendered
+  screenshot artifact.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return `Test Website Connector` to a static preview
+  action and remove app-side manifest validation.
+- No database migrations, live pairing, token exchange, live SQLite writes,
+  website network calls, provider writes, payment capture, ScryDex credential
+  import, or production mutations are introduced.
+- Existing local connector profiles and WordPress-side manifest diagnostics
+  remain available if only this app-side validation layer is rolled back.
+
+## 2026-06-08 - WordPress Offline Connector Manifest Diagnostics
+
+### What Changed
+
+- Added `OfflineConnectorManifestPlanner` to build an authenticated,
+  secret-free connector manifest for offline app company/site pairing.
+- Exposed `offline_connector_manifest` in authenticated health output with
+  company branding, WordPress site/rest-base identity, offline route map,
+  device-token auth mode, desktop secure-storage requirement, Square
+  inventory/payment authority split, and ScryDex redaction status.
+- Added an admin System Status row for the offline connector manifest.
+- Extended WordPress integration smoke assertions for manifest readiness,
+  route count, credential storage boundaries, official WooCommerce Square
+  payment delegation, and no credential sync to the app.
+- Updated deployment, testing, roadmap, and changelog documentation for the
+  reusable multi-company connector boundary.
+
+### Why
+
+The offline app needs a reliable source of truth for the correct website and
+company profile, especially if this platform is reused across multiple stores.
+This checkpoint lets WordPress describe the safe pairing profile without
+embedding ScryDex keys, WordPress passwords, SSH credentials, Square tokens,
+or other production secrets in the app or repository.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/OfflineConnectorManifestPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/OfflineConnectorManifestPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Offline connector manifest unit tests for staging HTTPS readiness,
+  development HTTP handling, production HTTP degradation, route counts,
+  Square authority boundaries, ScryDex credential redaction, and admin summary
+  output.
+- WordPress integration smoke assertions for health-output manifest readiness,
+  route count, offline device-token auth mode, desktop secure credential
+  storage, official WooCommerce Square payment authority, and no credential
+  sync to the offline app.
+
+### Tests Run
+
+- `npm.cmd run test`: passed, including 862 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the connector manifest from health/admin
+  diagnostics and return to app-local connector profiles only.
+- No database migrations, live offline route registration, token issuance,
+  ScryDex credential sync, Square provider writes, payment capture, production
+  network calls, or canonical inventory/customer mutations are introduced.
+- Existing offline route, device pairing, and local connector profile planning
+  checkpoints remain available if only this WordPress-side manifest is rolled
+  back.
+
+## 2026-06-08 - Offline App Functional Controls And Connector Profiles
+
+### What Changed
+
+- Added active offline app sidebar navigation that scrolls to Inventory, Sync,
+  Queue, Conflicts, Customers, and Settings/connector sections.
+- Added reusable company/site connector profiles with WordPress host, REST base,
+  environment, offline device-token storage boundary, Square inventory/payment
+  authority split, and ScryDex credential-storage boundary.
+- Wired previously static controls: `Sync Now`, company profile selection,
+  inventory status filters, list/grid view toggles, `Add Scan`, quantity
+  staging, print-label preview, conflict review, review history, connector test
+  preview, and save-profile draft.
+- Added filtered-selection synchronization so the selected-card inspector
+  follows the current filtered inventory result.
+- Tightened the content grid so the inventory panel no longer stretches into a
+  large empty block when the detail panel is taller.
+
+### Why
+
+The offline app needed to move past a visual prototype. This checkpoint makes
+most visible controls perform safe local state changes while preserving the
+offline-first boundary: no live pairing, live SQLite write, network sync,
+direct MySQL access, production credentials, printer output, or canonical
+website mutations are enabled yet. The connector profile model also supports
+future reuse across multiple companies/sites without hardcoding secrets.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Extended offline app workspace-state contracts for reusable connector
+  profiles, offline device-token storage boundaries, official WooCommerce
+  Square payment authority, and server-side ScryDex credential storage.
+- Extended UI shell contracts for connector controls and functional interaction
+  markers covering active nav, sync preview, grid toggle, filters, and conflict
+  actions.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed, including 858 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- Temporary Playwright/Chrome rendered QA against `http://127.0.0.1:1420/`:
+  passed. It clicked filters, selected the Conflict filter, switched to grid,
+  clicked `Sync Now`, staged a queue update, opened Settings, clicked `Test
+  Website Connector`, verified Mox Amber follows the filtered selection, and
+  confirmed no console warnings/errors or horizontal overflow at desktop
+  `1440x1000` and mobile `390x844`.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the previous mostly-static
+  command-center shell.
+- No database migrations, live SQLite writes, WordPress push/pull execution,
+  direct MySQL access, payment capture, production network calls, printer
+  output, or canonical inventory mutations are introduced.
+- The previous queue-staging, Tauri command, and local SQLite planning
+  contracts remain available if only these UI/connector enhancements are
+  rolled back.
+
+## 2026-06-08 - Square Inventory Batch Sync Readiness Diagnostics
+
+### What Changed
+
+- Added `SquareInventoryBatchSyncReadinessPlanner` to run a sandbox-only
+  multi-row inventory sync probe through the existing Square batch planner.
+- Exposed `square_inventory_batch_sync` in authenticated health output with
+  row counts, Square request/operation counts, idempotency key counts,
+  aggregate SKUs, configuration issues, row results, and explicit provider
+  write/payment deferrals.
+- Added an admin System Status row for Square inventory batch sync readiness.
+- Extended WordPress integration smoke coverage to assert the health diagnostic
+  reports staged sandbox planning while keeping Square network writes and
+  payment capture deferred.
+
+### Why
+
+Square POS inventory pull/sync needs a batch-level readiness signal before any
+live provider transport is enabled. This checkpoint makes the staging/admin
+diagnostic visible so staff and release checks can confirm the plugin can
+prepare multiple serialized cards for Square Catalog/Inventory updates without
+calling Square, mutating provider inventory, or touching payment capture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryBatchSyncReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryBatchSyncReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory batch sync readiness unit tests for default sandbox probe
+  rows, production-context blocking, supplied inventory rows, admin summaries,
+  aggregate operation counts, retained provider-write deferrals, and payment
+  delegation to the official WooCommerce Square extension.
+- WordPress integration smoke assertions for authenticated health batch sync
+  readiness output.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 858 tests and 0
+  failures.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventoryBatchSyncReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\HealthController.php apps\wordpress-plugin\src\Admin\AdminMenu.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 563 PHP files checked
+  and 0 failures.
+- `npm.cmd run test`: passed, including local PHP tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the batch readiness health/admin diagnostic
+  while leaving the underlying Square batch planner available.
+- No migrations, Square API calls, provider inventory writes, production
+  requests, payment capture, custom gateway behavior, or WordPress inventory
+  mutations are introduced.
+- Existing single-row Square inventory sync readiness diagnostics remain
+  available if only the batch readiness surface is rolled back.
+
+## 2026-06-07 - Offline App Visual Command Center Refresh
+
+### What Changed
+
+- Added a project-local Pug Game Shop crest asset for the standalone offline
+  app shell.
+- Refreshed the React inventory command workspace with desktop app-window
+  chrome, stronger brand rail, queue/conflict navigation badges, a fuller
+  default cached inventory table, selected-card inspection tightening, and
+  desktop/mobile responsive overflow controls.
+- Kept the existing offline queue staging interaction intact: `Stage Inventory
+  Update` still creates the deferred local operation preview without live
+  SQLite writes, network push execution, direct MySQL access, production API
+  keys, or canonical website mutations.
+
+### Why
+
+The standalone offline app is one of the three key project pillars and needs to
+feel like a premium staff tool, not just a contract scaffold. This checkpoint
+improves the visual system and first-use readability while preserving the
+offline-first safety boundary and test contracts.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/src/assets/pug-game-shop-crest.png`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- No new automated test files. Existing offline app shell, workspace, queue,
+  Tauri command, package, and SQLite contract tests cover the preserved
+  functional markers.
+- Added manual/automated screenshot QA evidence for desktop and mobile Chrome
+  rendering with queue-staging interaction verification.
+
+### Tests Run
+
+- `npm.cmd run typecheck` from `apps/offline-app`: passed.
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed, including 854 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+- Headless Chrome desktop screenshot at `1440x1000`: passed visual inspection,
+  four cached rows rendered by default, no horizontal overflow, no console
+  warnings/errors.
+- Headless Chrome mobile screenshot at `390x844`: passed visual inspection,
+  four cached rows rendered by default, no horizontal overflow, no console
+  warnings/errors.
+- `Stage Inventory Update` click in both screenshot passes: passed, staged
+  local operation preview updates while push execution remains deferred.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the previous visual shell
+  and remove the generated crest asset.
+- No migrations, live SQLite writes, WordPress push execution, direct MySQL
+  access, production network calls, payment capture, or canonical inventory
+  mutations are introduced.
+- Existing offline operation planning, queue bridge, and Tauri command
+  scaffolds remain available if only the visual shell is rolled back.
+
+## 2026-06-07 - Square Inventory Batch Sync Planning
+
+### What Changed
+
+- Added `SquareInventoryBatchSyncPlanner` to stage multiple inventory rows
+  through Square projection planning and sandbox request planning.
+- The batch planner aggregates ready/skipped/blocked row counts, request
+  counts, operation counts, idempotency keys, Square object IDs, SKUs, per-row
+  results, and deferral metadata.
+- Added unit coverage for multi-row ready batches, hidden/unmapped skipped
+  rows, invalid rows, production-context blocking, and retained payment
+  delegation.
+
+### Why
+
+Square POS inventory sync needs a batch-level planning boundary before any
+writer or provider transport is enabled. This checkpoint proves the platform can
+rehearse many serialized cards as Square Catalog/Inventory plans while keeping
+network calls, provider inventory writes, production requests, and payment
+capture disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryBatchSyncPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryBatchSyncPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory batch sync planner tests for multi-row ready batches,
+  hidden/unmapped skipped rows, production-context blocking, invalid row
+  rejection, aggregate IDs/SKUs, and deferred Square/payment writes.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 854 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventoryBatchSyncPlanner.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 561 PHP files.
+- `npm.cmd run test`: passed, including 854 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove batch-level Square inventory sync planning and
+  its tests.
+- No migrations, Square network calls, Square inventory writes, production
+  requests, payment capture, refunds, or custom gateway behavior are
+  introduced.
+- Single-row Square projection/readiness/request planning remains available
+  after rollback.
+
+## 2026-06-07 - Square Inventory Sync System Status Summary
+
+### What Changed
+
+- Added an admin summary to `SquareInventorySyncReadinessPlanner`.
+- Added a `Square inventory sync` row to WordPress admin System Status,
+  separate from the `WooCommerce Square extension` payment-extension row.
+- Added unit coverage for ready sandbox probe summaries and blocked production
+  context summaries.
+
+### Why
+
+Staging/admin users need a quick visible distinction between Square inventory
+sync planning and Square payment handling. This keeps payment capture delegated
+to the official WooCommerce Square extension while showing whether the plugin's
+inventory sync probe can plan sandbox Catalog/Inventory requests.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncReadinessPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory sync admin summary tests for ready sandbox planning and
+  blocked production-context planning.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 851 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventorySyncReadinessPlanner.php apps\wordpress-plugin\src\Admin\AdminMenu.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 559 PHP files.
+- `npm.cmd run test`: passed, including 851 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the System Status row and admin summary tests.
+- No migrations, Square network calls, Square inventory writes, payment
+  capture, refunds, or custom gateway behavior are introduced.
+- Authenticated health still exposes the raw Square inventory readiness payload
+  if the previous readiness-diagnostics revision remains in place.
+
+## 2026-06-07 - Square Inventory Sync Readiness Diagnostics
+
+### What Changed
+
+- Added `SquareInventorySyncReadinessPlanner` to run a sandbox inventory probe
+  through Square projection planning, Square Catalog/Inventory request planning,
+  and guarded execution audit output.
+- Exposed `square_inventory_sync` in authenticated health output so staging can
+  see inventory sync planning readiness, idempotency keys, external IDs,
+  deferred writer state, production-context rejection, and Square payment
+  delegation metadata.
+- Added unit coverage for the default sandbox probe, rejected production/live
+  credential contexts, supplied inventory rows, deferred network/provider
+  writes, and continued official WooCommerce Square payment ownership.
+
+### Why
+
+Square POS should pull inventory from the card-management platform, but payment
+authorization/capture/refunds should stay with the official WooCommerce Square
+extension. This checkpoint gives staging a safe, testable inventory-readiness
+probe without adding live Square network writes or a custom payment gateway.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncReadinessPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- Square inventory sync readiness tests for sandbox probe planning,
+  production-context rejection, supplied inventory rows, deferred writer
+  metadata, Catalog/Inventory request envelopes, and official WooCommerce
+  Square payment delegation.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 849 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\SquareInventorySyncReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 559 PHP files.
+- `npm.cmd run test`: passed, including 849 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove Square inventory sync readiness diagnostics
+  from health output and delete the planner/tests.
+- No migrations, Square network calls, Square inventory writes, payment
+  capture, refunds, or custom gateway behavior are introduced.
+- Existing Square projection planning, request planning, and official
+  WooCommerce Square extension diagnostics remain available after rollback.
+
+## 2026-06-07 - ScryDex Cards Worker Orchestration Planning
+
+### What Changed
+
+- Added `ScryDexCardsSyncWorkerPlanner` to rehearse a cards-page sync with an
+  injected `ScryDexResult`.
+- The planner now stages execution-gate output, page processing, persistence
+  planning, SQL query build audits, and deferred repository results in one
+  worker-level payload.
+- Added unit coverage for successful mock provider pages, retryable
+  rate-limited provider failures, invalid table-prefix blocking, credential
+  redaction, injected-result requirements, and retained deferrals.
+
+### Why
+
+The project needs a worker orchestration boundary before enabling any real
+scheduled worker. This checkpoint proves the full cards-page path can be
+planned end to end with fixture data while live provider fetches and database
+writes remain disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexCardsSyncWorkerPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexCardsSyncWorkerPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- ScryDex cards worker orchestration tests for mock success, retryable
+  provider failure, invalid persistence repository prefix, no provider fetches,
+  no database writes, and secret redaction.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 846 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexCardsSyncWorkerPlanner.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 557 PHP files.
+- `npm.cmd run test`: passed, including 846 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove worker-level ScryDex cards orchestration
+  planning and its tests.
+- No migrations, scheduled workers, provider fetches, checkpoint execution, or
+  database writes are introduced.
+- Existing page processing, persistence planning, query staging, and readiness
+  diagnostics remain available after rollback.
+
+## 2026-06-07 - ScryDex Persistence Readiness Wiring
+
+### What Changed
+
+- Added `ScryDexPersistenceRepositoryReadinessPlanner` to run an empty-page
+  readiness probe through the persistence planner, query builder, and deferred
+  repository boundary.
+- Exposed `scrydex_persistence_repository` in authenticated health output.
+- Updated `ScryDexSyncExecutionGate` so persistence repository readiness is
+  derived from the staged readiness payload instead of a manual-only override.
+- Added tests for valid/invalid persistence repository readiness and execution
+  gate derived readiness.
+
+### Why
+
+Staging needs to see whether the new ScryDex persistence boundary is configured
+before live worker/database writes are enabled. This wiring makes the health
+payload and execution gate explain table-prefix, query-builder, repository, and
+deferred-write state without making provider calls or database writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryReadinessPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- ScryDex persistence repository readiness tests for valid prefixes, table
+  names, query counts, deferred write flags, and invalid prefix blocking.
+- ScryDex execution gate assertions that expose persistence repository
+  readiness and derive the configured gate from the readiness planner.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 843 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceRepositoryReadinessPlanner.php apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 555 PHP files.
+- `npm.cmd run test`: passed, including 843 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the health payload and execution-gate
+  persistence readiness wiring.
+- No migrations, provider calls, scheduled workers, checkpoint execution, or
+  database writes are introduced.
+- The previous execution gate can still be controlled through manual gate
+  overrides in tests/staging after rollback.
+
+## 2026-06-07 - ScryDex Persistence SQL Staging
+
+### What Changed
+
+- Added ScryDex persistence query build planning for reference-card inserts,
+  changed-row updates, provider price observation inserts, and checkpoint
+  upsert SQL templates.
+- Added a deferred ScryDex persistence repository boundary that reports staged
+  query execution audit rows without running `wpdb` writes.
+- Added unit coverage for SQL template construction, prepare-argument counts,
+  invalid table prefixes, failed source plans, deferred repository results, and
+  rejected query plans.
+- Updated ScryDex integration, changelog, roadmap, and testing documentation.
+
+### Why
+
+ScryDex worker execution needs a testable SQL/repository boundary before
+staging can safely enable database writes. This checkpoint proves the query
+shape, table-prefix validation, checkpoint handoff, and audit metadata while
+keeping live persistence disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceQueryBuilder.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepository.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistenceRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceQueryBuilderTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistenceRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added
+
+- ScryDex persistence query builder tests for insert/update SQL templates,
+  provider price observation inserts, checkpoint upsert plans, prepare
+  arguments, failed source plans, and table-prefix rejection.
+- ScryDex persistence repository tests for deferred audit results and
+  invalid-plan rejection.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 841 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceQueryBuildPlan.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceQueryBuilder.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceRepositoryResult.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistenceRepository.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 553 PHP files.
+- `npm.cmd run test`: passed, including 841 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex SQL staging and repository audit
+  boundary.
+- No migrations or database writes are introduced, so rollback does not require
+  schema changes.
+- ScryDex provider calls, scheduled workers, checkpoint execution, reference
+  writes, and provider price observation writes remain deferred.
+
+## 2026-06-07 - Provider Price Observation Schema
+
+### What Changed
+
+- Added migration `0010_provider_price_observations` and
+  `ProviderPriceObservationSchema` for `tcg_provider_price_observations`.
+- Bumped plugin/database metadata to `0.156.0` and database target `10`.
+- Extended ScryDex persistence planning so provider price observations include
+  stable public IDs, game context, observed timestamps, and sync job IDs.
+- Updated migration plan, WordPress integration smoke, migration rehearsal,
+  changelog, roadmap, and testing documentation for the new schema target.
+
+### Why
+
+ScryDex market-price observations are reference/provider data, not store
+inventory-item sale-price changes. A dedicated table prevents overloading the
+inventory price-change log, which correctly requires an exact `inventory_id`.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Migrations/ProviderPriceObservationSchema.php`
+- `apps/wordpress-plugin/src/Migrations/Version0010ProviderPriceObservations.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexPersistencePlanner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/tests/Unit/ProviderPriceObservationSchemaTest.php`
+- `apps/wordpress-plugin/tests/Unit/MigrationRunnerPlanTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexPersistencePlannerTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/readme.txt`
+- `apps/wordpress-plugin/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/ROADMAP.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- Added reversible database migration `0010_provider_price_observations`.
+- Rollback drops `tcg_provider_price_observations` through the migration
+  runner.
+
+### Tests Added
+
+- Provider price observation schema tests for table presence, provider market
+  snapshot fields, indexes, dbDelta shape, and rollback order.
+- Migration runner plan assertions for database target `10`.
+- ScryDex persistence planner assertions for provider price observation public
+  IDs, game context, observed timestamps, and sync job IDs.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 836 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Migrations\ProviderPriceObservationSchema.php apps\wordpress-plugin\src\Migrations\Version0010ProviderPriceObservations.php apps\wordpress-plugin\src\Migrations\MigrationRunner.php apps\wordpress-plugin\src\ScryDex\ScryDexPersistencePlanner.php apps\wordpress-plugin\src\Version.php apps\wordpress-plugin\tests\wordpress-integration-smoke.php apps\wordpress-plugin\tests\wordpress-migration-rehearsal.php apps\wordpress-plugin\tcg-store-platform.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 547 PHP files.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed, including 836 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Run `MigrationRunner::rollback_to( 9 )` in a backed-up, approved staging or
+  production rollback window to drop `tcg_provider_price_observations`.
+- Revert this revision to restore database target `9`, plugin metadata
+  `0.155.0`, ScryDex price observation planning without schema-backed public
+  IDs, and previous migration expectations.
+- No ScryDex network calls, scheduled workers, checkpoint writes, or provider
+  price inserts are executed by this revision.
+
+## 2026-06-07 - ScryDex Checkpoint Repository Planning
+
+### What Changed
+
+- Added `ScryDexSyncCheckpointRepositoryPlanner` to build deferred read and
+  upsert SQL templates for `tcg_sync_checkpoints`.
+- Exposed checkpoint repository readiness through authenticated health output
+  and the ScryDex sync execution gate.
+- Added unit coverage for read/upsert template generation, nullable resume
+  fields, invalid table prefixes, invalid checkpoint identities, and execution
+  gate checkpoint-plan visibility.
+
+### Why
+
+ScryDex full pulls must resume safely before real worker execution can be
+enabled. This revision adds the checkpoint repository boundary and table-prefix
+validation needed for staging diagnostics while keeping checkpoint reads and
+writes deferred.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncCheckpointRepositoryPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncCheckpointRepositoryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added. This revision plans reads/writes against
+  the existing `0006_sync` checkpoint table.
+
+### Tests Added
+
+- ScryDex checkpoint repository planner tests for valid read/upsert templates,
+  nullable resume fields, invalid table prefixes, and invalid checkpoint
+  identities.
+- ScryDex execution gate assertions for checkpoint repository plan visibility.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 832 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexSyncCheckpointRepositoryPlanner.php apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 544 PHP files.
+- `npm.cmd run test`: passed, including 832 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine, POS/payment, API-client, offline app, and
+  required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex checkpoint repository planning,
+  health/execution-gate visibility, and associated tests.
+- No schema rollback, checkpoint data cleanup, provider cleanup, or worker
+  cleanup is required because this revision does not execute checkpoint reads,
+  checkpoint upserts, ScryDex network calls, or scheduled workers.
+
+## 2026-06-07 - ScryDex Usage Budget Planning
+
+### What Changed
+
+- Added `ScryDexUsageBudgetSettings` for administrator-controlled ScryDex daily
+  credit budget, remaining-credit reserve, estimated cards-page cost, and usage
+  snapshot age settings.
+- Added `ScryDexUsageBudgetPlanner` to plan the `/account/v1/usage` preflight,
+  evaluate already-fetched usage snapshots, and block over-budget cards-page
+  sync attempts without making provider requests.
+- Exposed usage-budget status in WordPress settings, System Status, health
+  output, and the ScryDex sync execution gate.
+- Added unit coverage for disabled defaults, configured budgets, invalid
+  reserve limits, deferred usage checks, snapshot-based budget blocking, and
+  execution-gate budget integration.
+
+### Why
+
+ScryDex sync should never start making provider calls without a store-defined
+budget guard. This revision adds the local budget policy and health visibility
+needed before staging can safely enable real `/account/v1/usage` checks or
+cards-page worker execution.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/ScryDexUsageBudgetSettings.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php`
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex usage budget settings tests for disabled defaults, ready configured
+  state, invalid remaining-credit reserve, and platform defaults.
+- ScryDex usage budget planner tests for default blocked plans, deferred usage
+  request planning, request clamping, and already-fetched usage snapshots that
+  block daily-budget and remaining-credit violations.
+- ScryDex execution gate assertions for usage-budget plan visibility.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 828 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Settings\ScryDexUsageBudgetSettings.php apps\wordpress-plugin\src\ScryDex\ScryDexUsageBudgetPlanner.php apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Settings\Settings.php apps\wordpress-plugin\src\Settings\SettingsPage.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 542 PHP files.
+- `npm.cmd run test`: passed, including 828 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex usage-budget settings, budget planning,
+  health/admin visibility, and associated tests.
+- No schema rollback, provider cleanup, usage-log cleanup, checkpoint cleanup,
+  or worker cleanup is required because this revision does not call ScryDex,
+  write database rows, enqueue workers, or persist usage snapshots.
+
+## 2026-06-07 - ScryDex Sync Execution Gate
+
+### What Changed
+
+- Added `ScryDexSyncExecutionGate` to report whether the planned ScryDex cards
+  sync worker is blocked, gated, or future-ready.
+- Exposed `scrydex_sync_execution_gate` through authenticated health output,
+  reusing the dry-run request/checkpoint plan while keeping worker execution,
+  provider network calls, database writes, image downloads, and webhook
+  registration deferred by default.
+- Added unit coverage for default blocked state, configured-provider gated
+  state, secret-free readiness metadata, and future-ready dependency reporting.
+
+### Why
+
+The project now has provider settings, provider factory readiness, dry-run
+planning, page processing, and persistence planning. Before any real ScryDex
+worker can run, staging needs a single health diagnostic that shows which
+execution dependencies are still missing and proves no live network or database
+write path has been enabled accidentally.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncExecutionGate.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncExecutionGateTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex sync execution gate unit tests for default blocked state,
+  configured-provider gated state, secret-free health payloads, and
+  future-ready dependency reporting.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 821 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexSyncExecutionGate.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed, 538 PHP files.
+- `npm.cmd run test`: passed, including 821 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex execution-gate health diagnostic
+  and associated tests.
+- No schema rollback, provider cleanup, checkpoint cleanup, image cleanup, or
+  worker cleanup is required because this revision does not run ScryDex network
+  calls, write database rows, enqueue workers, download images, or register
+  webhooks.
+
+## 2026-06-07 - WooCommerce Square Extension Status Diagnostics
+
+### What Changed
+
+- Added `WooCommerceSquareExtensionStatus` to report official WooCommerce
+  Square extension install/active signals from plugin file and loaded class
+  checks.
+- Added official extension status fields to Square payment delegation,
+  POS/payment readiness, POS/payment dependency diagnostics, the health
+  endpoint, and System Status.
+- Added smoke coverage for the health payload's default blocked extension
+  state when the official extension is not active.
+- Added unit coverage for inactive, active-plugin, installed-inactive, and
+  class-signal readiness cases.
+
+### Why
+
+Square payments should stay with the official WooCommerce Square extension, but
+staff and staging checks need to see whether that extension is actually active.
+This revision adds that visibility without adding a custom Square payment
+gateway, enabling Square network writes, capturing payments, executing refunds,
+or changing inventory through Square.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/WooCommerceSquareExtensionStatus.php`
+- `apps/wordpress-plugin/src/Square/SquarePaymentDelegationPolicy.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/WooCommerceSquareExtensionStatusTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquarePaymentDelegationPolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Official WooCommerce Square extension status unit tests for default inactive,
+  active plugin file, installed but inactive plugin file, and loaded class
+  signal detection.
+- POS/payment readiness, dependency, admin-summary, and WordPress health smoke
+  assertions for official extension status visibility.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 818 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Square\WooCommerceSquareExtensionStatus.php apps\wordpress-plugin\src\Square\SquarePaymentDelegationPolicy.php apps\wordpress-plugin\src\Api\V1\HealthController.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteReadinessPlanner.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteDependencyFactory.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteReadinessStatusPresenter.php apps\wordpress-plugin\src\Api\V1\PosPaymentRouteDependencyStatusPresenter.php`:
+  passed.
+- `npm.cmd run test`: passed, including 818 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove official WooCommerce Square extension status
+  diagnostics and related tests.
+- No schema rollback, Square cleanup, WooCommerce gateway cleanup, or payment
+  cleanup is required because no Square network writes, payment capture,
+  refunds, custom gateway behavior, or provider inventory writes were enabled.
+
+## 2026-06-07 - Offline Local Queue Insert Planning
+
+### What Changed
+
+- Added `offlineLocalQueue` planning for SQLite `operation_queue` insert
+  statements from staged offline operation envelopes.
+- Added SQLite queue plan visibility to offline queue bridge submission
+  results and the offline inventory command workspace.
+- Added Tauri command response metadata for the planned local queue table,
+  statement, parameter count, and deferred execution gates.
+- Added contract coverage for the local queue persistence plan and tightened
+  queue bridge/Tauri command contracts around the new metadata.
+
+### Why
+
+The standalone offline app needs a concrete local queue handoff before live
+SQLite persistence is enabled. This revision proves the table, columns,
+parameter count, idempotent insert policy, and safety gates without writing
+SQLite rows, replaying the queue, mutating the website, calling the network, or
+touching MySQL directly.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineLocalQueue.ts`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/tests/local-queue-persistence-contract.mjs`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/package.json`
+- `package.json`
+- `apps/offline-app/README.md`
+- `README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app local queue persistence contract coverage for SQLite insert
+  planning, bridge/UI/Tauri metadata, and deferred persistence/network/website
+  mutation gates.
+
+### Tests Run
+
+- `npm.cmd --prefix apps\offline-app run test:package-contract`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+- `npm.cmd run test`: passed, including 814 PHP unit tests, plugin bootstrap
+  smoke, PHP lint, sync-engine contracts, POS/payment contracts, API-client
+  contracts, offline app contracts, and required matrix checks.
+
+### Rollback Notes
+
+- Revert this revision to remove the local queue insert planner, bridge/UI
+  queue plan visibility, Tauri queue metadata, and related contract test.
+- No schema rollback, SQLite cleanup, WordPress cleanup, or external service
+  rollback is required because live SQLite writes, queue replay, canonical
+  website mutations, network writes, and direct MySQL access were not enabled.
+
+## 2026-06-07 - ScryDex Sync Dry-Run Planning
+
+### What Changed
+
+- Added `ScryDexSyncDryRunPlanner` for secret-free first-page and checkpoint
+  planning.
+- Added a `scrydex_sync_dry_run` health payload entry for staging readiness
+  checks.
+- Added dry-run safeguards for provider readiness, credential redaction,
+  endpoint/method reporting, checkpoint row output, page-size clamping, invalid
+  game fallback, and explicit execution deferrals.
+- Added unit coverage for default blocked planning, configured ready planning,
+  checkpoint resume planning, and invalid request fallback.
+
+### Why
+
+Before enabling ScryDex workers, staging needs a safe way to confirm that
+provider settings, checkpoint state, and next request shape are coherent. This
+revision adds that dry-run path while keeping network requests, persistence
+planning, image downloads, webhooks, scheduled workers, and database writes
+disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexSyncDryRunPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexSyncDryRunPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Dry-run planning coverage for default blocked readiness and first-page
+  request shaping.
+- Dry-run planning coverage for configured readiness without leaking Team ID or
+  key values.
+- Dry-run planning coverage for checkpoint resume cursor/page output.
+- Dry-run planning coverage for invalid game/checkpoint fallback and page-size
+  clamping.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 814 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexSyncDryRunPlanner.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove ScryDex dry-run planning, health output, and
+  related tests.
+- No schema rollback or provider cleanup is required because no network calls,
+  workers, image downloads, webhooks, persistence plans, or database writes
+  were enabled.
+
+## 2026-06-07 - ScryDex Provider Factory Readiness
+
+### What Changed
+
+- Added `ScryDexProviderFactory` to consume staged ScryDex settings.
+- Added secret-free provider readiness output for health/admin status,
+  including provider class, configured state, environment, active key slot,
+  key fingerprint, and explicit deferrals.
+- Updated the platform health endpoint to report factory-level ScryDex
+  readiness.
+- Updated System Status to use the factory admin summary instead of direct
+  settings status.
+- Added unit coverage for default blocked readiness, configured secret-free
+  readiness, injected-transport provider construction, missing-configuration
+  behavior, and admin summary redaction.
+
+### Why
+
+The staging path needs a safe boundary between saved provider credentials and
+future ScryDex sync workers. This revision proves the provider can be
+constructed from settings through injectable transport in tests while keeping
+real network requests, scheduled workers, webhook registration, and database
+writes disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/ScryDex/ScryDexProviderFactory.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexProviderFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex provider factory default blocked/deferred readiness coverage.
+- ScryDex provider factory configured secret-free readiness coverage.
+- ScryDex provider factory injected transport coverage for server-side provider
+  construction without live network calls.
+- ScryDex provider factory missing-settings behavior coverage.
+- ScryDex provider factory admin summary redaction coverage.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php`: passed, 810 tests.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\ScryDex\ScryDexProviderFactory.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `php apps\wordpress-plugin\tests\lint.php`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex provider factory, health/admin
+  factory readiness output, and factory tests.
+- No schema rollback, ScryDex cleanup, or external service rollback is required
+  because no live provider requests, scheduled workers, webhook registration,
+  or database writes were enabled.
+
+## 2026-06-07 - ScryDex Credential Settings Readiness
+
+### What Changed
+
+- Added `ScryDexProviderSettings` for staged ScryDex provider configuration.
+- Added secret-preserving sanitization so blank admin password fields keep
+  previously saved Team ID, primary key, and secondary key values.
+- Added explicit clear flags for saved ScryDex secret values.
+- Added redacted ScryDex readiness payloads for health/status surfaces.
+- Added ScryDex settings fields to the WordPress settings page without echoing
+  saved secrets into HTML.
+- Added System Status and health endpoint visibility for non-secret ScryDex
+  readiness.
+- Added unit coverage for defaults, preservation, clear flags, public redaction,
+  provider context, and platform defaults.
+
+### Why
+
+The staging site needs a safe place to receive ScryDex credentials without
+putting them into GitHub, screenshots, logs, or public status JSON. This
+revision creates the secure settings/readiness plumbing while keeping provider
+network requests, webhook registration, database writes, and scheduled sync
+workers disabled until staging acceptance.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Settings/ScryDexProviderSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/tests/Unit/ScryDexProviderSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/CHANGELOG.md`
+- `docs/SCRYDEX_INTEGRATION.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- ScryDex provider settings coverage for disabled defaults and secret-free
+  public status.
+- ScryDex provider settings coverage for preserving saved secret values when
+  admin password fields are blank.
+- ScryDex provider settings coverage for explicit secret clearing.
+- ScryDex provider settings coverage for configured readiness without leaking
+  Team ID or key values in public JSON.
+- ScryDex provider settings coverage for server-only provider context.
+
+### Tests Run
+
+- `php apps\wordpress-plugin\tests\run.php --filter ScryDexProviderSettingsTest`:
+  passed. The local runner does not consume the filter flag and ran all 805
+  unit tests.
+- `php apps\wordpress-plugin\tests\lint.php`: passed.
+- `apps\wordpress-plugin\vendor\bin\phpcs.bat --standard=apps\wordpress-plugin\phpcs.xml.dist apps\wordpress-plugin\src\Settings\ScryDexProviderSettings.php apps\wordpress-plugin\src\Settings\Settings.php apps\wordpress-plugin\src\Settings\SettingsPage.php apps\wordpress-plugin\src\Admin\AdminMenu.php apps\wordpress-plugin\src\Api\V1\HealthController.php`:
+  passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+Repo-wide source PHPCS was also attempted directly through local `vendor/bin`.
+It remains blocked by pre-existing CRLF line-ending findings across many
+untouched source files, so the standards gate for this revision was run against
+the changed source files.
+
+### Rollback Notes
+
+- Revert this revision to remove the ScryDex settings surface, redacted
+  readiness output, and unit tests.
+- No schema rollback, provider cleanup, or external service rollback is
+  required because no ScryDex network calls, webhook registration, database
+  writes, or scheduled workers were added.
+
+## 2026-06-07 - Offline Reconnect Push Request Planning
+
+### What Changed
+
+- Added offline app types for deferred push request plans and push response
+  summaries.
+- Added `buildOfflinePushRequestPlan()` to shape queued operation batches into
+  `POST /wp-json/tcg-store/v1/offline/push` request plans without executing
+  network calls.
+- Added `summarizeOfflinePushResult()` to classify WordPress push responses
+  into accepted, conflict, rejected, or validated summaries.
+- Surfaced the deferred push request path and preview status in the offline
+  app operation preview.
+- Expanded offline app contract tests to guard request planning, response
+  summarization, deferred network execution, deferred authorization headers,
+  no production API key requirement, and canonical mutation deferrals.
+- Updated offline app README, changelog, testing, and deployment notes.
+
+### Why
+
+The standalone app must be able to work offline and then update the website
+when connectivity returns. This revision adds the reconnect request/response
+planning contract while keeping browser-side network writes, direct database
+access, production keys, queue replay, and canonical website mutations
+disabled until the desktop sync executor is accepted.
+
+### Files Affected
+
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/DEPLOYMENT_OFFLINE_APP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app workspace-state contract markers for deferred push request
+  planning and response summarization.
+- Offline app TypeScript coverage for the new reconnect request/response
+  planner types.
+
+### Tests Run
+
+- `npm.cmd --prefix apps\offline-app run typecheck`: passed.
+- `npm.cmd run test:offline-app`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the offline app reconnect push request
+  planner, response summarizer, UI preview text, and docs/tests.
+- No schema rollback or server cleanup is required because no SQLite migration,
+  network execution, website mutation, or production credential handling was
+  added.
+
+## 2026-06-07 - WooCommerce Product API-Client Contract
+
+### What Changed
+
+- Added `packages/api-client/src/woocommerceProductAdapter.mjs`.
+- Added executable WooCommerce product adapter coverage for staged product
+  create, update, stockout, skipped, malformed, and production-rejected
+  request envelopes.
+- Updated `test:api-client` so Square and WooCommerce adapter contracts run
+  together.
+- Documented the WooCommerce product adapter in the API-client README,
+  changelog, testing notes, and Phase 2 inventory/pricing notes.
+
+### Why
+
+The WordPress plugin now emits WooCommerce product write request plans. This
+revision adds a package-level contract that validates those envelopes without
+network execution, keeps WordPress/WooCommerce writes deferred, rejects
+production/live-looking credential contexts, and preserves the official
+WooCommerce Square extension handoff for catalog/inventory sync.
+
+### Files Affected
+
+- `packages/api-client/src/woocommerceProductAdapter.mjs`
+- `packages/api-client/tests/woocommerce-product-adapter.mjs`
+- `packages/api-client/tests/woocommerce-product-adapter.md`
+- `packages/api-client/README.md`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- WooCommerce API-client contract coverage for create/update request planning.
+- WooCommerce API-client contract coverage for stockout request planning.
+- Production and live-looking credential rejection coverage.
+- Malformed request envelope rejection coverage.
+- Skipped hidden projection coverage.
+
+### Tests Run
+
+- `npm.cmd run test:api-client`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the package-level WooCommerce product adapter
+  contract and restore `test:api-client` to Square-only coverage.
+- No schema rollback, product cleanup, Square cleanup, or payment cleanup is
+  required because no network calls, product writes, provider writes, or
+  payment actions were enabled.
+
+## 2026-06-07 - WooCommerce Write Request Readiness Wiring
+
+### What Changed
+
+- Wired WooCommerce product write request planning into guarded product
+  projection execution.
+- Added production request-context rejection before any WooCommerce product
+  writer callback can run.
+- Added write-request status, environment, request envelopes, idempotency keys,
+  product IDs/SKUs, and errors to WooCommerce projection execution audits.
+- Added WooCommerce write request metadata to staged inventory create
+  responses after local database insert.
+- Surfaced WooCommerce write request planner readiness in inventory dependency
+  health/admin summaries and the Staff Inventory workspace.
+- Added unit coverage for executor request-plan audits, production-context
+  rejection, intake response metadata, dependency readiness, and admin rows.
+
+### Why
+
+WooCommerce product payloads and request envelopes should now be visible in
+the card-management workflow, but real product creation/update must remain
+gated until staging review is complete. This revision makes the next
+WooCommerce action auditable without opening production writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutor.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- WooCommerce projection executor coverage for write request audit metadata.
+- Production request-context rejection coverage proving writer callbacks are
+  not called.
+- Staged inventory create response coverage for WooCommerce write request
+  envelopes.
+- Inventory dependency and admin workspace coverage for write request planner
+  readiness.
+
+### Tests Run
+
+- `php tests\run.php --filter InventoryProductProjectionExecutorTest --filter InventoryIntakeRouteHandlerFactoryTest --filter InventoryRouteDependencyFactoryTest --filter InventoryWorkspacePresenterTest`
+  from `apps/wordpress-plugin`: passed; the local runner executed the full
+  799-test suite.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductProjectionExecutor.php src\WooCommerce\InventoryProductProjectionExecutionResult.php src\Api\V1\InventoryIntakeRouteHandler.php src\Api\V1\InventoryIntakeRouteHandlerFactory.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php src\Admin\InventoryWorkspacePresenter.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove WooCommerce write request readiness wiring
+  from execution audits, inventory create metadata, and admin/dependency
+  summaries.
+- No schema rollback, WooCommerce product cleanup, Square cleanup, or payment
+  cleanup is required because no live product writes, provider writes, network
+  requests, migrations, or payment actions were enabled.
+
+## 2026-06-07 - WooCommerce Product Write Request Planning
+
+### What Changed
+
+- Added `InventoryProductWriteRequestPlanner` and
+  `InventoryProductWriteRequestPlan`.
+- Converted existing WooCommerce product projection operations into
+  non-production create, update, and stockout request envelopes.
+- Added idempotency key, product ID, SKU, request-plan, and audit metadata for
+  review without executing WooCommerce product writes.
+- Added production-environment rejection, failed-projection rejection,
+  unsupported-operation rejection, and missing product/payload validation.
+- Added unit coverage for create, update, stockout, skipped, and rejected
+  request-planning paths.
+- Updated changelog, testing, and inventory/pricing documentation.
+
+### Why
+
+The plugin already knows how to project a serialized card into a WooCommerce
+product payload. This revision adds the next planning layer so staging can
+review exactly which WooCommerce create/update/stockout action would be taken
+before any product write gate is opened.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductWriteRequestPlan.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductWriteRequestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductWriteRequestPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- WooCommerce product write request planner coverage for non-production create
+  requests.
+- WooCommerce product write request planner coverage for existing-product
+  update and stockout requests.
+- Skipped projection coverage proving no product-write requests are emitted.
+- Rejection coverage for production environment and failed product projection.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductWriteRequestPlan.php src\WooCommerce\InventoryProductWriteRequestPlanner.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php --filter InventoryProductWriteRequestPlannerTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full
+  798-test suite.
+- `npm.cmd run test`: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the WooCommerce product write request
+  planning layer and its tests/docs.
+- No schema rollback, product cleanup, provider cleanup, or payment cleanup is
+  required because no WooCommerce writes, network calls, migrations, or payment
+  actions were added.
+
+## 2026-06-07 - Offline Inventory Update Push Planning
+
+### What Changed
+
+- Added `inventory_update` to the WordPress offline push payload parser's
+  supported operation/entity map.
+- Added optimistic row-version resolution for offline inventory updates:
+  matching row versions are accepted into the planned result payload while
+  stale server versions create durable manager-review conflicts.
+- Added offline operation readiness metadata for `inventory_update` route
+  option summaries.
+- Expanded the Tauri queue command scaffold to validate the supported
+  offline operation/entity pairs: inventory update, inventory reservation,
+  event reservation, and credit redemption.
+- Added an offline app push-batch builder that converts local
+  SQLite-compatible envelopes into the REST payload shape expected by the
+  WordPress push parser.
+- Surfaced the reconnect-ready push batch ID in the offline app staged
+  operation preview.
+
+### Why
+
+The standalone app needs a safe bridge between local queued work and the
+website's offline push endpoint. This revision makes a scanned inventory
+update server-compatible without enabling live canonical writes, preserving the
+existing deferred execution gates and conflict-review path.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Offline/OfflinePushPayloadParser.php`
+- `apps/wordpress-plugin/src/Offline/OfflinePushOperationResolver.php`
+- `apps/wordpress-plugin/src/Api/V1/OfflinePushRouteOperationOptionsProvider.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushPayloadParserTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushOperationResolverTest.php`
+- `apps/wordpress-plugin/tests/Unit/OfflinePushRouteOperationOptionsProviderTest.php`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/OFFLINE_SYNC.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline push parser coverage for `inventory_update` payload acceptance.
+- Offline push resolver coverage for accepted inventory updates and stale
+  row-version conflicts.
+- Offline route operation-options coverage for `inventory_update` readiness.
+- Offline app workspace contract coverage for REST-ready push batch shaping.
+- Offline app Tauri command contract coverage for supported operation/entity
+  validation markers.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Offline\OfflinePushPayloadParser.php src\Offline\OfflinePushOperationResolver.php src\Api\V1\OfflinePushRouteOperationOptionsProvider.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php --filter OfflinePushOperationResolverTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full
+  794-test suite.
+- `npm.cmd run test:offline-app` from repository root: passed.
+- `npm.cmd --prefix apps\offline-app run typecheck` from repository root:
+  passed.
+- Local `cargo test` was not run because Rust/Cargo is not installed on this
+  machine; the Windows CI workflow remains responsible for Rust command tests.
+- Direct PHPCS against existing PHPUnit test filenames still reports the
+  repository's WordPress filename-rule mismatch, so source PHPCS is used for
+  the focused standards gate and PHP behavior is covered by the local runner.
+
+### Rollback Notes
+
+- Revert this revision to remove `inventory_update` from offline push parsing,
+  resolver planning, desktop validation, and the offline app reconnect batch
+  preview.
+- No schema rollback is required because no migrations or live canonical writes
+  were added.
+
+## 2026-06-07 - Offline App Command Workspace Visual Refinement
+
+### What Changed
+
+- Refined the offline app inventory command workspace shell with grouped sync
+  status controls and a disabled manual sync affordance.
+- Added scanner beam styling, an empty search state, a richer selected-card
+  visual frame, and a three-action inventory detail cluster.
+- Tightened mobile behavior so the app title wraps cleanly and sync controls
+  stack within a phone viewport.
+- Extended the offline app UI shell contract to preserve the new visual and
+  responsive markers.
+- Updated offline app, testing, and changelog documentation.
+
+### Why
+
+The standalone app needs to feel like a polished staff tool while preserving
+the offline-first safety boundary. This pass improves the command-center UI
+around scanning, selected-card review, queued work, and sync status without
+adding live network, provider, or database writes.
+
+### Files Affected
+
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app UI shell contract assertions for the manual sync affordance,
+  selected-card visual frame, detail action cluster, empty search state, and
+  mobile title constraint.
+
+### Tests Run
+
+- Headless Chrome desktop screenshot at `1440x900`: passed visual inspection.
+- Headless Chrome mobile screenshot at `390x844`: passed visual inspection.
+- `npm.cmd run test:offline-app` from repository root: passed.
+- `npm.cmd --prefix apps\offline-app run typecheck` from repository root:
+  passed.
+- `npm.cmd run test` from repository root: passed, including the 791-test PHP
+  local runner and all JavaScript/offline app contract layers.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to return the offline app to the prior simpler shell.
+- No schema rollback, provider cleanup, or queued operation cleanup is required
+  because this change only affects React/CSS UI, contract tests, and docs.
+
+## 2026-06-07 - Square Sync Request Planner Wiring
+
+### What Changed
+
+- Wired `SquareInventorySyncRequestPlanner` into guarded Square projection
+  execution.
+- Added sync request status, request envelopes, idempotency keys, external IDs,
+  errors, and readiness flags to Square projection execution audit payloads.
+- Added production-context rejection before catalog or inventory writer
+  callbacks can run.
+- Exposed Square sync request planner readiness through inventory intake
+  dependencies, authenticated health/admin summaries, and the Inventory admin
+  workspace Square projection note.
+- Added unit assertions for execution audit metadata, production-context
+  rejection, dependency readiness, and admin workspace visibility.
+
+### Why
+
+The PHP Square request planner should be visible in the same WordPress staging
+surfaces reviewers already use for inventory route readiness and Square
+projection execution. This makes the next Square POS inventory-sync phase
+easier to verify while preserving the current no-network, no-provider-write,
+no-custom-payment-gateway boundary.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutor.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Projection execution coverage for sync request audit metadata.
+- Projection execution coverage proving production request context rejects
+  before Square writer callbacks can run.
+- Inventory dependency/admin readiness coverage for sync request planner
+  visibility.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventoryProjectionExecutionResult.php src\Square\SquareInventoryProjectionExecutor.php src\Api\V1\InventoryIntakeRouteHandlerFactory.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php src\Admin\InventoryWorkspacePresenter.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF alignment cleanup.
+- `php tests\run.php --filter SquareInventoryProjectionExecutorTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 791-test
+  suite.
+- `php tests\run.php --filter InventoryRouteDependencyFactoryTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 791-test
+  suite.
+- `php tests\run.php --filter InventoryWorkspacePresenterTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 791-test
+  suite.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove Square sync request planner visibility from
+  projection execution and inventory dependency/admin status.
+- No schema rollback or provider cleanup is required because no database
+  migrations, provider writes, or network calls were added.
+
+## 2026-06-07 - Square Inventory PHP Request Planner
+
+### What Changed
+
+- Added a WordPress PHP `SquareInventorySyncRequestPlanner`.
+- Added a `SquareInventorySyncRequestPlan` result object with audit payloads,
+  idempotency keys, external Square object IDs, SKU extraction, and payment
+  delegation metadata.
+- Converted Square projection plans into sandbox-only Catalog batch-upsert and
+  Inventory batch-change request envelopes without calling Square.
+- Tightened Square credential planning in both PHP and the API-client adapter
+  so sandbox-declared credentials are accepted for planning while production
+  environments, production-declared credentials, and live-looking markers are
+  rejected.
+- Updated API-client docs, Payments/POS docs, testing docs, changelog, and
+  revision notes.
+
+### Why
+
+Square POS inventory sync needs a WordPress-side request boundary before any
+future staging connector can make sandbox calls. This revision gives staging
+reviewers the exact Square request envelopes and audit metadata while keeping
+provider network writes, production credentials, and Square payment capture out
+of the custom plugin.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncRequestPlan.php`
+- `apps/wordpress-plugin/src/Square/SquareInventorySyncRequestPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventorySyncRequestPlannerTest.php`
+- `packages/api-client/README.md`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.md`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- PHP unit coverage for ready, skipped, failed, zero-count mapped, sandbox
+  credential, production-declared credential, idempotency, external ID, and
+  audit/delegation Square inventory sync request planning.
+- API-client adapter coverage for sandbox-declared credential planning and
+  production-declared credential rejection.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventorySyncRequestPlan.php src\Square\SquareInventorySyncRequestPlanner.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php --filter SquareInventorySyncRequestPlannerTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 790-test
+  suite.
+- `npm.cmd run test:api-client` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the WordPress PHP Square request planner and
+  the refined API-client credential guard.
+- No schema rollback or Square cleanup is required because no database
+  migrations, provider writes, or network calls were added.
+
+## 2026-06-07 - Square Inventory API Client Adapter Contract
+
+### What Changed
+
+- Added an executable API-client Square inventory adapter module.
+- Added sandbox-safe request planning for Square Catalog batch upsert and
+  Inventory batch change operations from plugin projection contracts.
+- Added production-environment and live-looking credential rejection in the
+  adapter contract.
+- Added reconciliation-only Square POS event mapping back to serialized
+  inventory IDs, with unmapped provider lines producing staff-review conflicts.
+- Wired the adapter test into the root `npm run test` flow.
+- Updated API-client, Payments/POS, testing, changelog, and revision docs.
+
+### Why
+
+Square POS should be able to pull/sync inventory from the platform, but the
+project still needs a sandbox-only contract before any live Square API call is
+enabled. This revision creates the executable adapter boundary that future
+staging tests can use without allowing production credentials or provider
+network writes.
+
+### Files Affected
+
+- `package.json`
+- `packages/api-client/README.md`
+- `packages/api-client/src/squareInventoryAdapter.mjs`
+- `packages/api-client/tests/square-inventory-adapter.md`
+- `packages/api-client/tests/square-inventory-adapter.mjs`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- API-client Square inventory adapter tests for sandbox request planning,
+  production/live credential rejection, skipped projections, reconciliation
+  mapping, and unmapped-line conflicts.
+
+### Tests Run
+
+- `npm.cmd run test:api-client` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the API-client Square inventory adapter and
+  root test wiring.
+- No schema rollback is required.
+
+## 2026-06-07 - Square Payment Delegation Policy Surfaces
+
+### What Changed
+
+- Added a reusable PHP `SquarePaymentDelegationPolicy` that declares the
+  official WooCommerce Square extension as the Square payment capture, refund,
+  and gateway authority.
+- Reused the policy from Square inventory projection contracts and execution
+  audit payloads.
+- Exposed the policy in POS/payment route readiness and dependency health
+  payloads.
+- Added an Inventory admin workspace row showing that Square payments are
+  delegated while this platform syncs serialized inventory only.
+- Added unit coverage for the policy, projection contracts, POS/payment
+  readiness/dependency payloads, and admin workspace row.
+
+### Why
+
+The platform should let Square POS pull/sync inventory from the card
+management source of truth, but the custom plugin should not become a Square
+payment gateway. This revision makes that boundary reusable and visible in the
+places staff/admin and staging reviewers inspect.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquarePaymentDelegationPolicy.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionPlan.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteReadinessStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/PosPaymentRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/SquarePaymentDelegationPolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/PosPaymentRouteReadinessStatusPresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Direct policy coverage for official WooCommerce Square payment delegation.
+- Projection contract coverage for payment authority and inventory-only sync
+  scope.
+- POS/payment readiness and dependency payload assertions for disallowed custom
+  Square capture/custom gateway behavior.
+- Inventory workspace assertion for the visible Square payments delegation row.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquarePaymentDelegationPolicy.php src\Square\SquareInventoryProjectionExecutionResult.php src\Square\SquareInventoryProjectionPlan.php src\Api\V1\PosPaymentRouteReadinessPlanner.php src\Api\V1\PosPaymentRouteDependencyFactory.php src\Api\V1\PosPaymentRouteReadinessStatusPresenter.php src\Api\V1\PosPaymentRouteDependencyStatusPresenter.php src\Admin\InventoryWorkspacePresenter.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF array alignment cleanup.
+- `php tests\run.php --filter SquarePaymentDelegationPolicyTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 785-test
+  suite.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the reusable PHP policy and the health/admin
+  visibility for Square payment delegation.
+- No schema rollback is required.
+
+## 2026-06-07 - Square Payment Delegation Boundary
+
+### What Changed
+
+- Added explicit Square payment delegation fields to Square inventory
+  projection execution audit payloads.
+- Added unit assertions proving the platform does not allow custom Square
+  payment capture through the inventory projection path.
+- Added shared POS validation policy for Square payment delegation to the
+  official WooCommerce Square extension.
+- Added POS validation coverage proving payment capture, refund execution, and
+  custom gateway capture stay disallowed while inventory sync/reconciliation
+  remain allowed.
+
+### Why
+
+Square should pull/sync inventory from the card-management source of truth, but
+online payment capture should remain with the official WooCommerce Square
+extension. This revision makes that boundary explicit in code and tests.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `packages/validation/src/posPaymentPolicy.mjs`
+- `packages/validation/tests/pos-payment-policy.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Square inventory projection executor assertions for payment authority
+  delegation and disallowed plugin Square payment capture.
+- Shared POS validation coverage for official WooCommerce Square payment
+  delegation.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventoryProjectionExecutionResult.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF alignment cleanup.
+- `php tests\run.php --filter SquareInventoryProjectionExecutorTest` from
+  `apps/wordpress-plugin`: passed; the local runner executed the full 784-test
+  suite.
+- `npm.cmd run test:pos-payments` from repository root: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove explicit Square payment delegation metadata
+  and shared POS delegation policy coverage.
+- No schema rollback is required.
+
+## 2026-06-07 - Offline App Tauri Queue Command Scaffold
+
+### What Changed
+
+- Added a Tauri `queue_offline_operation` command scaffold that validates
+  staged inventory operation envelopes and returns an audit-safe local queue
+  response.
+- Added Rust serde dependencies for command payload validation.
+- Added frontend Tauri runtime detection and an adapter that invokes the queue
+  command only when the app is running inside Tauri.
+- Added Tauri command contract coverage and wired it into root offline app and
+  package-level checks.
+- Updated the offline app Windows workflow to install Rust and run `cargo test`
+  in the contract and manual build jobs.
+
+### Why
+
+The offline queue bridge now needs a real desktop command target before SQLite
+write implementation begins. This scaffold validates the handoff shape without
+performing database or network writes.
+
+### Files Affected
+
+- `.github/workflows/offline-app-windows.yml`
+- `apps/offline-app/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/src/lib.rs`
+- `apps/offline-app/src/data/tauriQueueAdapter.ts`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `apps/offline-app/tests/tauri-command-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Rust unit tests for valid queue command payloads, invalid payload JSON, and
+  unsupported operation types.
+- Contract coverage for Rust command registration, serde dependencies, frontend
+  Tauri adapter detection, and no direct browser storage/network markers.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:package-contract` from `apps/offline-app`: passed.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+- `cargo test` from `apps/offline-app/src-tauri`: not run locally because
+  `cargo` is not installed on this machine; it is now configured in the
+  offline app Windows workflow.
+
+### Rollback Notes
+
+- Revert this revision to remove the Tauri queue command scaffold, frontend
+  Tauri adapter, Rust serde dependencies, command contract coverage, and
+  workflow Rust test additions.
+- No schema rollback is required because the command does not write SQLite yet.
+
+## 2026-06-07 - Offline App Queue Bridge Contract
+
+### What Changed
+
+- Added a browser-safe offline queue bridge that stages inventory operations
+  behind a future Tauri command adapter boundary.
+- Updated the React inventory workspace to submit staged inventory update
+  envelopes through the bridge and render the bridge result.
+- Added queue bridge contract coverage to confirm the bridge does not perform
+  direct browser storage, network, or database writes.
+- Wired the queue bridge contract into both root offline app checks and the
+  app package contract.
+
+### Why
+
+The offline app needs a clean handoff from UI intent to local persistence
+before the SQLite/Tauri command implementation is added. This revision creates
+that boundary while keeping the current browser/dev build side-effect-free.
+
+### Files Affected
+
+- `apps/offline-app/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineQueueBridge.ts`
+- `apps/offline-app/tests/queue-bridge-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Queue bridge contract coverage for the Tauri command boundary, preview-only
+  browser behavior, and local-only safety markers.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:package-contract` from `apps/offline-app`: passed.
+- Mobile Playwright interaction verification against the local Vite dev
+  server: passed, with no console errors or failed requests.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the queue bridge, bridge contract test, and
+  UI bridge submission path.
+- No schema rollback is required.
+
+## 2026-06-07 - Offline App Local Workspace State Contract
+
+### What Changed
+
+- Added a typed offline app workspace state module for nav items, sync routes,
+  cached inventory, queue summaries, conflicts, customer credit, and device
+  sync status.
+- Added a SQLite-compatible staged inventory update operation envelope builder
+  that mirrors the local `operation_queue` schema fields.
+- Updated the React workspace to read from the local data module and show a
+  queued operation preview when staff stages an inventory update.
+- Added workspace-state contract coverage and tightened the app package
+  contract to run TypeScript type checking.
+- Added React type packages and updated offline app CI workflows to install
+  nested app dependencies before running the stricter package contract.
+- Fixed mobile navigation positioning so it cannot overlap content panels.
+
+### Why
+
+The offline app needs to evolve from a polished shell into a standalone,
+local-first tool. This revision gives the UI a typed local state boundary and
+starts modeling queued inventory updates in the same envelope shape the future
+SQLite push worker will persist.
+
+### Files Affected
+
+- `.github/workflows/offline-app-windows.yml`
+- `.github/workflows/pull-request-quality-gates.yml`
+- `apps/offline-app/README.md`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/offlineWorkspace.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/tests/workspace-state-contract.mjs`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `package.json`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Workspace state contract coverage for required offline sync routes,
+  SQLite operation envelope fields, queued operation markers, and local-only
+  safety markers.
+- App package TypeScript type checking through `tsc --noEmit`.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd run test:package-contract` from `apps/offline-app`: passed.
+- `npm.cmd audit` from `apps/offline-app`: passed with zero vulnerabilities.
+- Desktop and mobile Playwright interaction verification against the local
+  Vite dev server: passed, with no console errors or failed requests.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the typed local workspace state module,
+  staged operation preview, stricter app package contract, React type packages,
+  and workflow dependency-install changes.
+- No schema rollback is required because the SQLite migration contract was not
+  changed.
+
+## 2026-06-07 - Offline App Inventory Command Workspace UI
+
+### What Changed
+
+- Replaced the placeholder offline app shell with a polished React inventory
+  command workspace for staff use.
+- Added scanner/search, inventory list, selected-card detail, sync queue,
+  conflict review, customer credit, and device/sync health surfaces.
+- Added responsive styling for desktop and mobile layouts plus a local favicon
+  to keep browser verification clean.
+- Added a UI shell contract test and wired it into offline app and root test
+  commands.
+- Refreshed the offline app Vite dependency and committed a lockfile for
+  reproducible installs.
+
+### Why
+
+The standalone Windows app needs a usable visual baseline before live SQLite
+and website sync wiring are connected. This revision creates the staff-facing
+surface while keeping the app local-only and side-effect-free.
+
+### Files Affected
+
+- `apps/offline-app/index.html`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/tests/ui-shell-contract.mjs`
+- `apps/offline-app/README.md`
+- `package.json`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Offline app UI shell contract coverage for the inventory workspace, sync
+  queue, conflict center, customer credit surface, responsive styling, and
+  no-production-secret markers.
+
+### Tests Run
+
+- `npm.cmd run build` from `apps/offline-app`: passed.
+- `npm.cmd audit` from `apps/offline-app`: passed with zero vulnerabilities.
+- `npm.cmd run test:offline-app` from repository root: passed.
+- Desktop and mobile Playwright screenshot verification against the local Vite
+  dev server: passed after adding the local favicon.
+- `npm.cmd run test` from repository root: passed, including 784 PHP unit
+  tests, plugin bootstrap smoke, PHP lint, sync-engine, POS/payment, offline
+  app, and required test matrix checks.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+- `git diff --check` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to restore the prior placeholder offline app shell,
+  package metadata, and tests.
+- No schema rollback is required because the existing SQLite migration
+  contract was not changed.
+
+## 2026-06-07 - Guarded Square Inventory Projection Execution
+
+### What Changed
+
+- Added a guarded Square inventory projection executor for previously planned
+  catalog-object and physical-count inventory operations.
+- Added an execution result contract that reports blocked, executed, rejected,
+  and skipped outcomes with audit-safe metadata.
+- Default execution remains blocked unless staging code explicitly enables the
+  executor and injects separate catalog and inventory writer adapters.
+- Payment capture remains deferred to the official WooCommerce Square
+  extension; this path is POS inventory sync only.
+
+### Why
+
+The project needs Square POS inventory to pull from the card-management source
+of truth without mixing in payment capture work. This revision creates a safe
+staging handoff for Square catalog/inventory writes while preserving the
+current no-live-network-writes default.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionExecutor.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionExecutorTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for default Square inventory projection execution lockout.
+- Unit coverage for skipped and failed Square projection plans.
+- Unit coverage for explicit catalog/inventory writer-backed staging
+  execution.
+- Unit coverage for writer failure rejection and audit-safe deferral metadata.
+
+### Tests Run
+
+- `php -l` on the new Square executor/result classes and unit test: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Square\SquareInventoryProjectionExecutionResult.php src\Square\SquareInventoryProjectionExecutor.php`
+  from `apps/wordpress-plugin`: passed after PHPCBF alignment cleanup.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 784 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the guarded Square projection executor,
+  execution result contract, and unit tests.
+- No schema rollback or Square cleanup is required unless a future staging
+  adapter has been explicitly enabled and used to write catalog/inventory
+  changes.
+
+## 2026-06-07 - Guarded WooCommerce Product Projection Execution
+
+### What Changed
+
+- Added a guarded WooCommerce product projection executor for previously
+  planned exact-card product operations.
+- Added an execution result contract that reports blocked, executed, rejected,
+  and skipped outcomes with audit-safe metadata.
+- Default execution remains blocked unless staging code explicitly enables the
+  executor and injects a product-writer adapter.
+- Writer failures are caught and reported without exposing raw product payloads
+  as confirmed writes.
+
+### Why
+
+The plugin can now plan WooCommerce product payloads for exact serialized card
+inventory, but staging also needs a safe handoff point before live product
+writes are allowed. This revision creates that handoff while preserving the
+current no-live-writes default for local, staging review, and production.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutionResult.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionExecutor.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionExecutorTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for default WooCommerce projection execution lockout.
+- Unit coverage for skipped and failed projection plans.
+- Unit coverage for explicit writer-backed staging execution.
+- Unit coverage for writer failure rejection and audit-safe deferral metadata.
+
+### Tests Run
+
+- `php -l` on the new WooCommerce executor/result classes and unit test:
+  passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductProjectionExecutionResult.php src\WooCommerce\InventoryProductProjectionExecutor.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 779 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the guarded WooCommerce projection executor,
+  execution result contract, and unit tests.
+- No schema rollback or WooCommerce cleanup is required unless a future staging
+  adapter has been explicitly enabled and used to write products.
+
+## 2026-06-07 - Inventory Workspace Projection Planning Status
+
+### What Changed
+
+- Propagated WooCommerce and Square projection planner readiness from the
+  staged inventory intake handler into the overall inventory dependency health
+  payload.
+- Added a Staff Inventory workspace readiness row that separates
+  side-effect-free projection planning from still-deferred WooCommerce/Square
+  external writes.
+- Added a projection-contract checkpoint row for staging review before live
+  external sync is enabled.
+- Updated the inventory dependency admin summary to report projection planning
+  readiness.
+
+### Why
+
+Staged inventory create responses now expose WooCommerce and Square projection
+contracts, but the admin workspace still showed only deferred external writes.
+Staff/admin users need to see that contract planning is ready while production
+side effects remain deliberately gated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for the Staff Inventory projection-planning readiness row in
+  both default-deferred and staging-ready states.
+- Unit assertions that inventory dependency health propagates planner readiness
+  and projection-planning deferral metadata.
+
+### Tests Run
+
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 774 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Admin\InventoryWorkspacePresenter.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the projection-planning readiness row,
+  projection-contract checkpoint, and propagated dependency summary flags.
+- No schema rollback or external cleanup is required because WooCommerce,
+  Square, label, and network writes remain deferred.
+
+## 2026-06-07 - Staged Inventory Create Projection Contracts
+
+### What Changed
+
+- Wired side-effect-free WooCommerce product projection planning into the staged
+  inventory create handler after successful database writes.
+- Wired side-effect-free Square inventory projection planning into the same
+  created-item response metadata.
+- Added route-handler readiness metadata for WooCommerce and Square projection
+  planner availability while preserving deferred external writes.
+- Updated WordPress staging smoke assertions to verify created inventory
+  responses expose projection contracts without executing network calls.
+
+### Why
+
+The card-management workflow needs to prove that a newly created exact card can
+be translated into WooCommerce and Square projection intent before any live
+external writes are allowed. Returning these contracts in staging responses
+makes that handoff reviewable without changing production safety posture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/STAGING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit assertions that staged inventory create responses include WooCommerce and
+  Square projection contracts while external writes remain deferred.
+- Staging smoke assertions that REST-backed inventory creation exposes
+  projection contracts in the WordPress/WooCommerce integration environment.
+
+### Tests Run
+
+- `php -l` on the modified handler/factory and staging smoke script: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Api\V1\InventoryIntakeRouteHandler.php src\Api\V1\InventoryIntakeRouteHandlerFactory.php`
+  from `apps/wordpress-plugin`: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-staging-inventory-smoke.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 773 tests.
+- `npm.cmd run test` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove projection contracts from staged inventory
+  create response metadata and readiness summaries.
+- No schema rollback or external cleanup is required because WooCommerce,
+  Square, label, and network writes remain deferred.
+
+## 2026-06-07 - WooCommerce Product Projection Planning
+
+### What Changed
+
+- Added a plan-only WooCommerce inventory product projection planner and plan
+  contract for exact serialized card inventory rows.
+- Available visible cards now produce create/update simple-product payloads
+  with SKU, price, single-stock quantity, sold-individually behavior, and
+  serialized inventory metadata.
+- Existing mapped products for unavailable cards now produce stockout update
+  payloads while hidden/unmapped cards skip without writes.
+- Added validation for card identity, barcode/SKU scan identity, sale price,
+  store-currency mismatch, and serialized quantity of one.
+
+### Why
+
+The Pug WooCommerce plugin needs a tested bridge from the internal inventory
+source of truth to WooCommerce product payloads before live WooCommerce writes
+are enabled in staging. This keeps product projection deterministic while
+preserving the current no-live-writes safety posture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlan.php`
+- `apps/wordpress-plugin/src/WooCommerce/InventoryProductProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/ROADMAP.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+
+### Tests Added
+
+- Unit coverage for available visible product creation, mapped product updates,
+  mapped unavailable stockout updates, hidden/unmapped skips, and invalid
+  identity/price/currency/quantity inputs.
+
+### Tests Run
+
+- `php -l` on the new WooCommerce projection classes and unit test: passed.
+- `php tests\run.php` from `apps/wordpress-plugin`: passed with 773 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\WooCommerce\InventoryProductProjectionPlan.php src\WooCommerce\InventoryProductProjectionPlanner.php`
+  from `apps/wordpress-plugin`: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the projection planner, plan contract, and
+  unit tests.
+- No schema rollback or WooCommerce data cleanup is required because this
+  revision does not perform live product writes.
+
+## 2026-06-07 - Inventory Search Benchmark Fixture
+
+### What Changed
+
+- Added a WP-CLI inventory search benchmark script for disposable
+  WordPress integration/staging databases.
+- The script requires `TCG_ALLOW_INVENTORY_SEARCH_BENCHMARK=1`, refuses
+  production, verifies the current schema target, and seeds 50,000 deterministic
+  disposable inventory rows.
+- The benchmark exercises public visible search, staff deep pagination, and
+  staff barcode lookup through the staged inventory search handler.
+- Added the benchmark to the WordPress integration workflow with cleanup
+  enabled after the migration rehearsal step.
+
+### Why
+
+Phase 2 needs an executable 50,000-item fixture before approving search and
+pagination performance on GoDaddy staging. The benchmark records actual timing
+baselines without inventing production pass/fail budgets before target-hosting
+data exists.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/tests/wordpress-inventory-search-benchmark.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The benchmark creates disposable rows marked with the
+  `PUG-BENCH-SEARCH` code/notes in an explicitly approved non-production
+  database.
+
+### Tests Added
+
+- WordPress integration workflow coverage for a 50,000-row inventory search
+  fixture baseline.
+- Syntax/lint coverage for the new WP-CLI benchmark script.
+
+### Tests Run
+
+- `php -l apps/wordpress-plugin/tests/wordpress-inventory-search-benchmark.php`:
+  passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-inventory-search-benchmark.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the workflow benchmark step and WP-CLI script.
+- No schema rollback is required for code rollback.
+- If benchmark cleanup was disabled or interrupted, delete rows where
+  `notes = 'PUG-BENCH-SEARCH'` and remove the matching benchmark inventory
+  location from the non-production database.
+
+## 2026-06-07 - WordPress Migration Rollback Restore Rehearsal
+
+### What Changed
+
+- Added a WP-CLI migration rehearsal script for disposable WordPress
+  integration/staging databases.
+- The script requires `TCG_ALLOW_DESTRUCTIVE_MIGRATION_REHEARSAL=1` and refuses
+  to run in production.
+- The rehearsal verifies the current schema target, rolls back to schema
+  version `1`, checks Phase 2 inventory/pricing tables were dropped, migrates
+  back to the current target, and checks those tables returned.
+- Added the rehearsal as the final step in the WordPress integration workflow
+  after the staging inventory smoke.
+
+### Why
+
+The project needs executable proof that rollback and restore are rehearsed in a
+real WordPress/MySQL environment before doing the same operation on the GoDaddy
+staging database.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The new script exercises existing migrations and rollbacks only in an
+  explicitly approved disposable non-production database.
+
+### Tests Added
+
+- WordPress integration workflow coverage for destructive rollback/restore
+  rehearsal in the disposable CI database.
+- Syntax/lint coverage for the new WP-CLI rehearsal script.
+
+### Tests Run
+
+- `php -l apps/wordpress-plugin/tests/wordpress-migration-rehearsal.php`:
+  passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-migration-rehearsal.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the workflow rehearsal step and WP-CLI script.
+- No schema rollback is required for code rollback.
+- If the rehearsal ran in a disposable database, it should already have restored
+  the plugin schema back to the current target before exiting.
+
+## 2026-06-07 - Inventory Public Read Rate Limit Gate
+
+### What Changed
+
+- Added a public inventory read rate-limit policy with configurable limit,
+  window, clock, storage reader, and storage writer dependencies.
+- Added WordPress transient-backed limiter construction for future live public
+  search routes.
+- Updated inventory public-read permission callbacks so public access fails
+  closed when public reads are enabled without a configured limiter.
+- Preserved staff/admin fallback authorization through `view_inventory` so
+  staging staff search remains usable when public reads are disabled or unsafe.
+- Exposed public rate-limiter readiness in inventory route dependency health
+  and admin summaries.
+
+### Why
+
+Future public search/reference routes must not become publicly usable unless a
+rate limiter is configured. Staff search still needs a capability-backed path
+for staging and admin workflows while public access remains guarded.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryPublicReadRateLimitPolicy.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryPublicReadPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryPublicReadPermissionCallbackAdapterTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrationPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrarTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- WordPress transient storage is used only when public inventory reads are
+  explicitly enabled and the route graph is composed inside WordPress.
+
+### Tests Added
+
+- Unit coverage for missing-limiter public denial.
+- Unit coverage for per-bucket public read rate-limit enforcement.
+- Unit coverage for rate-limit window reset behavior.
+- Unit coverage for staff fallback authorization when public reads are unsafe.
+- Dependency-factory coverage proving public-read routes enabled without a
+  limiter report a blocked readiness state.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 768 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Api\V1\InventoryPublicReadRateLimitPolicy.php src\Api\V1\InventoryPublicReadPermissionCallbackAdapter.php src\Api\V1\InventoryRoutePermissionCallbackFactory.php src\Api\V1\InventoryRouteDependencyFactory.php src\Api\V1\InventoryRouteDependencyStatusPresenter.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the explicit rate-limit dependency from
+  inventory public-read permission callbacks.
+- Confirm public inventory read settings remain disabled after rollback.
+- No schema rollback is required.
+
+## 2026-06-07 - Manager Override Persistence And Reauthentication
+
+### What Changed
+
+- Added explicit manager reauthentication fields to manager override requests.
+- Below-minimum manager approval now requires a reauthenticated manager signal
+  plus a reauthentication timestamp before the policy accepts the override.
+- Manager override persistence planning now generates stable public IDs when
+  callers do not provide one and records reauthentication audit metadata.
+- Added a `$wpdb` repository and result object for persisting approved manager
+  override rows into `tcg_manager_overrides`.
+
+### Why
+
+Below-minimum pricing overrides need a durable manager approval record and a
+fresh-manager-auth signal before they are safe to rely on during checkout,
+offline sync, or POS reconciliation work.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideRequest.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverridePolicy.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverridePersistencePlanner.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideRepository.php`
+- `apps/wordpress-plugin/src/Overrides/ManagerOverrideRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverridePolicyTest.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverridePersistencePlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/ManagerOverrideRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Uses the existing Phase 2 `tcg_manager_overrides` table.
+
+### Tests Added
+
+- Unit coverage for missing manager reauthentication and missing
+  reauthentication timestamp rejection.
+- Unit coverage for stable fallback manager override public IDs and
+  reauthentication audit payloads.
+- Unit coverage for manager override repository persistence, skipped plans,
+  invalid table prefixes, invalid rows, failed inserts, and unexpected insert
+  counts.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 762 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Overrides\ManagerOverrideRequest.php src\Overrides\ManagerOverridePolicy.php src\Overrides\ManagerOverridePersistencePlanner.php src\Overrides\ManagerOverrideRepository.php src\Overrides\ManagerOverrideRepositoryResult.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return manager override checks to reason/manager-only
+  policy behavior and remove repository persistence.
+- If staging test override rows were inserted, delete matching disposable
+  `tcg_manager_overrides` rows by `public_id`.
+- No schema rollback is required.
+
+## 2026-06-07 - Inventory Intake Price Change Log Persistence
+
+### What Changed
+
+- Wrapped staged inventory intake creates in a database transaction.
+- Added initial `tcg_price_change_log` persistence for every successful
+  inventory create, recording new sale price, minimum price, currency, source,
+  floor-hit state, actor, and intake reason.
+- Repository results and REST responses now expose whether the initial price
+  change log row persisted.
+- The staged WordPress inventory smoke now verifies the REST-created card has
+  a matching price change log row.
+
+### Why
+
+Staff-created cards need an audit trail from the first sale price forward
+before staging intake is useful for real operations. The inventory row and
+initial price log now commit together or roll back together.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Uses the existing Phase 2 `tcg_price_change_log` table.
+
+### Tests Added
+
+- Unit coverage proving successful inventory intake writes the initial price
+  log inside a committed transaction.
+- Unit coverage proving price-log insert failure rolls back the inventory
+  create.
+- REST route-handler coverage proving created responses expose price-log
+  persistence metadata.
+- Staging smoke assertions proving a REST-created inventory item has an
+  initial price change log row.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 755 tests.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Inventory\InventoryIntakeRepository.php src\Inventory\InventoryIntakeRepositoryResult.php`
+  from `apps/wordpress-plugin`: passed.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist tests\wordpress-staging-inventory-smoke.php`
+  from `apps/wordpress-plugin`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the transactional price-log write.
+- If rollback is needed after staging test data was created, delete matching
+  disposable `tcg_price_change_log` rows before deleting their inventory rows.
+- No schema rollback is required.
+
+## 2026-06-07 - Inventory Intake Identity Collision Guard
+
+### What Changed
+
+- Added a pre-insert identity lookup to the inventory intake repository for
+  barcode and SKU collisions.
+- The repository now returns stable `barcode_already_exists` and
+  `sku_already_exists` errors before attempting an insert.
+- Updated intake repository and route-handler factory tests for the additional
+  preflight database read.
+
+### Why
+
+Staff intake needs explicit duplicate scan/SKU feedback before we rely on it in
+staging. The database unique keys remain the final guard, but the service layer
+now reports actionable collision errors instead of a generic insert failure.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepository.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRepositoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing unique keys on `barcode` and `sku` remain unchanged.
+
+### Tests Added
+
+- Unit coverage proving duplicate barcode/SKU rows are detected before insert.
+- Unit coverage updates proving repository-backed route handlers account for
+  the new identity lookup plus insert query path.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist src\Inventory\InventoryIntakeRepository.php`
+  from `apps/wordpress-plugin`: passed.
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 754 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return to database-only duplicate rejection.
+- No data rollback is required.
+
+## 2026-06-07 - Inventory Admin Intake Workspace
+
+### What Changed
+
+- Added a gated Staff Intake panel model to the Inventory Workspace presenter.
+- Added a WordPress admin Staff Intake form that posts to `POST /inventory`
+  with a REST nonce and idempotency key when the staging create route is ready.
+- The intake form captures game, card identity, barcode/SKU, location, pricing,
+  status, raw/graded condition, and channel visibility fields.
+- The admin result panel reports created inventory identity while keeping
+  WooCommerce projection, Square projection, POS side effects, and labels
+  deferred.
+
+### Why
+
+The staging create route needs a staff-facing workflow before it can be tested
+comfortably on the GoDaddy staging site. This gives staff a controlled admin
+intake surface while retaining the runtime gates that keep production and
+external systems locked.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Admin intake uses the existing staged `POST /inventory` route and only writes
+  when the staging feature flag and create runtime gate are enabled.
+
+### Tests Added
+
+- Unit coverage for the locked default Staff Intake panel and sanitized form
+  defaults.
+- Unit coverage for the ready staging Staff Intake panel and route metadata.
+
+### Tests Run
+
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  src\Admin\AdminMenu.php src\Admin\InventoryWorkspacePresenter.php` from
+  `apps/wordpress-plugin`: passed.
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 753 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the admin intake form and presenter model.
+- Disable the staff create runtime checkbox to lock admin intake without code
+  rollback.
+- No production data rollback is required because production route availability
+  remains disabled by default.
+
+## 2026-06-07 - Inventory Staff Create Runtime Gate
+
+### What Changed
+
+- Added a separate staff inventory create runtime gate for staging/local
+  environments.
+- Updated inventory route contract configuration so only `POST /inventory`
+  becomes registerable and write-ready when the create gate is explicitly
+  enabled.
+- Kept `/inventory/search` reads, `/inventory` creates, public reads,
+  WooCommerce projection, Square projection, and label printing on separate
+  deferral flags.
+- Updated the WordPress settings UI with a staging create-route checkbox.
+- Expanded the WordPress staging inventory smoke script to create a disposable
+  Bulbasaur inventory row through REST, search it back, and confirm Square,
+  WooCommerce, POS, public reads, and label side effects remain deferred.
+
+### Why
+
+Staging needs a controlled first write path for staff card intake before the
+larger inventory workflow can move into admin UX and Square/WooCommerce
+projection work. This keeps production defaults locked while proving the REST
+create path can safely write to the disposable staging database.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Settings/InventoryRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The new create smoke writes only to the disposable staging/integration
+  database after the staging feature flag and explicit create runtime gate are
+  enabled.
+
+### Tests Added
+
+- Unit coverage for staff create runtime setting sanitization and default
+  lockout.
+- Unit coverage proving the create gate clears only `POST /inventory` route
+  registration and write deferrals.
+- Dependency factory coverage proving the staff create route registers only
+  when handlers, permissions, and the runtime gate are ready.
+- WordPress staging smoke coverage for REST inventory create plus follow-up
+  staff search of the created row.
+
+### Tests Run
+
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  src\Settings\InventoryRouteRuntimeSettings.php
+  src\Api\V1\InventoryRouteRuntimeConfigurator.php
+  src\Api\V1\InventoryRouteDependencyFactory.php
+  src\Settings\SettingsPage.php tests\wordpress-staging-inventory-smoke.php`:
+  passed.
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 751 tests.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Disable the staff create runtime checkbox or revert this revision to relock
+  `POST /inventory`.
+- No production data rollback is required because the route stays production
+  unavailable by default.
+- If needed in a disposable staging database, delete rows with SKU/barcode
+  `PUG-STAGE-PKM-BULBA-001`.
+
+## 2026-06-07 - Seeded Inventory Staging Smoke
+
+### What Changed
+
+- Updated the WordPress staging inventory smoke test to seed a deterministic
+  disposable inventory location and one Pokemon inventory row.
+- The smoke test now searches for the seeded card through
+  `/tcg-store/v1/inventory/search` and verifies staff-only fields, normalized
+  pricing, and result metadata.
+- The seed remains scoped to the disposable GitHub Actions WordPress/MySQL
+  integration site.
+
+### Why
+
+Staging search needs to be proven against actual inventory data, not only an
+empty table. This gives the admin search UI and REST route a concrete seeded
+card to validate before real staging data is used.
+
+### Files Affected
+
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Seeded rows are created only during the disposable staging smoke script.
+
+### Tests Added
+
+- WordPress staging smoke assertions for a seeded location and seeded inventory
+  item.
+- WordPress staging smoke assertions that staff inventory search returns the
+  seeded card and exposes staff SKU data.
+
+### Tests Run
+
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  tests\wordpress-staging-inventory-smoke.php`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return the staging smoke to empty-table verification.
+- No database rollback is required outside the disposable integration database.
+
+## 2026-06-07 - Inventory Admin Search Workspace
+
+### What Changed
+
+- Added a staff search panel model to the Inventory Workspace presenter with
+  staging-readiness detection, safe filter sanitization, route metadata, status
+  options, sort options, and page-size choices.
+- Added a WordPress admin Inventory Workspace search form and REST-backed
+  results panel that calls `/tcg-store/v1/inventory/search` only when the
+  staging route is ready.
+- The admin search surface stays visibly locked when the feature flag, route
+  runtime gate, or route handler dependencies are not ready.
+- The results panel keeps search read-only and displays staff fields while
+  writes, WooCommerce projection, Square projection, labels, and POS ingestion
+  remain deferred.
+
+### Why
+
+Staff need a concrete inventory workflow surface before staging acceptance can
+be meaningful. This revision turns the diagnostics-only Inventory Workspace
+into a controlled search shell while preserving default production lockout.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No write routes, WooCommerce projection, Square projection, POS ingestion, or
+  public inventory reads were enabled.
+
+### Tests Added
+
+- Unit coverage for the Inventory Workspace search panel locked/default state.
+- Unit coverage for staging-ready staff search state and sanitized filter
+  values.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 748 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist` on touched admin source
+  files: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to remove the admin search form and search panel model.
+- No database rollback is required.
+
+## 2026-06-07 - Inventory Staging Search Smoke
+
+### What Changed
+
+- Added a WordPress staging inventory smoke script that verifies
+  `/tcg-store/v1/inventory/search` can register in a staging environment when
+  the inventory/pricing feature flag and staff search runtime gate are enabled.
+- The smoke script performs an actual REST request against the staff inventory
+  search route and confirms the disposable integration inventory is empty.
+- The smoke script asserts inventory writes, POS event ingestion, WooCommerce
+  projection, Square projection, and public inventory reads remain disabled or
+  deferred.
+- Updated the WordPress integration GitHub Actions workflow to run the existing
+  production-default smoke test first, then enable staging search gates and run
+  the staging inventory smoke test.
+
+### Why
+
+The project needs proof that the staging path can open a safe read-only staff
+inventory route without changing production defaults or enabling write-side
+behavior. This gives us a CI-backed gate before using the GoDaddy staging site.
+
+### Files Affected
+
+- `.github/workflows/wordpress-integration.yml`
+- `apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- The workflow uses a disposable WordPress/MySQL integration site and does not
+  touch production or the GoDaddy staging database.
+
+### Tests Added
+
+- WordPress integration smoke coverage for staging-only staff inventory search
+  route registration and execution.
+- Assertions that staging search keeps inventory creation, POS ingestion,
+  WooCommerce projection, Square projection, and public inventory reads closed.
+
+### Tests Run
+
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 504 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist
+  tests\wordpress-staging-inventory-smoke.php`: passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+- The new WordPress staging inventory smoke is wired into GitHub Actions and is
+  intended to run inside the disposable WordPress/MySQL integration job.
+
+### Rollback Notes
+
+- Revert this revision to remove the staging smoke script and GitHub Actions
+  staging inventory smoke step.
+- No database rollback is required.
+
+## 2026-06-07 - Inventory Feature Flag Staging Availability
+
+### What Changed
+
+- Added environment-aware feature flag availability so future modules can be
+  available outside production without becoming production-available.
+- Made `inventory_pricing` available only for `local`, `development`, and
+  `staging` environments while it remains unavailable in `production`.
+- Updated feature flag sanitization, admin module status, settings UI, and
+  authenticated health output to use runtime environment availability.
+- Kept the default inventory/pricing flag value disabled, so staging still
+  requires an explicit staff/admin enablement step before routes can register.
+
+### Why
+
+Staging needs to turn on the inventory/pricing module for controlled staff
+search testing, but production must remain locked until manual deployment
+approval and post-staging acceptance. This revision creates that separation.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlagRegistry.php`
+- `apps/wordpress-plugin/src/FeatureFlags/FeatureFlags.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Production still reports `inventory_pricing` as unavailable, and no inventory
+  routes are enabled by default.
+
+### Tests Added
+
+- Unit coverage proving `inventory_pricing` is available in local,
+  development, and staging environments only.
+- Unit coverage proving unavailable modules are sanitized off in production
+  while inventory/pricing can be retained for staging settings.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 746 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 503 PHP files.
+- `vendor\bin\phpcs.bat --standard=phpcs.xml.dist` on touched PHP files:
+  passed.
+- `npm.cmd run test` from repository root: passed.
+- `npm.cmd run verify:no-production-secrets`: passed.
+- `git diff --check`: passed, with normal Windows line-ending warnings only.
+
+### Rollback Notes
+
+- Revert this revision to return `inventory_pricing` to globally unavailable.
+- No database rollback is required. If staging enabled `inventory_pricing`,
+  disable it or set `WP_ENVIRONMENT_TYPE=production` before rollback.
+
+## 2026-06-07 - Inventory Staff Search Runtime Gates
+
+### What Changed
+
+- Added sanitized inventory route runtime settings for staff search and public
+  search gates, both disabled by default.
+- Added `InventoryRouteRuntimeConfigurator` to clear only the
+  `/inventory/search` route registration/read deferrals when staff search is
+  explicitly enabled.
+- Wired the settings-aware inventory route dependency factory into WordPress
+  admin, authenticated health output, and the `rest_api_init` bootstrapper.
+- Kept the `inventory_pricing` feature flag unavailable by default, so runtime
+  settings alone cannot open live production routes.
+- Added Settings UI checkboxes for staging route gates.
+
+### Why
+
+Staging needs a controlled path to exercise staff inventory search before any
+write routes, public search, WooCommerce projection, Square projection, or
+label actions are enabled. This revision adds that path while preserving the
+default locked install state.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/src/Settings/InventoryRouteRuntimeSettings.php`
+- `apps/wordpress-plugin/src/Settings/Settings.php`
+- `apps/wordpress-plugin/src/Settings/SettingsPage.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeConfiguratorTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRuntimeSettingsTest.php`
+- `apps/wordpress-plugin/tests/Unit/SettingsTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No write routes, public reads, WooCommerce writes, Square writes, or label
+  print actions were enabled by default.
+
+### Tests Added
+
+- Unit coverage for inventory route runtime settings sanitization.
+- Unit coverage for route contract configuration of the staging staff search
+  route.
+- Unit coverage proving the staff search route can register only when the
+  runtime contract, handler, and permission dependencies are explicitly ready.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 744 tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the runtime route settings, settings UI, and
+  settings-aware inventory route composition path.
+- No database rollback is required. Disable the staff search runtime checkbox
+  before rollback if it was enabled on staging.
+
+## 2026-06-07 - Inventory Admin Workspace
+
+### What Changed
+
+- Added an Inventory submenu under the TCG Store WordPress admin menu for staff
+  users with `view_inventory`.
+- Added a dependency-free `InventoryWorkspacePresenter` that renders readiness,
+  route contract, and next-checkpoint rows from the existing inventory bootstrap
+  and dependency health payloads.
+- Kept the workspace read-only and status-focused while live inventory route
+  registration, route-connected reads, route-connected writes, WooCommerce
+  projection, Square projection, and label actions remain deferred.
+- Added unit coverage for the default safe workspace state.
+
+### Why
+
+Staff and staging reviewers need a real admin surface to inspect inventory
+readiness before live routes are enabled. This revision makes the staged route
+graph visible in WordPress admin without changing the current safety posture.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Admin/InventoryWorkspacePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No live inventory routes, database writes, Square writes, WooCommerce writes,
+  or label-print actions were enabled.
+
+### Tests Added
+
+- Unit tests for inventory admin readiness rows, route contract rows, and
+  default pending checkpoint rows.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 737 tests.
+
+### Rollback Notes
+
+- Revert this revision to remove the Inventory admin submenu and pure workspace
+  presenter.
+- No database rollback is required because the change is read-only admin UI and
+  unit coverage.
+
+## 2026-06-07 - Inventory Handler Factory Dependency Defaults
+
+### What Changed
+
+- Updated `InventoryRouteDependencyFactory` so the staged inventory search and
+  intake route handler factories are part of the default dependency graph.
+- Kept route-connected reads and writes disabled by default, so the default
+  factory still exposes zero live controller handlers and zero registerable
+  routes.
+- Extended dependency-factory tests to prove the staged search/intake factories
+  are ready while route execution remains deferred.
+
+### Why
+
+Health and admin diagnostics need to distinguish between missing composition
+and intentionally deferred execution. This revision makes the WordPress
+dependency graph report that search/intake factories exist and can inspect
+database readiness, while preserving the route lockout until staging explicitly
+enables reads or writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Default live inventory route registration, route-connected reads, and
+  route-connected writes remain disabled.
+
+### Tests Added
+
+- Unit assertions proving the default inventory dependency factory exposes
+  staged search/intake handler factories while their read/write paths remain
+  deferred.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 734 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 497 PHP files.
+
+### Rollback Notes
+
+- Revert this revision to return the default inventory dependency factory to
+  reporting absent handler factories unless they are explicitly injected.
+- No database rollback or route disablement is required because no migration or
+  live route registration was added.
+
+## 2026-06-07 - Inventory Route Bootstrap Wiring
+
+### What Changed
+
+- Added `InventoryRouteBootstrapPlanner`, `InventoryRouteBootstrapStatusPresenter`,
+  and `InventoryRouteBootstrapper` for gated inventory REST route registration.
+- Wired the inventory route dependency factory to compose the bootstrapper and
+  registrar with injected dependencies.
+- Registered the inventory bootstrapper on WordPress `rest_api_init` at
+  priority `22`.
+- Added authenticated health and admin System Status reporting for inventory
+  route bootstrap state.
+- Extended WordPress smoke coverage to verify the bootstrapper hook is present
+  while inventory routes remain unregistered by default.
+
+### Why
+
+Inventory search and create routes need a real WordPress bootstrap path before
+staging can safely enable them. This revision installs that path behind the
+existing feature flag, route registration deferral, read/write deferrals,
+permission gates, and handler gates.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteBootstrapPlanner.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteBootstrapStatusPresenter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteBootstrapper.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/src/Bootstrap/Plugin.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteBootstrapperTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Inventory route registration remains blocked by the unavailable
+  `inventory_pricing` feature flag and by per-route registration/read/write
+  deferrals.
+- Public inventory reads, route-connected inventory writes, WooCommerce
+  projection, Square projection, barcode label printing, and production
+  provider calls remain deferred.
+
+### Tests Added
+
+- Unit tests for blocked, gated, future-ready, and feature-disabled inventory
+  bootstrap paths.
+- Unit coverage proving the inventory dependency factory exposes a staged
+  bootstrapper.
+- WordPress smoke assertions proving the `rest_api_init` hook is registered and
+  the default bootstrap plan remains blocked.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 734 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 497 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on touched source and smoke
+  files: passed after auto-fixing touched-file line endings with
+  `vendor/bin/phpcbf`.
+
+### Rollback Notes
+
+- Revert this revision to remove the inventory bootstrapper hook, bootstrap
+  status payload, and related tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No staged or production route disablement is required after rollback because
+  inventory REST routes still default to unregistered.
+
+## 2026-06-07 - Inventory Route Health And Admin Status
+
+### What Changed
+
+- Added inventory route dependency readiness to the authenticated health
+  response under `inventory_route_dependencies`.
+- Added an Inventory route dependencies row to the WordPress admin System
+  Status screen.
+- Extended the WordPress integration smoke script to assert that inventory
+  search and create routes remain unregistered by default while their
+  dependency readiness is visible.
+- Added missing POS/payment dependency imports in the System Status screen
+  while wiring the new inventory status row.
+
+### Why
+
+Staging needs to inspect inventory route readiness before live route
+registration, public search, staff writes, WooCommerce projection, or Square
+projection are enabled. This revision exposes that readiness in the same
+health/admin surfaces already used by offline sync and POS/payment staging.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/HealthController.php`
+- `apps/wordpress-plugin/src/Admin/AdminMenu.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Default live inventory route registration remains disabled.
+- Public inventory reads, route-connected inventory writes, WooCommerce
+  projection, Square projection, barcode label printing, and production
+  provider calls remain deferred.
+
+### Tests Added
+
+- WordPress integration smoke assertions proving inventory search/create REST
+  routes remain unregistered by default.
+- WordPress integration smoke assertions proving authenticated health exposes
+  blocked inventory route dependency readiness by default.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 729 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 493 PHP files.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory route dependency status from
+  authenticated health, admin System Status, and smoke assertions.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No route or provider disablement is required after rollback because live
+  inventory route registration and external side effects remain disabled.
+
+## 2026-06-07 - Inventory Route Dependency Composition
+
+### What Changed
+
+- Added `InventoryRouteDependencyFactory` to assemble staged inventory route
+  handlers, controller dispatch, permission callbacks, registration planning,
+  and registrar wiring.
+- Added `InventoryRouteDependencyStatusPresenter` to expose health/admin-ready
+  dependency summaries for inventory route readiness.
+- Limited composed handlers to the staged route callbacks that currently exist:
+  `search_inventory_items` and `create_inventory_item`.
+- Kept all other inventory callbacks fail-closed until their handlers and
+  permission models are implemented.
+
+### Why
+
+The inventory route registration layer needs a composition boundary before it
+can be used by health checks, staging smoke tests, or future bootstrap wiring.
+This revision lets the system report exactly which inventory route dependencies
+are ready without enabling live routes, public reads, staff writes,
+WooCommerce projection, Square projection, or label printing.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteDependencyStatusPresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteDependencyFactoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live route registration, public inventory reads, route-connected
+  writes, barcode label printing, WooCommerce projection, Square provider
+  writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Default dependency summary tests proving the factory reports blocked route
+  handlers, permission callbacks, and public-read settings.
+- Configured dependency summary tests proving staged search/create handlers,
+  permission callbacks, and registrar construction are assembled.
+- Controller dispatch tests proving injected search/create handlers receive
+  normalized REST request data while unsupported routes fail closed.
+- Registrar handoff tests proving future-ready inventory search routes use the
+  injected route registrar callback.
+- Status presenter tests for blocked health payloads and ready admin summaries.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 729 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 493 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory
+  dependency source files: passed after auto-fixing alignment with
+  `vendor/bin/phpcbf`.
+- `npm.cmd run test` from the repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from the repository root: passed.
+- `git diff --check`: passed with only normal Windows line-ending warnings.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory route dependency composition,
+  readiness presentation, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No staged or production route disablement is required after rollback because
+  default live route registration remains disabled.
+- No production rollback applies because public reads, inventory writes,
+  WooCommerce projection, Square network calls, barcode label printing, and
+  offline sync mutation remain disabled.
+
+## 2026-06-07 - Inventory Route Registration Gating
+
+### What Changed
+
+- Added a fail-closed `InventoryController` with explicit handler dispatch for
+  all planned inventory and search callbacks.
+- Added inventory permission callback adapters for capability-based staff
+  routes and explicitly enabled public-read routes.
+- Added `InventoryRoutePermissionCallbackFactory` to map route contracts to
+  permission callbacks without exposing public reads by default.
+- Added `InventoryRouteRegistrationPlanner` and `InventoryRouteRegistrar` so
+  future inventory routes register only when the route is live-enabled, route
+  registration deferral is cleared, read/write deferrals are cleared, a
+  permission callback is ready, and a controller handler is injected.
+
+### Why
+
+The plugin needs a controlled path from tested inventory search/intake handlers
+to usable WordPress REST routes. This revision creates the gated registration
+layer for staging without changing production defaults or enabling public
+search, staff writes, label printing, WooCommerce projection, or Square
+projection.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryCapabilityPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryController.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryPublicReadPermissionCallbackAdapter.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRoutePermissionCallbackFactory.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRegistrar.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryRouteRegistrationPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrarTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryRouteRegistrationPlannerTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live route registration, public inventory reads, route-connected
+  writes, barcode label printing, WooCommerce projection, Square provider
+  writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Planner tests proving all inventory routes remain disabled without configured
+  permission callbacks and injected controller handlers.
+- Permission-factory tests for capability routes and explicitly enabled
+  public-read routes.
+- Controller dispatch tests proving injected handlers receive normalized REST
+  request data while missing handlers fail closed.
+- Registrar tests proving default routes do not register, future search routes
+  require public-read/read gates, future create routes require write-gate
+  clearing, and device/owner permission routes stay locked until dedicated
+  permission callbacks exist.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 723 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 490 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the six new inventory route
+  source files: passed after auto-fixing alignment with `vendor/bin/phpcbf`.
+- `npm.cmd run test` from the repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from the repository root: passed.
+- `git diff --check`: passed with only normal Windows line-ending warnings.
+
+### Rollback Notes
+
+- Revert this revision to remove the gated inventory route controller,
+  permission callbacks, registration planner, registrar, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No staged or production route disablement is required after rollback because
+  default live route registration remains disabled.
+- No production rollback applies because public reads, inventory writes,
+  WooCommerce projection, Square network calls, barcode label printing, and
+  offline sync mutation remain disabled.
+
+## 2026-06-07 - Inventory Intake Route Handler Factory
+
+### What Changed
+
+- Added `InventoryIntakeRouteHandler` to orchestrate inventory intake request
+  parsing, persistence planning, repository execution, and created-item
+  responses for the planned `create_inventory_item` callback.
+- Added `InventoryIntakeRouteHandlerFactory` to compose the staged handler from
+  an explicitly injected database provider only when route-connected writes are
+  enabled.
+- Added readiness summaries for parser, planner, repository, database provider,
+  table prefix validation, default route-registration deferral,
+  WooCommerce/Square projection deferral, and label-print deferral.
+- Added fail-closed response envelopes for invalid payloads, invalid
+  persistence plans, and repository rejections before any default live route is
+  registered.
+
+### Why
+
+The admin card-management UI and offline intake flow both need a single
+route-level creation boundary before live route registration can be safely
+enabled. This revision proves the staged `POST /inventory` orchestration path
+with injected dependencies while keeping production/staging route wiring,
+WooCommerce projection, Square projection, and label printing gated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRouteHandlerFactoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live `POST /inventory` route registration, barcode label printing,
+  WooCommerce projection, Square provider writes, and offline sync writes
+  remain deferred.
+
+### Tests Added
+
+- Route-handler success tests for parser/planner/repository orchestration and
+  created-item response payloads.
+- Invalid-payload tests proving bad intake bodies short-circuit before
+  repository writes.
+- Repository rejection tests proving failed staged inserts map to stable
+  rejected responses.
+- Factory tests proving default route-connected writes remain deferred and
+  explicitly enabled handlers report database provider and table-prefix issues.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 711 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 482 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new route source
+  files: passed after auto-fixing alignment with `vendor/bin/phpcbf`.
+- `npm.cmd run test` from the repository root: passed.
+- `npm.cmd run verify:no-production-secrets` from the repository root: passed.
+- `git diff --check`: passed with only normal Windows line-ending warnings.
+
+### Rollback Notes
+
+- Revert this revision to remove the staged inventory intake route handler,
+  factory, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- If the handler was explicitly invoked in staging before rollback, delete only
+  the test inventory rows created by that staging run after confirming they are
+  not linked to reservations, orders, POS events, or offline sync rows.
+- No production rollback applies because default route registration,
+  WooCommerce projection, Square network calls, barcode label printing, and
+  offline sync mutation remain disabled.
+
+## 2026-06-07 - Inventory Intake Repository Adapter
+
+### What Changed
+
+- Added `InventoryIntakeRepository` and `InventoryIntakeRepositoryResult` to
+  execute staged intake insert plans through an explicitly injected `$wpdb`
+  adapter.
+- Added invalid-plan short-circuiting, active WordPress table-prefix validation,
+  prepared insert execution, insert ID capture, and exact insert-count outcome
+  handling.
+- Added created-item response payloads with inventory ID, public ID, barcode,
+  SKU, status, and row version.
+- Added repository audit metadata for insert status, rows affected, insert ID,
+  response public ID, persistence plan audit, route/write deferrals,
+  WooCommerce/Square projection deferrals, and label-print deferral.
+
+### Why
+
+The card management write path now has a tested persistence plan, but future
+staff/admin intake and offline intake also need a repository boundary that can
+execute that plan safely in controlled staging tests. This revision makes the
+database insert adapter reviewable while keeping live route registration and
+projection side effects disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakeRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakeRepositoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Live `POST /inventory` route registration, barcode label printing,
+  WooCommerce projection, Square provider writes, and offline sync writes
+  remain deferred.
+
+### Tests Added
+
+- Repository insert tests for prepared `$wpdb` execution, insert ID capture,
+  created-item response payloads, and redacted audit output.
+- Invalid-plan tests proving repository writes short-circuit before SQL.
+- Table-prefix mismatch tests proving staged writes stay scoped to the active
+  WordPress installation prefix.
+- Database failure, zero-row, and unexpected-row-count rejection tests.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 705 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 479 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the inventory intake repository adapter and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- If the repository adapter was explicitly invoked in staging before rollback,
+  delete only the test inventory rows created by that staging run after
+  confirming they are not linked to reservations, orders, POS events, or
+  offline sync rows.
+- No production rollback applies because no live route registration,
+  WooCommerce projection, Square network call, or offline sync mutation was
+  enabled.
+
+## 2026-06-07 - Inventory Intake Persistence Planning
+
+### What Changed
+
+- Added `InventoryIntakePersistencePlanner` and
+  `InventoryIntakePersistencePlan` to turn accepted inventory intake requests
+  into schema-aligned `tcg_inventory_items` insert rows and prepared SQL
+  templates without executing database writes.
+- Added deterministic public ID generation from the idempotency key and
+  fallback barcode/SKU generation for pending-intake items that have not yet
+  received a physical scan label.
+- Added money normalization from minor units to decimal strings, timestamp
+  planning for acquired/listed/sold dates, actor attribution, visibility
+  fields, pricing flags, manual reference payloads, and row-version defaults.
+- Added fail-closed planning errors for invalid table prefixes, missing
+  idempotency keys, incomplete card identity, missing minimum prices, invalid
+  sale prices, invalid currency, and invalid status.
+
+### Why
+
+Card management needs a write-side boundary before staff/admin intake screens,
+offline intake, ScryDex imports, and future WooCommerce projection can create
+inventory rows. This revision prepares and tests the database insert contract
+while keeping live route registration and repository execution disabled.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakePersistencePlan.php`
+- `apps/wordpress-plugin/src/Inventory/InventoryIntakePersistencePlanner.php`
+- `apps/wordpress-plugin/tests/Unit/InventoryIntakePersistencePlannerTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Inventory repository execution, live `POST /inventory` route registration,
+  barcode label printing, WooCommerce projection, Square provider writes, and
+  offline sync writes remain deferred.
+
+### Tests Added
+
+- Intake persistence tests for available staff intake rows, prepared insert
+  templates, pricing fields, visibility fields, actor fields, and listed dates.
+- Pending-intake tests proving fallback barcode/SKU generation and sale-price
+  defaulting to the minimum price while label printing remains deferred.
+- Sold-item tests proving sold inventory receives both listed and sold
+  timestamps.
+- Rejection tests for unsafe table prefixes, missing idempotency, invalid
+  currency, missing card identity, missing minimum price, and invalid status.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 701 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 476 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory intake persistence planning and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no live route registration, inventory
+  repository execution, barcode label printing, WooCommerce projection, Square
+  network call, or offline sync mutation was enabled.
+
+## 2026-06-07 - Inventory Search Route Handler Factory
+
+### What Changed
+
+- Added `InventorySearchRouteHandler` to orchestrate inventory search request
+  parsing, query planning, repository-backed reads, and public/staff response
+  presentation for the planned `search_inventory_items` callback.
+- Added `InventorySearchRouteHandlerFactory` to compose the staged handler from
+  `$wpdb` only when route-connected reads are explicitly enabled and the active
+  WordPress table prefix is valid.
+- Added route readiness metadata for request parser, query planner, repository
+  adapter, database configuration, table-prefix checks, handler readiness,
+  default route registration deferral, read deferral, and write deferral.
+- Added fail-closed response envelopes for invalid search requests, invalid
+  query plans, repository rejection, database provider failures, and invalid
+  table prefixes.
+
+### Why
+
+The website search UI, staff/admin card tools, Square inventory projection, and
+offline app need a route-level read boundary that can be tested before live
+REST registration is allowed. This revision wires the existing parser,
+planner, repository, and presenter together in an opt-in handler while keeping
+default production routes gated.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandler.php`
+- `apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandlerFactory.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRouteHandlerFactoryTest.php`
+- `docs/API.md`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Default live route registration, inventory writes, WooCommerce projection,
+  Square provider writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Route handler tests for repository-backed public search responses, public
+  redaction, response metadata, and selected repository audit payloads.
+- Route handler tests proving invalid query payloads short-circuit before
+  repository reads.
+- Route handler tests for repository failure rejection.
+- Factory tests for default route-connected read deferral, explicitly enabled
+  repository-backed handler composition, staff-visible search responses,
+  database provider failures, and invalid table prefixes.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 697 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 473 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new API source
+  files: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the staged inventory search route handler,
+  handler factory, and tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because default route registration, inventory
+  writes, WooCommerce projection, Square network calls, and offline sync
+  mutations remain disabled.
+
+## 2026-06-07 - Inventory Search Repository Adapter
+
+### What Changed
+
+- Added `InventorySearchRepository` and `InventorySearchRepositoryResult` to
+  execute validated inventory search SQL templates through an explicitly
+  injected `$wpdb` adapter.
+- Added prepared `SELECT` and `COUNT` execution for inventory search result
+  pages, with active table-prefix validation before any database call is made.
+- Normalized repository rows into safe inventory search envelopes for public
+  and staff presentation layers, including price/currency normalization,
+  visibility flags, row versions, timestamps, barcode/SKU fields, and image
+  metadata.
+- Added rejection paths for invalid query plans, table-prefix mismatches,
+  failed database calls, malformed critical row fields, and unsupported result
+  shapes while keeping route-connected reads and all writes deferred.
+
+### Why
+
+The card management system needs an audited read adapter before the website,
+admin tools, Square inventory projection, and offline sync can share the same
+inventory search source of truth. This checkpoint proves repository-backed
+reads can be executed and normalized in isolation without enabling live route
+registration or write paths.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRepository.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchRepositoryResult.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchRepositoryTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Live inventory route registration, inventory writes, WooCommerce projection,
+  Square provider writes, and offline sync writes remain deferred.
+
+### Tests Added
+
+- Repository fetch tests for prepared `$wpdb` select/count execution,
+  normalized rows, total counts, and audit payloads.
+- Invalid query-plan tests proving repository reads short-circuit before
+  database access.
+- Table-prefix mismatch tests proving repository execution is limited to the
+  active WordPress installation prefix.
+- Database failure and malformed-row tests for rejected result envelopes.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 691 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 470 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove the inventory search repository adapter and
+  its tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no live route registration, inventory
+  write path, WooCommerce projection, Square network call, or offline sync
+  mutation was enabled.
+
+## 2026-06-07 - Inventory Search SQL Template Planning
+
+### What Changed
+
+- Added `InventorySearchQueryBuilder` and
+  `InventorySearchQueryBuildPlan` to convert safe inventory search plans into
+  deferred prepared SQL templates.
+- Built allowlisted `SELECT` and `COUNT` templates for public, staff, hidden,
+  and all inventory views, including text search, game filters, status filters,
+  location filters, visibility filters, stable sort ordering, limit, and
+  offset arguments.
+- Added tamper rejection for invalid table names, unsupported selected columns,
+  unsafe order clauses, unsupported where keys, invalid filter shapes, unsafe
+  limits, and negative offsets.
+
+### Why
+
+The website, staff tools, Square inventory projection work, and offline sync
+need repository-ready inventory reads, but live route-connected reads should
+remain gated until staging can verify permissions, performance, and database
+behavior. This moves the card search layer one step closer to real reads while
+keeping execution deferred.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuildPlan.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryBuilderTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `docs/ROADMAP.md`
+- `docs/TESTING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Inventory repository execution and live route-connected reads remain
+  deferred.
+
+### Tests Added
+
+- Public search SQL-template tests for text/game/status/visibility filters,
+  price-desc ordering, `SELECT`/`COUNT` templates, and prepare arguments.
+- Staff search SQL-template tests for barcode/SKU/cert-number scan columns,
+  multi-status filters, location filtering, and update-desc ordering.
+- Hidden inventory SQL-template tests for visibility-only count/select queries.
+- Tamper-rejection tests for unsafe tables, columns, sort clauses, where
+  contracts, limits, and offsets.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 687 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 467 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new inventory source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove inventory search SQL-template planning and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no live route registration or database
+  execution was enabled.
+
+## 2026-06-07 - Square Inventory Projection Planning
+
+### What Changed
+
+- Added `SquareInventoryProjectionPlanner` and `SquareInventoryProjectionPlan`
+  to convert exact serialized card inventory rows into deferred Square catalog
+  and inventory payload contracts.
+- Planned Square `ITEM`/`ITEM_VARIATION` catalog payloads for visible available
+  cards, using store SKU/barcode scan identity, fixed pricing, location
+  presence, inventory tracking flags, and bounded metadata.
+- Planned Square `PHYSICAL_COUNT` inventory changes with quantity `1` for
+  sellable visible cards and quantity `0` for unavailable cards that already
+  have an existing Square variation mapping.
+- Kept Square network requests, provider inventory writes, WooCommerce gateway
+  capture, and payment capture explicitly deferred. Payments remain assigned to
+  the official WooCommerce Square extension.
+
+### Why
+
+Square POS needs a tested way to mirror or pull sellable card inventory from
+the website without making Square the source of truth for exact serialized card
+state. This projection layer gives the next adapter/repository step a stable,
+testable payload contract while avoiding live provider writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionPlan.php`
+- `apps/wordpress-plugin/src/Square/SquareInventoryProjectionPlanner.php`
+- `apps/wordpress-plugin/tests/Unit/SquareInventoryProjectionPlannerTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PAYMENTS_POS.md`
+- `docs/ROADMAP.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- No Square credentials, provider tables, or live network calls were added.
+- Existing POS/payment schema remains unchanged.
+
+### Tests Added
+
+- Square projection tests for visible available card catalog/count payloads.
+- Zero-count projection tests for unavailable mapped cards.
+- Skip tests for hidden unmapped cards.
+- Validation tests for missing scan identity, price, currency, and Square
+  location.
+- Existing Square ID tests proving catalog ID resolution is not needed when
+  external mappings are already known.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 683 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 464 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the two new Square source
+  files: passed after formatter cleanup.
+
+### Rollback Notes
+
+- Revert this revision to remove the Square inventory projection planner and
+  tests.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No provider rollback is required because no Square network calls, payment
+  capture, or provider inventory writes are enabled.
+
+## 2026-06-07 - Inventory Search Planning And Presentation
+
+### What Changed
+
+- Added `InventorySearchQueryPlanner` and `InventorySearchQueryPlan` to convert
+  parsed card/inventory search requests into safe, deferred read contracts.
+- Added public/staff/hidden visibility rules, public default scoping to
+  visible available cards, staff barcode/SKU/cert-number search columns, stable
+  sort contracts, pagination offsets, and deferred WooCommerce/Square projection
+  metadata.
+- Added `InventorySearchResponsePresenter` to shape card listing responses and
+  redact staff-only fields from public search results.
+
+### Why
+
+The card management system needs a tested inventory search layer before live
+REST route registration or database execution is enabled. This gives the
+website, staff tools, Square inventory projection work, and offline app sync a
+stable card-listing contract without adding production writes.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlan.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlanner.php`
+- `apps/wordpress-plugin/src/Inventory/InventorySearchResponsePresenter.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchQueryPlannerTest.php`
+- `apps/wordpress-plugin/tests/Unit/InventorySearchResponsePresenterTest.php`
+- `docs/CHANGELOG.md`
+- `docs/PHASE_2_INVENTORY_PRICING.md`
+- `REVISION_LOG.md`
+
+### Migrations Added
+
+- No database migrations were added.
+- Existing inventory schema version remains unchanged.
+- Route-connected reads and writes remain deferred.
+
+### Tests Added
+
+- Query planner tests for public visible/available defaults, staff barcode/SKU
+  lookup columns, hidden visibility filters, and invalid table prefixes.
+- Response presenter tests for public redaction and staff operational fields.
+
+### Tests Run
+
+- `php tests/run.php` from `apps/wordpress-plugin`: passed, 678 tests.
+- `php tests/lint.php` from `apps/wordpress-plugin`: passed, 461 PHP files.
+- `vendor/bin/phpcs --standard=phpcs.xml.dist` on the three new inventory
+  source files: passed.
+
+### Rollback Notes
+
+- Revert this revision to remove the planned inventory search read contracts
+  and response presenter.
+- No database rollback is required because this revision does not add or run a
+  migration.
+- No production rollback applies because no production deployment is performed
+  by Codex.
 
 ## 2026-06-07 - Remove TopDeck From Active Scope
 

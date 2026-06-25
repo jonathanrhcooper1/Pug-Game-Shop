@@ -35,6 +35,17 @@ flowchart LR
 The exact-item list shows condition/grade, variant, price, pickup location
 availability, image, and reservation state. Quantity for serialized items is one.
 
+Customer account flow:
+
+1. Customer signs in through WooCommerce My Account.
+2. Pug Portal resolves the platform customer by normalized account email.
+3. Customer sees current store credit balance and recent customer-safe ledger
+   activity.
+4. Customer sees card purchase history with serialized card metadata when it is
+   available on WooCommerce order lines.
+5. Internal credit notes, actor IDs, manager IDs, operation IDs, and raw
+   metadata stay hidden from the customer portal.
+
 ## Kiosk
 
 Landing actions:

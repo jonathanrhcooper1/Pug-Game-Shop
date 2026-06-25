@@ -71,7 +71,9 @@ gate blocks are visible before any future transaction executor can run.
 Payment capture should be handled by the official WooCommerce Square extension
 when Square is selected as the processor. This platform observes WooCommerce
 order/payment events and reconciles exact serialized inventory; it does not
-build or enable a custom Square payment gateway.
+build or enable a custom Square payment gateway. Health and System Status now
+also report whether the official WooCommerce Square extension appears active,
+without enabling Square network writes or platform payment capture.
 An explicit POS/payment log execution repository can now run preflight-approved
 log inserts in staged tests through `$wpdb`, while route-connected writes,
 custom provider capture, provider inventory writes, and WooCommerce gateway
@@ -155,7 +157,11 @@ also implemented for device identity, sync cursors, operation queue, logs,
 cached branding/inventory/credit/events, and conflicts. WordPress-side planned
 offline device pairing, push, pull, and conflict REST route contracts are
 implemented with route-level permission strategies, registered-device pull/push
-scopes, and live registration disabled. Offline push operation envelope
+scopes, and live registration disabled. The offline app bridge now also plans
+the local SQLite `operation_queue` insert shape and Tauri command response
+metadata for staged operations while keeping live SQLite writes, queue replay,
+canonical website mutations, network writes, and direct MySQL access deferred.
+Offline push operation envelope
 validation is implemented for client operation IDs, device matching,
 operation/entity pairs, row-version metadata, timestamps, payload objects,
 authorization context, batch IDs, and schema version gating.

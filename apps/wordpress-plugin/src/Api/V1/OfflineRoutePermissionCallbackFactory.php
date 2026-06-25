@@ -14,19 +14,23 @@ use TCGStorePlatform\Offline\OfflineRegisteredDevicePermissionResolver;
 final class OfflineRoutePermissionCallbackFactory {
 	private ?OfflineRegisteredDevicePermissionResolver $registered_device_resolver;
 	private ?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback;
+	private mixed $manager_conflict_permission_callback;
 	private mixed $server_time_provider;
 
 	/**
 	 * @param callable(): string|null $server_time_provider Optional UTC clock.
+	 * @param callable(mixed=): bool|null $manager_conflict_permission_callback Optional manager permission callback.
 	 */
 	public function __construct(
 		?OfflineRegisteredDevicePermissionResolver $registered_device_resolver = null,
 		?callable $server_time_provider = null,
-		?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback = null
+		?OfflineDevicePairingPermissionCallbackAdapter $pairing_callback = null,
+		?callable $manager_conflict_permission_callback = null
 	) {
-		$this->registered_device_resolver = $registered_device_resolver;
-		$this->server_time_provider       = $server_time_provider;
-		$this->pairing_callback           = $pairing_callback;
+		$this->registered_device_resolver           = $registered_device_resolver;
+		$this->server_time_provider                 = $server_time_provider;
+		$this->pairing_callback                     = $pairing_callback;
+		$this->manager_conflict_permission_callback = $manager_conflict_permission_callback;
 	}
 
 	/**
@@ -60,6 +64,12 @@ final class OfflineRoutePermissionCallbackFactory {
 			}
 
 			return $this->pairing_callback;
+		}
+
+		if ( 'resolve_conflicts' === self::route_permission( $route_contract ) ) {
+			return is_callable( $this->manager_conflict_permission_callback )
+				? $this->manager_conflict_permission_callback
+				: null;
 		}
 
 		if ( 'registered_device' !== self::route_permission( $route_contract ) ) {

@@ -52,6 +52,19 @@ adds the trading-card-specific layer around exact serialized inventory,
 scan-gated POS reconciliation, masked provider references, and staff conflict
 review.
 
+The WordPress plugin exposes this boundary through a reusable Square payment
+delegation policy. Square inventory projection contracts, projection execution
+audit payloads, POS/payment health payloads, dependency diagnostics, and the
+Inventory admin workspace all report that the official WooCommerce Square
+extension owns payment capture, refunds, and gateway behavior. The platform's
+Square scope is catalog/inventory projection and reconciliation only.
+
+Health and System Status now also report whether the official WooCommerce
+Square extension appears installed/active through the known plugin file or
+loaded class signals. That status is secret-free and does not enable Square
+network writes, provider inventory writes, platform payment capture, refunds,
+or custom gateway behavior.
+
 Square catalog, order, inventory, and webhook data can support reconciliation,
 but it does not prove that a Square POS line item will always carry the store's
 unique serialized barcode in a recoverable field.
@@ -69,6 +82,116 @@ Launch modes:
 Square webhook event IDs and external order/payment IDs are idempotency keys.
 Refunds do not automatically return a card to `available`; the configured
 default is `pending_review`.
+
+## Square Inventory Projection Planning
+
+The WordPress plugin now includes a plan-only Square inventory projection
+contract for exact serialized cards. Given a canonical inventory row, it can
+prepare:
+
+- A Square `ITEM` catalog object with one `ITEM_VARIATION` for a single
+  serialized card.
+- A variation SKU derived from the store SKU or barcode so POS scanning can map
+  back to the store-owned exact item identity.
+- Fixed-price `price_money`, inventory tracking flags, location visibility, and
+  bounded user metadata.
+- A Square `PHYSICAL_COUNT` change with quantity `1` for sellable visible
+  cards.
+- A zero-count `PHYSICAL_COUNT` change for unavailable cards that already have
+  a known Square variation mapping.
+
+The planner rejects visible sellable cards that lack card name, scan identity,
+valid sale price/currency, or a Square location. Hidden/unmapped cards are
+skipped without provider payloads. All plans keep Square network requests,
+provider inventory writes, WooCommerce gateway capture, and payment capture
+explicitly deferred.
+
+## Square Inventory Adapter Contract
+
+The API-client package includes an executable Square inventory adapter
+contract. It accepts the plugin's Square projection contract and prepares
+sandbox-only request plans for:
+
+- `POST /v2/catalog/batch-upsert`
+- `POST /v2/inventory/changes/batch-create`
+
+The adapter preserves idempotency keys, extracts Square object IDs and SKUs,
+rejects production environments, credentials declared as production, or
+live-looking credentials, and does not call Square directly. It also supports
+reconciliation-only Square POS event mapping from provider line items back to
+serialized inventory IDs. Unmapped lines become staff-review conflicts, and all
+WordPress inventory mutation remains deferred.
+
+The API-client adapter now also plans the barcode/SKU inventory-read side of
+that bridge. Given WordPress inventory rows, it treats the store barcode/SKU as
+the Square POS scan identity, expects the mirrored Square item variation to
+carry that value in its `sku`, and uses the stored
+`square_catalog_variation_id` plus Square location ID to shape a deferred
+`POST /v2/inventory/counts/batch-retrieve` request. Missing Square variation
+IDs, missing Square locations, or duplicate scan identities become mapping
+conflicts for staff review. Square counts are reconciliation inputs only;
+WordPress serialized inventory remains authoritative, and payments continue to
+belong to the official WooCommerce Square extension.
+
+WordPress inventory rows can persist Square catalog item and variation IDs once
+the Square catalog worker or official Square extension resolves them. The LAN
+sync cache keeps `square_catalog_item_id`, `square_catalog_variation_id`, and
+`external_sync_state` from website pulls, and the offline app displays that POS
+mapping status on the selected-card detail panel. These fields are mapping and
+reconciliation inputs only; they do not enable payment capture in the custom
+plugin.
+
+The local sync server exposes `POST /pos/square/inventory-pull-plan` for
+manager diagnostics. It runs the same barcode/SKU planner against cached local
+inventory, reports mapped and unresolved rows, and returns the deferred
+`/v2/inventory/counts/batch-retrieve` request shape without contacting Square.
+The offline app Settings screen uses this route for the **Plan POS Pull**
+control.
+
+## Square Inventory Sync Request Planning
+
+The WordPress plugin mirrors the API-client adapter with a PHP request planner.
+It converts side-effect-free Square projection plans into auditable
+sandbox-only request envelopes for:
+
+- `POST /v2/catalog/batch-upsert`
+- `POST /v2/inventory/changes/batch-create`
+
+Ready plans preserve projection idempotency keys, derive the inventory-change
+idempotency key, expose Square catalog object IDs and SKUs for reconciliation
+review, and include the shared Square payment delegation policy. Skipped
+projections return empty request envelopes, and failed projections are rejected
+before any request payload is exposed.
+
+The planner rejects production environments, credentials declared as
+production, and live-looking credential markers. It allows sandbox-declared
+credential placeholders for staging planning only. Network requests, provider
+inventory writes, production network requests, WooCommerce gateway capture, and
+plugin Square payment capture remain deferred.
+
+Square projection execution results now carry the sync request planner status,
+request envelopes, idempotency keys, external IDs, and errors in their audit
+payloads. If request planning rejects a projection because the context is
+production or production-declared, the executor rejects the operation before
+any catalog or inventory writer callback can run. Inventory dependency health,
+admin summaries, and the Inventory workspace expose whether the sync request
+planner is staged.
+
+The WordPress plugin also includes a batch sync planner for staging multiple
+inventory rows at once. It aggregates per-row projection/request plans,
+ready/skipped/blocked counts, idempotency keys, Square object IDs, SKUs,
+catalog request counts, and inventory request counts. Hidden/unmapped rows can
+be skipped without blocking the batch, while invalid rows or production
+contexts block the batch before any provider request is exposed. The batch
+planner does not call Square, does not mutate WordPress inventory, and keeps
+payment capture delegated to the official WooCommerce Square extension.
+
+Authenticated health output and admin System Status expose a batch sync
+readiness probe through `square_inventory_batch_sync`. The diagnostic runs a
+sandbox-only multi-row planning rehearsal, reports row/request/operation
+counts, aggregate SKUs, configuration issues, and deferral flags, and keeps
+Square network calls, provider inventory writes, production requests, custom
+gateway behavior, and payment capture disabled.
 
 ## Transaction Ingestion Contract
 
@@ -493,6 +616,8 @@ production credentials remain disabled until staging acceptance.
 ## Sources
 
 - https://developer.squareup.com/docs/catalog-api/what-it-does
+- https://developer.squareup.com/reference/square/objects/CatalogItemVariation
+- https://developer.squareup.com/reference/square/inventory-api/batch-retrieve-inventory-counts
 - https://developer.squareup.com/docs/orders-api/what-it-does
 - https://developer.squareup.com/docs/inventory-api/webhooks
 - https://developer.godaddy.com/getstarted

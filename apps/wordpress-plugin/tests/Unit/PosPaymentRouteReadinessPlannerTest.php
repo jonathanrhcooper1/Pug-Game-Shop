@@ -38,6 +38,16 @@ final class PosPaymentRouteReadinessPlannerTest extends TestCase {
 		$this->assert_true( $plan['provider_inventory_write_deferred'] );
 		$this->assert_true( $plan['webhook_registration_deferred'] );
 		$this->assert_true( $plan['woocommerce_gateway_capture_deferred'] );
+		$this->assert_same( 'official_woocommerce_square_extension', $plan['payment_capture_authority'] );
+		$this->assert_same( 'required_for_payments', $plan['official_square_payment_extension'] );
+		$this->assert_same( 'blocked', $plan['official_woocommerce_square_extension_status'] );
+		$this->assert_false( $plan['official_woocommerce_square_extension_active'] );
+		$this->assert_false( $plan['plugin_square_payment_capture_allowed'] );
+		$this->assert_false( $plan['plugin_square_custom_gateway_allowed'] );
+		$this->assert_same(
+			'catalog_inventory_projection_and_reconciliation_only',
+			$plan['square_payment_delegation_policy']['square_inventory_sync_scope']
+		);
 		$this->assert_true( $plan['production_safety_ready'] );
 		$this->assert_same( '/pos/events', $summary['path'] );
 		$this->assert_false( $summary['should_register'] );

@@ -23,6 +23,7 @@ final class EventRepository {
 		$args       = array( 'published' );
 
 		$this->apply_filters( $filters, $where, $args );
+		$this->apply_active_event_filter( $filters, $where, $args );
 
 		$limit  = min( 100, max( 1, $limit ) );
 		$offset = max( 0, $offset );
@@ -36,6 +37,19 @@ final class EventRepository {
 		);
 
 		return is_array( $results ) ? $results : array();
+	}
+
+	/**
+	 * @param list<string> $where SQL where fragments.
+	 * @param list<mixed>  $args Prepared SQL arguments.
+	 */
+	private function apply_active_event_filter( EventFilters $filters, array &$where, array &$args ): void {
+		if ( $filters->get_bool( 'include_past' ) ) {
+			return;
+		}
+
+		$where[] = 'COALESCE(end_datetime, start_datetime) >= %s';
+		$args[]  = gmdate( 'Y-m-d H:i:s' );
 	}
 
 	/**

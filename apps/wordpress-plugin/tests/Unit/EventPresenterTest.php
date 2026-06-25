@@ -25,6 +25,7 @@ final class EventPresenterTest extends TestCase {
 		$this->assert_same( EventStatus::ALMOST_FULL, $event['registration_status'] );
 		$this->assert_same( 4, $event['seats_remaining'] );
 		$this->assert_same( '30.00', $event['entry_fee'] );
+		$this->assert_same( 4455, $event['woocommerce_product_id'] );
 		$this->assert_false( $event['is_free'] );
 		$this->assert_same( array( 'almost_full', 'today', 'decklist_required', 'local_event' ), $event['badges'] );
 		$this->assert_same( '', $event['register_url'] );
@@ -70,6 +71,7 @@ final class EventPresenterTest extends TestCase {
 			'registered_count'         => 44,
 			'waitlist_enabled'         => 1,
 			'registration_mode'        => EventRegistrationMode::LOCAL_ONLY,
+			'woocommerce_product_id'   => 4455,
 			'registration_deadline'    => '2026-06-06 16:00:00',
 			'refund_deadline'          => '2026-06-05 20:00:00',
 			'decklist_required'        => 1,

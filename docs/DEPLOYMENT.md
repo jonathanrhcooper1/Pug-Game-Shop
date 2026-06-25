@@ -5,6 +5,18 @@
 Production deployment requires manual approval. Codex must not automatically
 deploy production.
 
+The confirmed production helper is available for approved releases:
+
+```text
+npm run production:install-package
+```
+
+It reads SSH values from environment variables or the ignored
+`.env.production.local` file, creates a database backup, optionally backs up
+`wp-content`, uploads the packaged plugin zip, runs
+`wp plugin install --force --activate`, runs pending plugin migrations, verifies
+the ScryDex catalog routes, and prints no credentials.
+
 ## Release Flow
 
 1. Merge reviewed feature PRs into `develop`.
@@ -38,6 +50,23 @@ deploy production.
 - Confirm event registration.
 - Deploy production.
 - Run post-deploy smoke tests.
+
+## Production ScryDex Catalog
+
+After an approved production plugin install:
+
+```text
+npm run production:configure-scrydex
+npm run production:run-scrydex-index
+```
+
+The configuration helper stores ScryDex credentials server-side and returns
+redacted readiness only. The index helper creates a database backup before
+writing catalog rows, refreshes expansion metadata, then calls
+`/wp-json/tcg-store/v1/scrydex/catalog/index` in bounded per-set rounds by
+default. Increase `SCRYDEX_INDEX_SET_LIMIT`, `SCRYDEX_INDEX_ROUNDS`,
+`SCRYDEX_INDEX_MAX_PAGES`, and expansion page controls gradually while
+watching usage and catalog counts.
 
 ## Rollback Checklist
 

@@ -25,16 +25,21 @@ final class OfflineDevicePairingRouteReadinessStatusPresenter {
 	 * @return array{value:string,status:string}
 	 */
 	public function admin_summary( bool $offline_feature_enabled ): array {
-		$payload = $this->health_payload( $offline_feature_enabled );
-		$reasons = $this->list_values( $payload['registration_block_reasons'] ?? array() );
-		$details = array() === $reasons ? 'ready' : 'blocked: ' . implode( ', ', $reasons );
+
+		$payload  = $this->health_payload( $offline_feature_enabled );
+		$reasons  = $this->list_values( $payload['registration_block_reasons'] ?? array() );
+		$details  = array() === $reasons ? 'ready' : 'blocked: ' . implode( ', ', $reasons );
+		$contract = is_array( $payload['app_pairing_contract'] ?? null )
+			? $payload['app_pairing_contract']
+		: array();
 
 		return array(
 			'value'  => sprintf(
-				'handler %s; permission %s; policy %s; %s',
+				'handler %s; permission %s; policy %s; app token %s; %s',
 				true === ( $payload['controller_callback_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['permission_callback_ready'] ?? false ) ? 'ready' : 'not ready',
 				true === ( $payload['policy_configured'] ?? false ) ? 'ready' : 'not ready',
+				(string) ( $contract['device_token_storage'] ?? 'not configured' ),
 				$details
 			),
 			'status' => (string) ( $payload['status'] ?? 'blocked' ),

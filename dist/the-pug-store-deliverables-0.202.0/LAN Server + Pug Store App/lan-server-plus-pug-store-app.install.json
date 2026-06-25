@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "deliverable": "LAN Server + Pug Store App",
+  "version": "0.202.0",
+  "lan_server_package": "pug-lan-server.zip",
+  "app_installer": "Pug Store App-0.202.0.exe",
+  "app_launch_mode": "staff",
+  "app_fullscreen": true,
+  "app_decorations": false,
+  "command_prompt_window_required": false,
+  "hidden_start_helper": "Start-Pug-LAN-Server-Hidden.vbs",
+  "patch_deploy_helper": "Deploy-Pug-LAN-Server-Patch.ps1",
+  "startup_task_helper": "Install-Pug-LAN-Server-Startup-Task.ps1",
+  "website_dependencies": [
+    "tcg-store-platform-0.202.0.zip",
+    "pug-arcade-commerce-v2-0.202.0.zip"
+  ],
+  "local_database": "store-sync.sqlite",
+  "sqlite_runtime": "Node built-in node:sqlite",
+  "sqlite_database_auto_created": true,
+  "sqlite_database_shipped": false,
+  "sqlite_separate_install_required": false,
+  "sync_topology": "wordpress_woocommerce_plugin <-https-> lan_server <-lan/offline-> pug_store_app",
+  "auto_discovery": {
+    "protocol": "pug-local-sync-discovery-v1",
+    "transport": "udp",
+    "port": 8788,
+    "credentials_returned": false
+  },
+  "manual_fallback": {
+    "supported": true,
+    "example_url": "http://SERVER-IP:8787"
+  },
+  "required_ports": {
+    "http": 8787,
+    "discovery_udp": 8788
+  }
+}

@@ -51,12 +51,40 @@ final class ManagerOverridePolicyTest extends TestCase {
 
 	public function test_manager_can_approve_below_minimum_sale_with_reason(): void {
 		$decision = ( new ManagerOverridePolicy() )->authorize_below_minimum_sale(
-			new ManagerOverrideRequest( 10, 22, 1500, 900, 1200, 'USD', 'Customer recovery.' )
+			new ManagerOverrideRequest(
+				10,
+				22,
+				1500,
+				900,
+				1200,
+				'USD',
+				'Customer recovery.',
+				true,
+				'2026-06-07 14:00:00'
+			)
 		);
 
 		$this->assert_true( $decision->is_accepted() );
 		$this->assert_same( 'manager_override_approved', $decision->code() );
 		$this->assert_true( $decision->requires_override_row() );
+	}
+
+	public function test_below_minimum_sale_requires_manager_reauthentication(): void {
+		$decision = ( new ManagerOverridePolicy() )->authorize_below_minimum_sale(
+			new ManagerOverrideRequest( 10, 22, 1500, 900, 1200, 'USD', 'Customer recovery.' )
+		);
+
+		$this->assert_false( $decision->is_accepted() );
+		$this->assert_same( 'manager_reauthentication_required', $decision->code() );
+	}
+
+	public function test_manager_reauthentication_requires_timestamp(): void {
+		$decision = ( new ManagerOverridePolicy() )->authorize_below_minimum_sale(
+			new ManagerOverrideRequest( 10, 22, 1500, 900, 1200, 'USD', 'Customer recovery.', true )
+		);
+
+		$this->assert_false( $decision->is_accepted() );
+		$this->assert_same( 'manager_reauthentication_timestamp_required', $decision->code() );
 	}
 
 	public function test_invalid_amounts_are_rejected(): void {

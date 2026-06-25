@@ -1,0 +1,489 @@
+import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const appRoot = path.resolve(__dirname, "..")
+
+const workspaceSource = await readFile(path.join(appRoot, "src/data/offlineWorkspace.ts"), "utf8")
+const appSource = await readFile(path.join(appRoot, "src/App.tsx"), "utf8")
+const manifest = JSON.parse(
+  await readFile(path.join(appRoot, "config/sqlite-schema.manifest.json"), "utf8"),
+)
+
+for (const requiredExport of [
+  "OfflineWorkspaceState",
+  "OfflineOperationEnvelope",
+  "EventRegistrationStatus",
+  "EventPaymentStatus",
+  "EventSnapshot",
+  "OfflineEventQueuePreviewEntry",
+  "OfflineConnectorSyncSessionPlan",
+  "OfflinePushBatchPayload",
+  "OfflineConflictResolutionRequestBody",
+  "OfflinePullRequestBody",
+  "OfflinePullInventoryCacheRecord",
+  "InventoryProductTypeFilter",
+  "OfflinePullInventoryCacheApplyResult",
+  "OfflinePullCustomerCreditCacheRecord",
+  "OfflinePullCustomerCreditCacheApplyResult",
+  "OfflinePullEventCacheRecord",
+  "OfflinePullEventCacheApplyResult",
+  "OfflinePullConflictCacheRecord",
+  "OfflinePullConflictCacheApplyResult",
+  "OfflinePushRequestPlan",
+  "OfflinePushResultSummary",
+  "OfflinePushQueueApplyResult",
+  "LocalInventoryIntakeSyncReceipt",
+  "LocalInventoryIntakePushResultSummary",
+  "OfflinePullRefreshPreview",
+  "OfflineConnectorTestReport",
+  "OneWebsiteConnectorSetupPlan",
+  "StoreConnectorProfile",
+  "OfflineConnectorManifest",
+  "ConnectorManifestValidation",
+  "DevicePairingRequestPlan",
+  "DevicePairingRequestBody",
+  "PreparedDevicePairingRequest",
+  "ConnectorProfileDraft",
+  "ConnectorProfileStorageSnapshot",
+  "ConnectorProfileStorageRestoreResult",
+  "PreparedPairingStorageSnapshot",
+  "PreparedPairingStorageRestoreResult",
+  "PairedDeviceRecord",
+  "PairedDeviceStorageSnapshot",
+  "PairedDeviceStorageRestoreResult",
+  "OfflineSessionStorageSnapshot",
+  "OfflineSessionStorageRestoreResult",
+  "OfflineSyncAttemptRecord",
+  "SquarePosCreditHandoffMode",
+  "CustomerCreditSquarePosHandoffPlan",
+  "offlineWorkspaceSeed",
+  "offlineConnectorRoutePreview",
+  "operationEnvelopeFields",
+  "createEmptyConnectorProfileDraft",
+  "connectorProfileDraftFromProfile",
+  "buildConnectorProfileFromDraft",
+  "buildInventoryUpdateOperation",
+  "buildInventoryReservationOperation",
+  "buildEventCheckinOperation",
+  "buildEventRegistrationOperation",
+  "buildOfflineEventQueuePreviewEntries",
+  "buildOfflineLabelPrintJob",
+  "buildCustomerCreditRedemptionOperation",
+  "buildConflictReviewOperation",
+  "buildOfflineConflictResolutionRequestBody",
+  "buildOfflinePushBatchPayload",
+  "buildLocalInventoryIntakeSyncReceipts",
+  "applyLocalInventoryIntakePushResults",
+  "pendingLocalInventoryIntakeReceipts",
+  "isCanonicalInventoryOperation",
+  "buildOfflinePullRequestBody",
+  "applyOfflinePullInventoryRecordsToCache",
+  "applyOfflinePullCustomerCreditRecordsToCache",
+  "applyOfflinePullEventRecordsToCache",
+  "applyOfflinePullConflictRecordsToCache",
+  "buildOfflinePushRequestPlan",
+  "buildOfflineConnectorSyncSessionPlan",
+  "buildOfflinePullRefreshPreview",
+  "buildConnectorTestReport",
+  "summarizeOfflinePushResult",
+  "applyOfflinePushResultToQueue",
+  "buildConnectorManifestPreview",
+  "buildOneWebsiteConnectorSetupPlan",
+  "validateConnectorManifest",
+  "connectorManifestUrl",
+  "connectorOfflineConflictResolutionUrl",
+  "CONNECTOR_PROFILE_STORAGE_KEY",
+  "PREPARED_PAIRING_STORAGE_KEY",
+  "PAIRED_DEVICE_STORAGE_KEY",
+  "OFFLINE_SESSION_STORAGE_KEY",
+  "OFFLINE_SESSION_STORAGE_KEY_PREFIX",
+  "offlineSessionStorageKey",
+  "buildConnectorProfileStorageSnapshot",
+  "restoreConnectorProfileStorageSnapshot",
+  "buildPreparedPairingStorageSnapshot",
+  "restorePreparedPairingStorageSnapshot",
+  "buildPairedDeviceRecord",
+  "buildPairedDeviceStorageSnapshot",
+  "restorePairedDeviceStorageSnapshot",
+  "findPairedDeviceRecord",
+  "buildOfflineSessionStorageSnapshot",
+  "restoreOfflineSessionStorageSnapshot",
+  "buildDevicePairingRequestPlan",
+  "buildDevicePairingRequestBody",
+  "buildPreparedDevicePairingRequest",
+  "connectorDisplayUrl",
+  "localSyncServerDisplayUrl",
+  "findConnectorProfile",
+  "connectorHealthSummary",
+  "upsertConnectorProfile",
+  "filterInventoryItems",
+  "findInventoryItemByScan",
+  "OfflineLabelPrintJob",
+  "inventoryQuantityDeltaFromInput",
+  "cleanInventoryAdjustmentReason",
+  "cleanOfflineEventAttendeeLabel",
+  "cleanOfflineEventRegistrationPublicId",
+  "connectorManifestUnavailableGuidance",
+  "creditRedemptionInputFromMinorUnits",
+  "creditRedemptionInputToMinorUnits",
+  "moneyInputDraftWithTwoDecimals",
+  "customerCreditAvailableAfterPending",
+  "customerCreditDisplayName",
+  "customerCreditLedgerEntriesForCustomer",
+  "buildPendingCustomerCreditLedgerEntries",
+  "customerCreditPendingMinorUnitsFromOperations",
+  "buildCustomerCreditSquarePosHandoffPlan",
+  "findCustomerCreditSnapshot",
+  "upsertCustomerCreditSnapshot",
+  "findInventoryItem",
+  "eventRegistrationStatusLabel",
+]) {
+  assert.ok(workspaceSource.includes(requiredExport), `Missing workspace export: ${requiredExport}`)
+}
+
+for (const field of manifest.operation_envelope) {
+  assert.ok(workspaceSource.includes(field), `Missing operation envelope field: ${field}`)
+}
+
+for (const route of [
+  "/wp-json/tcg-store/v1/offline/devices/register",
+  "/wp-json/tcg-store/v1/offline/pull",
+  "/wp-json/tcg-store/v1/offline/push",
+  "/offline/conflicts/",
+  "/resolve",
+]) {
+  assert.ok(workspaceSource.includes(route), `Missing workspace route: ${route}`)
+}
+
+for (const marker of [
+  "payload_json",
+  "authorization_context_json",
+  "schema_version: 1",
+  "inventory_update",
+  "local_inventory_intake_sync_receipt",
+  "queueOperationType: \"inventory_intake\"",
+  "browserOperationEnvelopeCreated: false",
+  "wordpress_inventory_intake_route",
+  "applyLocalInventoryIntakePushResults",
+  "pendingLocalInventoryIntakeReceipts",
+  "isCanonicalInventoryOperation",
+  "credit_redemption",
+  "customerPublicId",
+  "customer_public_id",
+  "customer-91",
+  "customer_credit",
+  "offline_credit_redemption",
+  "customer_credit_square_pos_handoff",
+  "Pug Store Credit",
+  "squareAmountDueMinorUnits",
+  "squarePaymentMethodLabel",
+  "squareCreditBalanceAuthority: false",
+  "pugLedgerAuthority: true",
+  "syncRequiredForLedgerPosting: true",
+  "custom_payment_method",
+  "other_tender",
+  "manual_discount",
+  "staff_conflict_review",
+  "sync_intent: options.syncIntent ?? \"staff_inventory_update\"",
+  "syncIntent?: \"staff_inventory_update\" | \"staff_barcode_scan\" | \"staff_quantity_adjustment\"",
+  "operationKind?: \"scan\" | \"quantity\" | \"update\"",
+  "quantity_delta",
+  "adjustment_reason",
+  "publicId",
+  "inventory_reservation",
+  "offline_inventory_reservation",
+  "offline_event_registration",
+  "offline_event_checkin",
+  "event_title",
+  "registration_public_id",
+  "checkin_method",
+  "checkin_status",
+  "registration_source",
+  "seats_remaining_snapshot",
+  "payment_status",
+  "eventQueueOperationDateLabel",
+  "eventPaymentStatusQueueLabel",
+  "eventRegistrationSourceQueueLabel",
+  "eventCheckinMethodQueueLabel",
+  "payloadSummary",
+  "operationType: \"event_checkin\"",
+  "operationType: \"event_reservation\"",
+  "routeConnectedPushReady",
+  "canonicalInventoryWritesEnabled",
+  "canonical_inventory_execution_enabled",
+  "canonical_inventory_operation_count",
+  "canonical_inventory_writes_deferred",
+  "Production connectors cannot enable canonical inventory writes from the local profile.",
+  "Canonical inventory writes require the route-connected push handler.",
+  "payload: parseJsonObject(operation.payload_json)",
+  "authorization_context: parseJsonObject(operation.authorization_context_json)",
+  "network_request_deferred: true",
+  "device_authorization_header_deferred: true",
+  "include_tombstones",
+  "provider_credentials_required: false",
+  "offline_connector_sync_session_plan",
+  "offline_pull_refresh_preview",
+  "localCacheRefreshApplied: true",
+  "queuedOperationsPreserved",
+  "changedInventoryPublicIds",
+  "inventoryRowsRefreshed",
+  "sanitizeOfflinePullInventoryCacheRecords",
+  "sanitizeOfflinePullCustomerCreditCacheRecords",
+  "sanitizeOfflinePullEventCacheRecords",
+  "sanitizeOfflinePullConflictCacheRecords",
+  "sale_price_minor_units",
+  "location_label",
+  "available_minor_units",
+  "registered_count",
+  "conflict_id",
+  "resolution_id",
+  "resolution_action",
+  "expected_conflict_version",
+  "deviceAuthorizationHeaderDeferred: true",
+  "offline_connector_test_report",
+  "Manifest shape",
+  "Pairing readiness",
+  "Guarded inventory holds",
+  "Network reachability",
+  "networkRequestsDeferred: true",
+  "no-local-operations",
+  "prepared_pairing_available",
+  "paired_device_available",
+  "paired_device_public_id",
+  "desktop_token_status",
+  "desktop_token_available",
+  "sanitizePullCursors",
+  "device_pairing_required",
+  "push_queue_replay_deferred",
+  "push_canonical_mutations_deferred",
+  "accepted_operation_ids",
+  "conflict_operation_ids",
+  "rejected_operation_ids",
+  "queueReplayApplied",
+  "operationIdsByStatus",
+  "manager_override",
+  "source: \"offline_app\"",
+  "connectorProfiles",
+  "offline_connector_manifest",
+  "connector_identity",
+  "credential_boundary: \"public_safe_no_secrets\"",
+  "connectorSiteFingerprint",
+  "Connector identity profile ID must match the manifest profile ID.",
+  "Connector identity host must match the WordPress site host.",
+  "connector_manifest_url",
+  "connectorManifestUrl(profile)",
+  "Connector manifest URL must match the WordPress REST base.",
+  "offline_connector_profiles_local_storage",
+  "tcg-store-offline-connector-profiles-v1",
+  "tcg-store-offline-prepared-pairings-v1",
+  "tcg-store-offline-paired-devices-v1",
+  "tcg-store-offline-session-state-v1",
+  "OFFLINE_SESSION_STORAGE_KEY_PREFIX",
+  "profile_id",
+  "offline_prepared_pairings_local_storage",
+  "offline_paired_devices_local_storage",
+  "offline_session_state_local_storage",
+  "connector_profile_storage_invalid",
+  "connector_profile_storage_parse_failed",
+  "prepared_pairing_storage_invalid",
+  "prepared_pairing_storage_parse_failed",
+  "paired_device_storage_invalid",
+  "paired_device_storage_parse_failed",
+  "offline_session_storage_invalid",
+  "offline_session_storage_parse_failed",
+  "queued_operations",
+  "sync_attempts",
+  "sanitizeOfflineOperationEnvelopes",
+  "sanitizeOfflineSyncAttempts",
+  "networkRequestsDeferred: true",
+  "directMysqlAccess: false",
+  "hasCredentialMarker",
+  "profile_manifest_ready",
+  "manifest_public_safe",
+  "buildConnectorManifestPreview",
+  "validateConnectorManifest",
+  "parseManifestSite",
+  "safeConnectorId",
+  "pairingCodeFingerprint",
+  "prepared-pairing-",
+  "prepared_local",
+  "pairing_code_redacted",
+  "pairing_code: normalizedPairingCode",
+  "device_mode",
+  "location_id",
+  "manager_id",
+  "capabilities",
+  "requested_scopes",
+  "schema_version",
+  "buildDevicePairingRequestBody",
+  "rawPairingCodeStored: false",
+  "rawTokenStoredInBrowser: false",
+  "rawTokenReturnedToUi: false",
+  "productionTokenIssuanceDeferred",
+  "front-counter-install",
+  "parseConnectorSiteInput",
+  "A valid WordPress website host or URL is required.",
+  "Production connectors require HTTPS before pairing.",
+  "upsertConnectorProfile",
+  "pug-game-shop-production",
+  "localSyncServerUrl",
+  "localSync",
+  "lan_middleman_server",
+  "single_configurable_website",
+  "one_website_connector_setup_plan",
+  "profileSelection: \"disabled_single_installation\"",
+  "syncPath: [\"offline_app\", \"local_sync_server\", \"wordpress_woocommerce_plugin\"]",
+  "one_website_mode",
+  "profile_selection_disabled",
+  "setupStatusPath",
+  "setupStatusPath: \"/setup/status\"",
+  "LAN server binding",
+  "must report the same WordPress website before local sync runs",
+  "store-sync.sqlite",
+  "normalizeLocalSyncServerUrl",
+  "offline_device_token",
+  "desktop_secure_store",
+  "official_woocommerce_square_extension",
+  "wordpress_server_settings",
+  "credentialsSyncedToApp: false",
+  "scrydex.credentialsSyncedToApp !== false",
+]) {
+  assert.ok(workspaceSource.includes(marker), `Missing queued operation marker: ${marker}`)
+}
+
+assert.ok(appSource.includes("offlineWorkspaceSeed"))
+assert.ok(appSource.includes("loadOfflineSessionStorage"))
+assert.ok(appSource.includes("buildOfflineLabelPrintJob(targetItem, activeProfile)"))
+assert.ok(appSource.includes("useState<OfflineLabelPrintJob[]>([])"))
+assert.ok(appSource.includes("job.payloadText"))
+assert.ok(appSource.includes("await handleOpenDymoLabelPrint(labelJob)"))
+assert.ok(appSource.includes("printLabelOnThisPcDymo(job)"))
+assert.ok(appSource.includes("localSyncClient.printDymoLabel(localSyncSessionToken"))
+assert.ok(appSource.includes("type LabelPrinterTarget = \"auto\" | \"this_pc\" | \"lan_server\""))
+assert.ok(appSource.includes("LABEL_PRINTER_TARGET_STORAGE_KEY"))
+assert.ok(appSource.includes("LOCAL_DEVICE_PUBLIC_ID_STORAGE_KEY"))
+assert.ok(appSource.includes("LOCAL_DEVICE_LABEL_STORAGE_KEY"))
+assert.ok(appSource.includes("loadStableLocalDevicePublicId"))
+assert.ok(appSource.includes("loadLocalDeviceLabel"))
+assert.ok(appSource.includes("persistLocalDeviceLabel"))
+assert.ok(appSource.includes("activePairedDevice?.devicePublicId ?? localDevicePublicId"))
+assert.ok(appSource.includes("deviceLabel: localDeviceLabel"))
+assert.ok(appSource.includes("Label print target"))
+assert.ok(appSource.includes("localSyncClient.updateInventoryItem(localSyncSessionToken, targetItem.publicId"))
+assert.ok(appSource.includes("refreshInventoryRowsFromLan(nextBarcode || targetItem.publicId || targetItem.cardName)"))
+assert.ok(appSource.includes("setInventoryEditBarcode(selectedItem.barcode)"))
+assert.ok(appSource.includes("Card image URL"))
+assert.ok(appSource.includes("validSyncImageUrl(intakeImageUrl)"))
+assert.ok(appSource.includes("buildLocalInventoryIntakeSyncReceipts(nextItems"))
+assert.ok(appSource.includes("applyLocalInventoryIntakePushResults(receipts, lanPushResults).receipts"))
+assert.ok(appSource.includes("useState<\n    LocalInventoryIntakeSyncReceipt[]"))
+assert.ok(appSource.includes("quantityDeltaInput"))
+assert.ok(appSource.includes("quantityAdjustmentReason"))
+assert.ok(appSource.includes("inventoryQuantityDeltaFromInput(quantityDeltaInput)"))
+assert.ok(appSource.includes("handleQuantityAdjustment"))
+assert.ok(appSource.includes("quantityDelta,"))
+assert.ok(appSource.includes("syncIntent: \"staff_quantity_adjustment\""))
+assert.ok(appSource.includes("priceOverrideReason: reason"))
+assert.ok(appSource.includes("finalizeStaffInventoryRemoval(\"remove\", selectedInventoryGroupAvailableItems.slice(0, removalCount))"))
+assert.ok(appSource.includes("buildInventoryReservationOperation(selectedItem)"))
+assert.ok(appSource.includes("buildEventCheckinOperation(event"))
+
+const browserDymoBorderColorIndex = appSource.indexOf("<BorderColor>")
+const browserDymoBorderThicknessIndex = appSource.indexOf("<BorderThickness>0</BorderThickness>")
+assert.ok(browserDymoBorderColorIndex > 0, "Browser DYMO XML must include BorderColor.")
+assert.ok(browserDymoBorderThicknessIndex > browserDymoBorderColorIndex, "Browser DYMO BorderColor must precede BorderThickness.")
+assert.ok(appSource.includes("buildEventRegistrationOperation(event"))
+assert.ok(appSource.includes("buildOfflineEventQueuePreviewEntries(queuedOperations, eventSnapshots)"))
+assert.ok(appSource.includes("eventQueuePreviewEntries.slice(0, 4)"))
+assert.ok(appSource.includes("entry.payloadSummary"))
+assert.ok(appSource.includes("entry.operationType === \"event_checkin\""))
+assert.ok(appSource.includes("eventAttendeeLabel"))
+assert.ok(appSource.includes("eventPaymentStatus"))
+assert.ok(appSource.includes("eventCheckinLookup"))
+assert.ok(appSource.includes("attendeeLabel,"))
+assert.ok(appSource.includes("registrationPublicId,"))
+assert.ok(appSource.includes("creditRedemptionInputToMinorUnits(creditRedemptionInput)"))
+assert.ok(appSource.includes("customerCreditDirectory"))
+assert.ok(appSource.includes("activeCustomerId"))
+assert.ok(appSource.includes("EMPTY_CUSTOMER_CREDIT_SNAPSHOT"))
+assert.ok(appSource.includes("const [activeCustomerId, setActiveCustomerId] = useState(0)"))
+assert.ok(appSource.includes("const hasSelectedCustomer = Boolean("))
+assert.ok(appSource.includes("function clearSelectedCustomer()"))
+assert.ok(appSource.includes("Select a customer before adding store credit."))
+assert.ok(appSource.includes("pendingCreditByCustomer"))
+assert.ok(appSource.includes("customerCreditLedgerEntries"))
+assert.ok(appSource.includes("cachedCustomerCreditLedgerEntries"))
+assert.ok(appSource.includes("pendingCustomerCreditLedgerEntries"))
+assert.ok(appSource.includes("visibleCustomerCreditLedgerEntries"))
+assert.ok(appSource.includes("queuedPendingCreditMinorUnits"))
+assert.ok(appSource.includes("handleCustomerCreditSelection"))
+assert.ok(appSource.includes("const activeCustomerName = customerCreditDisplayName(customerCredit)"))
+assert.ok(appSource.includes("upsertCustomerCreditSnapshot(credits, creditCacheApplyResult.customerCredit)"))
+assert.ok(appSource.includes("buildCustomerCreditRedemptionOperation(customerCredit, {"))
+assert.ok(appSource.includes("amountMinorUnits: creditRedemptionMinorUnits"))
+assert.ok(appSource.includes("buildOfflinePushBatchPayload("))
+assert.ok(appSource.includes("buildOfflinePullRequestBody(activePairedDevice.devicePublicId)"))
+assert.ok(appSource.includes("applyOfflinePullInventoryRecordsToCache("))
+assert.ok(appSource.includes("applyOfflinePullCustomerCreditRecordsToCache("))
+assert.ok(appSource.includes("applyOfflinePullEventRecordsToCache("))
+assert.ok(appSource.includes("applyOfflinePullConflictRecordsToCache("))
+assert.ok(appSource.includes("pull.pull_inventory_records"))
+assert.ok(appSource.includes("pull.pull_customer_credit_records"))
+assert.ok(appSource.includes("pull.pull_event_records"))
+assert.ok(appSource.includes("pull.pull_conflict_records"))
+assert.ok(appSource.includes("buildOfflinePushRequestPlan(batch)"))
+assert.ok(appSource.includes("buildOfflineConnectorSyncSessionPlan("))
+assert.ok(appSource.includes("buildOfflinePullRefreshPreview("))
+assert.ok(appSource.includes("setPullRefreshPreview"))
+assert.ok(appSource.includes("buildConnectorTestReport("))
+assert.ok(appSource.includes("connectorManifestUnavailableGuidance(detail)"))
+assert.ok(workspaceSource.includes("Install and activate the production plugin package"))
+assert.ok(workspaceSource.includes("install or activate the WordPress plugin package"))
+assert.ok(appSource.includes("summarizeOfflinePushResult({"))
+assert.ok(appSource.includes("applyOfflinePushResultToQueue(queuedOperations, pushSummaryResult)"))
+assert.ok(appSource.includes("stagedOperation.client_operation_id"))
+assert.ok(appSource.includes("stagedPushBatch.batch_id"))
+assert.ok(appSource.includes("stagedPushRequest.method"))
+assert.ok(appSource.includes("pushSummary.status"))
+assert.ok(appSource.includes("pushSummary.canonical_inventory_writes_deferred"))
+assert.ok(appSource.includes("syncSessionPlan.push.operation_count"))
+assert.ok(appSource.includes("syncSessionPlan.push.canonical_inventory_writes_deferred"))
+assert.ok(appSource.includes("batch.operations.filter(isCanonicalInventoryOperation)"))
+assert.ok(appSource.includes("handleInventoryReservation"))
+assert.ok(appSource.includes("handleEventCheckin"))
+assert.ok(appSource.includes("handleEventRegistration"))
+assert.ok(appSource.includes("eventRegistrationStatusLabel("))
+assert.ok(appSource.includes("recordSyncAttempt(nextSyncSessionPlan)"))
+assert.ok(appSource.includes("buildOfflineSessionStorageSnapshot(queuedOperations, syncAttempts,"))
+assert.ok(appSource.includes("profileId: activeProfile.id"))
+assert.ok(appSource.includes("buildPairedDeviceStorageSnapshot(pairedDevices, connectorProfiles)"))
+assert.ok(appSource.includes("restorePairedDeviceStorageSnapshot("))
+assert.ok(appSource.includes("findPairedDeviceRecord(pairedDevices, activeProfile.id)"))
+assert.ok(appSource.includes("restoreOfflineSessionStorageSnapshot("))
+assert.ok(appSource.includes("OFFLINE_SESSION_STORAGE_KEY"))
+assert.ok(appSource.includes("offlineSessionStorageKey(activeProfile.id)"))
+assert.ok(appSource.includes("PAIRED_DEVICE_STORAGE_KEY"))
+assert.ok(appSource.includes("window.localStorage.removeItem(PAIRED_DEVICE_STORAGE_KEY)"))
+assert.ok(appSource.includes("window.localStorage.removeItem(sessionStorageKey)"))
+assert.ok(appSource.includes("window.localStorage.removeItem(OFFLINE_SESSION_STORAGE_KEY)"))
+assert.ok(appSource.includes("operationKind: \"scan\""))
+assert.ok(appSource.includes("quantity: quantityDelta"))
+assert.ok(appSource.includes("removalCount = Math.abs(quantityDelta)"))
+assert.ok(appSource.includes("syncIntent: \"staff_barcode_scan\""))
+assert.ok(appSource.includes("syncIntent: \"staff_quantity_adjustment\""))
+assert.ok(workspaceSource.includes('PUG_PRODUCTION_HOST = "thepuggaming.com"'))
+for (const oldHost of [
+  ["vbf", "2a7", "myftpupload", "com"].join("."),
+  ["0gt", "f64", "myftpupload", "com"].join("."),
+]) {
+  assert.equal(workspaceSource.includes(`"${oldHost}"`), false)
+}
+
+for (const forbidden of ["direct_mysql_access: true", "AUTO_INCREMENT", "https://"]) {
+  assert.equal(workspaceSource.includes(forbidden), false, `Forbidden workspace marker found: ${forbidden}`)
+}
+
+console.log("PASS offline app workspace state contract")
