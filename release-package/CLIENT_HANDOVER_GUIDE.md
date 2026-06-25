@@ -3,7 +3,7 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.202.14
 Release date: 2026-06-17
 Last updated: 2026-06-17
 Document purpose: Primary client-facing handover guide for the complete trading-card store platform.
@@ -15,7 +15,7 @@ Created by JC Electronics
 
 Prepared for: The Pug
 Prepared by: JC Electronics
-Release version: 0.202.0
+Release version: 0.202.14
 Release date: 2026-06-17
 
 This guide summarizes the production system, owner responsibilities, support responsibilities, launch checks, and secure handoff process.

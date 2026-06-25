@@ -4,6 +4,23 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Bumped the production package to `0.202.14` for middleman diagnostics,
+  scheduled ScryDex catalog/price refresh orchestration, and staff app user
+  management hardening.
+- Added a guarded LAN middleman daily ScryDex catalog/price worker that calls
+  the authenticated WordPress catalog index route and exposes the latest
+  result in `/sync/status`.
+- Expanded the Store App Status screen into a system/API health console with
+  WordPress, Square, ScryDex worker, manual queue, and latest API response
+  diagnostics.
+- Fixed inventory location dropdowns so locations saved in the location tab and
+  locations already present on inventory rows both appear in intake/update
+  selectors.
+- Added intake-side barcode label printing with `Add + Print Label` and
+  `Print Last Label` actions that use the same DYMO local-first/LAN-fallback
+  print path.
+- Added manager controls to rename PIN users, change 4-digit PINs, and remove
+  users while keeping server-side hash storage and last-manager protection.
 - Bumped the production package to `0.202.13` for the full existing-inventory
   bootstrap sync.
 - Updated LAN middleman WordPress inventory polling so the first startup walks

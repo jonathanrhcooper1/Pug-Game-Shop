@@ -3,9 +3,9 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.202.14
 Release date: 2026-06-17
-Last updated: 2026-06-23
+Last updated: 2026-06-17
 Document purpose: Daily owner procedures for operating and supervising the platform.
 Audience: Store owner and general manager
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
@@ -41,19 +41,6 @@ The owner should treat the WordPress admin, WooCommerce reports, plugin reports,
 4. If a pull fails, use the resume failed pull option so completed pages are not repeated.
 5. For price-only refresh, run the daily scheduled refresh or manual price sync, then review price change logs.
 6. If the provider is unavailable, continue store operations from cached reference data and retry later.
-
-## Inventory Snapshot And Refresh Scripts
-
-Run these from the source checkout or from the packaged LAN server folder after `local-sync.env` is configured. They read WordPress/Square credentials from environment files and never print secrets.
-
-| Command | Purpose | Output |
-| --- | --- | --- |
-| `npm.cmd run local-sync:dump-inventory` | Dumps local app SQLite inventory, local ScryDex/reference cache, website inventory, website ScryDex/reference tables, website price tables, and Square inventory counts. | `exports/inventory-snapshot-*/` JSON and CSV files. |
-| `npm.cmd run local-sync:force-pull-website` | Pulls all website sellable inventory and website reference cards into the local SQLite cache. | `exports/website-force-pull-*/summary.json` plus a pre-run SQLite backup. |
-| `npm.cmd run local-sync:force-pull-website -- --replace-local` | Same as above, but clears local `inventory_items` and `reference_cards` first. Use only when intentionally rebuilding the local cache from the website. | Backup in `exports/local-db-backups/`. |
-| `npm.cmd run local-sync:daily-price-sync` | Daily operator refresh for website reference-card pricing plus sellable inventory prices/stock. | `exports/daily-price-sync-*/summary.json` plus a pre-run SQLite backup. |
-
-If the staff PIN has changed from the seed PINs, set `LOCAL_SYNC_SCRIPT_PIN` in `local-sync.env` before running force-pull or daily refresh.
 
 ## Price And Inventory Review
 

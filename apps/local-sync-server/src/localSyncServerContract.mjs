@@ -1,4 +1,4 @@
-export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 5
+export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 6
 export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 3
 
 export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
@@ -12,6 +12,8 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "GET", path: "/users/access-policy", purpose: "Manager-readable cached user role and access policy" },
   { method: "POST", path: "/users", purpose: "Manager-created local staff PIN user queue" },
   { method: "PATCH", path: "/users/:user_id/access", purpose: "Manager role/access policy update queue" },
+  { method: "PATCH", path: "/users/:user_id", purpose: "Manager user name, PIN, role, and access update queue" },
+  { method: "DELETE", path: "/users/:user_id", purpose: "Manager PIN user removal while preserving at least one manager" },
   { method: "GET", path: "/inventory/search", purpose: "Shared local inventory cache search" },
   { method: "GET", path: "/scrydex/cards/search", purpose: "Server-side ScryDex reference lookup for inventory intake" },
   { method: "POST", path: "/scrydex/catalog/index", purpose: "Server-side missing set/card ScryDex import and full-set catalog indexing" },

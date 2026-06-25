@@ -3,9 +3,9 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.202.14
 Release date: 2026-06-17
-Last updated: 2026-06-23
+Last updated: 2026-06-17
 Document purpose: Operational and technical guide for ScryDex, website/app, LAN queue, and conflict sync.
 Audience: Owner, manager, support technician, developer
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
@@ -24,18 +24,6 @@ The reference/pricing sync is designed around a 9:00 AM America/New_York daily r
 | Resume failed pull | Continue from checkpoint after provider/server interruption. | Manual owner/support action. |
 | Website-to-app | Push inventory/customer/event changes into local cache. | App/middleman pull by cursor. |
 | App-to-website | Replay inventory, customer, credit, buylist, event, and fulfillment writes. | Middleman queue push. |
-
-## Operator Sync Commands
-
-The packaged LAN server includes operator scripts for full reconciliation and support handoff:
-
-- `npm.cmd run ops:dump-inventory` writes a timestamped export of local app inventory, website inventory, website ScryDex/reference catalog, website price-point tables, Square counts, and the local queue.
-- `npm.cmd run ops:force-pull-website` pages through the website inventory and reference-card catalog and upserts the results into `store-sync.sqlite`.
-- `npm.cmd run ops:daily-price-sync` runs the daily website-to-local price/catalog refresh and inventory refresh.
-
-From the full repo, the matching root commands are `npm.cmd run local-sync:dump-inventory`, `npm.cmd run local-sync:force-pull-website`, and `npm.cmd run local-sync:daily-price-sync`.
-
-`--replace-local` is available on the force-pull command when the local cache should be rebuilt from the website. The script backs up the SQLite database before clearing local inventory/catalog tables.
 
 ## Checkpoint And Pagination Rules
 

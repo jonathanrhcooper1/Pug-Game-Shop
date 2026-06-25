@@ -16,7 +16,7 @@ Do not print or expose any secrets. The release package already includes the
 local server configuration needed for this install. If a server config already
 exists, preserve it unless I explicitly ask you to replace it.
 
-This specific `0.202.13` update is required for:
+This specific `0.202.14` update is required for:
 
 - Full existing-inventory bootstrap sync: on first LAN server startup, pull all
   current WordPress inventory pages into the middleman cache and Square before
@@ -54,8 +54,8 @@ $releaseRoot = "D:\The Pug Installers"
 Get-ChildItem -LiteralPath $releaseRoot -Force | Select-Object Name,Length,LastWriteTime
 Test-Path "$releaseRoot\Deploy-Pug-LAN-Server-Patch.ps1"
 Test-Path "$releaseRoot\pug-lan-server.zip"
-Test-Path "$releaseRoot\Pug Store App-0.202.13.exe"
-Test-Path "$releaseRoot\Pug Kiosk App-0.202.13.exe"
+Test-Path "$releaseRoot\Pug Store App-0.202.14.exe"
+Test-Path "$releaseRoot\Pug Kiosk App-0.202.14.exe"
 Test-Path "$releaseRoot\Apply-Pug-Middleman-Credentials.ps1"
 Test-Path "$releaseRoot\LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env"
 Test-Path "$releaseRoot\Diagnose-Pug-Dymo-Printing.ps1"
@@ -183,15 +183,15 @@ install if silent install does not work.
 
 ```powershell
 $releaseRoot = "D:\The Pug Installers"
-Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.13.exe" -Wait
-Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.13.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.14.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.14.exe" -Wait
 ```
 
 If the apps were already open, close and reopen them after install.
 
 Important: every workstation that runs the Store App must also be updated to
-this same `0.202.13` Store App build. If one PC still logs in and immediately
-returns to the PIN screen, reinstall `Pug Store App-0.202.13.exe` on that PC,
+this same `0.202.14` Store App build. If one PC still logs in and immediately
+returns to the PIN screen, reinstall `Pug Store App-0.202.14.exe` on that PC,
 then point it to the middleman URL `http://SERVER_IP_HERE:8787` before login.
 
 On each app connection screen, set `This workstation name` to a unique friendly
@@ -216,8 +216,8 @@ Run the DYMO service helper:
 
 ```powershell
 $dyMoScripts = @(
-  "D:\The Pug Installers\the-pug-store-deliverables-0.202.13\Pug Store App\Start-Pug-Dymo-Local-Service.ps1",
-  "D:\The Pug Installers\the-pug-store-deliverables-0.202.13\LAN Server + Pug Store App\Start-Pug-Dymo-Local-Service.ps1"
+  "D:\The Pug Installers\the-pug-store-deliverables-0.202.14\Pug Store App\Start-Pug-Dymo-Local-Service.ps1",
+  "D:\The Pug Installers\the-pug-store-deliverables-0.202.14\LAN Server + Pug Store App\Start-Pug-Dymo-Local-Service.ps1"
 )
 
 foreach ($script in $dyMoScripts) {
@@ -277,7 +277,7 @@ If it does not print:
 
 - Re-run the DYMO service helper above.
 - Confirm DYMO Connect sees the printer.
-- Confirm the app is the freshly installed `0.202.13` build.
+- Confirm the app is the freshly installed `0.202.14` build.
 - Check whether the app reports a local print failure before LAN fallback.
 - Run the standalone diagnostic collector and send the generated ZIP report
   back to Codex:

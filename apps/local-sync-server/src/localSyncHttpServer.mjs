@@ -156,6 +156,19 @@ export function createLocalSyncHttpServer(options = {}) {
         )
       }
 
+      const userProfileMatch = url.pathname.match(/^\/users\/([^/]+)$/)
+
+      if (request.method === "PATCH" && userProfileMatch) {
+        return sendStoreResult(
+          response,
+          store.updateUserProfile(token, decodeURIComponent(userProfileMatch[1]), await readJson(request)),
+        )
+      }
+
+      if (request.method === "DELETE" && userProfileMatch) {
+        return sendStoreResult(response, store.removeUser(token, decodeURIComponent(userProfileMatch[1])))
+      }
+
       if (request.method === "GET" && url.pathname === "/inventory/search") {
         return sendStoreResult(response, store.searchInventory({ query: url.searchParams.get("q") ?? "" }))
       }

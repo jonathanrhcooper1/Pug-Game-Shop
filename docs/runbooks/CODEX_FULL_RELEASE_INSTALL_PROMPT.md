@@ -2,7 +2,7 @@
 
 Copy/paste this entire file into Codex on the middleman/LAN server PC.
 
-You are installing The Pug Game Shop production release `0.202.13` from the USB.
+You are installing The Pug Game Shop production release `0.202.14` from the USB.
 
 USB folder:
 
@@ -15,7 +15,7 @@ Primary goals:
 - Install/update the Pug LAN middleman server.
 - Apply the USB credential handoff without printing secrets.
 - Start/restart the LAN server.
-- Install/update Pug Store App and Pug Kiosk App `0.202.13`.
+- Install/update Pug Store App and Pug Kiosk App `0.202.14`.
 - Verify WordPress, ScryDex, Square, Square location, Square inventory sync, Square sales sync, device heartbeats, and Square POS category layout.
 - Confirm Square POS has `Singles > MTG / Lorcana / Riftbound / Pokemon`.
 - Confirm the LAN server starts the first-run WordPress inventory bootstrap so
@@ -49,9 +49,9 @@ $required = @(
   "Apply-Pug-Middleman-Credentials.ps1",
   "Diagnose-Pug-Dymo-Printing.ps1",
   "pug-lan-server.zip",
-  "Pug Store App-0.202.13.exe",
-  "Pug Kiosk App-0.202.13.exe",
-  "the-pug-store-deliverables-0.202.13.zip",
+  "Pug Store App-0.202.14.exe",
+  "Pug Kiosk App-0.202.14.exe",
+  "the-pug-store-deliverables-0.202.14.zip",
   "LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env"
 )
 
@@ -214,8 +214,8 @@ Run:
 ```powershell
 $releaseRoot = "D:\The Pug Installers"
 
-Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.13.exe" -Wait
-Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.13.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.14.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.14.exe" -Wait
 ```
 
 Open both apps.

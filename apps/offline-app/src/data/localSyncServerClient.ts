@@ -1177,6 +1177,35 @@ export type LocalSyncQueueSummary = {
   items: LocalSyncQueueSummaryItem[]
 }
 
+export type LocalSyncScryDexCatalogSyncStatus = {
+  status: "ok" | "blocked"
+  action?: string
+  code?: string
+  message?: string
+  started_at_utc?: string
+  completed_at_utc?: string
+  raw_or_graded?: string
+  game_count?: number
+  failed_game_count?: number
+  stored_cards?: number
+  variants?: number
+  prices?: number
+  games?: {
+    game: string
+    status: string
+    code?: string
+    message?: string
+    stored_cards?: number
+    variants?: number
+    prices?: number
+    expansion_pages?: number
+    card_pages?: number
+  }[]
+  system_job?: boolean
+  credentials_synced_to_client?: false
+  raw_credentials_returned?: false
+}
+
 export type LocalSyncStatusResult = LocalSyncResult<{
   local_database: "store-sync.sqlite"
   persistence_mode: "sqlite_adapter_pending" | "sqlite"
@@ -1218,6 +1247,16 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   graded_pricing_provider_connected?: boolean
   graded_pricing_primary_source?: "pricecharting" | "scrydex_reference_cache"
   graded_pricing_fallback_source?: "scrydex_reference_cache"
+  square_catalog_inventory_sync_connected?: boolean
+  square_catalog_inventory_sync_status?: Record<string, unknown>
+  square_inventory_count_poller_connected?: boolean
+  square_inventory_count_poller_status?: Record<string, unknown>
+  square_sales_report_puller_connected?: boolean
+  square_sales_report_puller_status?: Record<string, unknown>
+  last_website_inventory_pull?: Record<string, unknown> | null
+  last_scrydex_catalog_sync?: LocalSyncScryDexCatalogSyncStatus | null
+  last_square_inventory_reconciliation?: Record<string, unknown> | null
+  last_square_sales_report_pull?: Record<string, unknown> | null
   local_operations_preserved: true
 }>
 
@@ -1667,10 +1706,16 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     userId: string,
     input: {
+      name?: string
+      pin?: string
       role: LocalSyncUserRole
       access: LocalSyncAccessSection[]
     },
-  ) => Promise<LocalSyncResult<{ user: LocalSyncUser }>>
+  ) => Promise<LocalSyncResult<{ user: LocalSyncUser; pin_changed?: boolean }>>
+  removeUser: (
+    sessionToken: string,
+    userId: string,
+  ) => Promise<LocalSyncResult<{ removed_user_id: string; users: LocalSyncUser[] }>>
   searchInventory: (query: string) => Promise<LocalSyncInventorySearchResult>
   listInventoryLocations: (sessionToken: string) => Promise<LocalSyncInventoryLocationListResult>
   addInventoryLocation: (
@@ -2406,14 +2451,21 @@ export function createLocalSyncServerClient(
         },
       }) as Promise<LocalSyncResult<{ user: LocalSyncUser; raw_pin_returned: false; pin_hash_returned: false }>>,
     updateUserAccess: (sessionToken, userId, input) =>
-      requestLocalSync(fetcher, baseUrl, `/users/${encodeURIComponent(userId)}/access`, {
+      requestLocalSync(fetcher, baseUrl, `/users/${encodeURIComponent(userId)}`, {
         method: "PATCH",
         sessionToken,
         body: {
+          name: input.name,
+          pin: input.pin,
           role: input.role,
           access: input.access,
         },
-      }) as Promise<LocalSyncResult<{ user: LocalSyncUser }>>,
+      }) as Promise<LocalSyncResult<{ user: LocalSyncUser; pin_changed?: boolean }>>,
+    removeUser: (sessionToken, userId) =>
+      requestLocalSync(fetcher, baseUrl, `/users/${encodeURIComponent(userId)}`, {
+        method: "DELETE",
+        sessionToken,
+      }) as Promise<LocalSyncResult<{ removed_user_id: string; users: LocalSyncUser[] }>>,
     searchInventory: (query) =>
       requestLocalSync(fetcher, baseUrl, `/inventory/search?q=${encodeURIComponent(query)}`) as Promise<
         LocalSyncInventorySearchResult

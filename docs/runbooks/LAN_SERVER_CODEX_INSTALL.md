@@ -27,8 +27,8 @@ Get-ChildItem -LiteralPath $releaseRoot -Force |
 
 Test-Path "$releaseRoot\Deploy-Pug-LAN-Server-Patch.ps1"
 Test-Path "$releaseRoot\pug-lan-server.zip"
-Test-Path "$releaseRoot\Pug Store App-0.202.13.exe"
-Test-Path "$releaseRoot\Pug Kiosk App-0.202.13.exe"
+Test-Path "$releaseRoot\Pug Store App-0.202.14.exe"
+Test-Path "$releaseRoot\Pug Kiosk App-0.202.14.exe"
 
 & "$releaseRoot\Deploy-Pug-LAN-Server-Patch.ps1" `
   -SourceRoot $releaseRoot
@@ -96,8 +96,8 @@ Run these if the server PC also needs the Store App and Kiosk App:
 ```powershell
 $releaseRoot = "D:\The Pug Installers"
 
-Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.13.exe" -Wait
-Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.13.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Store App-0.202.14.exe" -Wait
+Start-Process -FilePath "$releaseRoot\Pug Kiosk App-0.202.14.exe" -Wait
 ```
 
 ## App Connection And Heartbeat Naming

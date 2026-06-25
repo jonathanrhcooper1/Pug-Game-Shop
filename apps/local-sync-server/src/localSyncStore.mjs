@@ -151,6 +151,7 @@ export function createLocalSyncStore(options = {}) {
   let squareSalesReportSnapshots = loadSquareSalesReportSnapshots(database)
   let lastSquareInventoryReconciliationResult = null
   let lastWebsiteInventoryPullResult = null
+  let lastScryDexCatalogSyncResult = null
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -365,6 +366,10 @@ export function createLocalSyncStore(options = {}) {
   }
 
   function updateUserAccess(token, userId, input = {}) {
+    return updateUserProfile(token, userId, input)
+  }
+
+  function updateUserProfile(token, userId, input = {}) {
     const manager = requireManager(token)
 
     if (manager.status !== "ok") {
@@ -377,13 +382,28 @@ export function createLocalSyncStore(options = {}) {
       return blocked("user_not_found", "No cached user policy matched that user ID.")
     }
 
+    const name = cleanName(input.name ?? user.name)
     const role = cleanRole(input.role ?? user.role)
+    const pin = String(input.pin ?? input.new_pin ?? input.newPin ?? "").trim()
     const managerCount = users.filter((candidate) => ["manager", "owner"].includes(candidate.role)).length
 
     if (["manager", "owner"].includes(user.role) && role === "staff" && managerCount <= 1) {
       return blocked("last_manager", "At least one manager PIN must remain active.")
     }
 
+    if (!name) {
+      return blocked("invalid_user_name", "A user name is required before saving this PIN profile.")
+    }
+
+    if (pin && !/^\d{4}$/.test(pin)) {
+      return blocked("invalid_pin", "PIN changes must use exactly 4 digits.")
+    }
+
+    if (pin && users.some((candidate) => candidate.id !== user.id && verifyPin(pin, candidate))) {
+      return blocked("duplicate_pin", "PIN already exists in the cached access policy.")
+    }
+
+    user.name = name
     user.role = role
     user.access = ["manager", "owner"].includes(role) ? [...ACCESS_SECTIONS] : cleanAccess(input.access ?? user.access)
 
@@ -391,14 +411,83 @@ export function createLocalSyncStore(options = {}) {
       return blocked("access_required", "Staff users need access to at least one workspace.")
     }
 
+    if (pin) {
+      user.pinSalt = `salt-${randomUUID()}`
+      user.pinHash = hashPin(pin, user.pinSalt)
+    }
+
     saveUser(database, user, now)
-    appendQueueOperation(database, queue, "user_access_upsert", user.id, { role: user.role, access: user.access }, now, {
-      syncStatus: "local_only",
-    })
+    appendQueueOperation(
+      database,
+      queue,
+      "user_access_upsert",
+      user.id,
+      { name: user.name, role: user.role, access: user.access, pin_changed: Boolean(pin) },
+      now,
+      {
+        syncStatus: "local_only",
+      },
+    )
 
     return {
       status: "ok",
       user: publicUser(user),
+      pin_changed: Boolean(pin),
+      raw_pin_returned: false,
+      pin_hash_returned: false,
+    }
+  }
+
+  function removeUser(token, userId) {
+    const manager = requireManager(token)
+
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const index = users.findIndex((candidate) => candidate.id === userId)
+
+    if (index < 0) {
+      return blocked("user_not_found", "No cached user policy matched that user ID.")
+    }
+
+    const user = users[index]
+
+    if (user.id === manager.user.id) {
+      return blocked("cannot_remove_current_user", "Sign in as another manager before removing this PIN profile.")
+    }
+
+    const managerCount = users.filter((candidate) => ["manager", "owner"].includes(candidate.role)).length
+
+    if (["manager", "owner"].includes(user.role) && managerCount <= 1) {
+      return blocked("last_manager", "At least one manager PIN must remain active.")
+    }
+
+    users.splice(index, 1)
+    for (const [sessionToken, session] of sessions.entries()) {
+      if (session.userId === user.id) {
+        sessions.delete(sessionToken)
+      }
+    }
+    deleteUser(database, user.id)
+    appendQueueOperation(
+      database,
+      queue,
+      "user_access_remove",
+      user.id,
+      { name: user.name, role: user.role, removed_at_utc: now().toISOString() },
+      now,
+      {
+        syncStatus: "local_only",
+      },
+    )
+
+    return {
+      status: "ok",
+      removed_user_id: user.id,
+      users: users.map(publicUser),
+      raw_pin_returned: false,
+      pin_hash_returned: false,
     }
   }
 
@@ -1351,6 +1440,91 @@ export function createLocalSyncStore(options = {}) {
       credentials_synced_to_client: false,
       raw_credentials_returned: false,
     }
+  }
+
+  async function indexScryDexCatalogForSystem(input = {}) {
+    if (!wordpressCatalogIndexer) {
+      lastScryDexCatalogSyncResult = {
+        status: "blocked",
+        code: "scrydex_catalog_index_route_unavailable",
+        message: "The WordPress ScryDex catalog index route is not configured on this LAN server.",
+        completed_at_utc: now().toISOString(),
+        system_job: true,
+      }
+      return lastScryDexCatalogSyncResult
+    }
+
+    const games = supportedScryDexGames(input.games)
+    const rawOrGraded =
+      ["raw", "graded"].includes(String(input.rawOrGraded ?? input.raw_or_graded ?? "").toLowerCase())
+        ? String(input.rawOrGraded ?? input.raw_or_graded).toLowerCase()
+        : ""
+    const startedAtUtc = now().toISOString()
+    const gameResults = []
+
+    for (const game of games) {
+      try {
+        const result = await wordpressCatalogIndexer({
+          game,
+          pageSize: input.pageSize ?? input.page_size ?? 100,
+          maxPages: input.maxPages ?? input.max_pages ?? 10000,
+          maxExpansionPages: input.maxExpansionPages ?? input.max_expansion_pages ?? 10000,
+          indexExpansions: input.indexExpansions ?? input.index_expansions ?? true,
+          skipCards: false,
+          executeDatabaseWrites: true,
+          includeUsageSnapshot: false,
+          rawOrGraded,
+        })
+
+        const cardBlock = result.cards && typeof result.cards === "object" ? result.cards : result.card_result ?? {}
+        const expansionBlock =
+          result.expansion_result && typeof result.expansion_result === "object" ? result.expansion_result : {}
+        gameResults.push({
+          game,
+          status: result.status,
+          code: result.code ?? result.action ?? "",
+          message: result.message ?? "",
+          stored_cards: Number(cardBlock.reference_row_count ?? result.stored_cards ?? result.card_count ?? 0),
+          variants: Number(result.variants ?? result.variant_count ?? 0),
+          prices: Number(result.prices ?? result.price_count ?? 0),
+          expansion_pages: Number(expansionBlock.page_count ?? result.expansion_pages ?? 0),
+          card_pages: Number(cardBlock.page_count ?? result.card_pages ?? 0),
+        })
+      } catch (error) {
+        gameResults.push({
+          game,
+          status: "blocked",
+          code: "scrydex_catalog_index_exception",
+          message: error instanceof Error ? error.message : "Unknown ScryDex catalog index error.",
+          stored_cards: 0,
+          variants: 0,
+          prices: 0,
+          expansion_pages: 0,
+          card_pages: 0,
+        })
+      }
+    }
+
+    const failedCount = gameResults.filter((result) => result.status !== "ok").length
+    const completedAtUtc = now().toISOString()
+    lastScryDexCatalogSyncResult = {
+      status: failedCount > 0 ? "blocked" : "ok",
+      action: "scrydex_catalog_system_index",
+      started_at_utc: startedAtUtc,
+      completed_at_utc: completedAtUtc,
+      raw_or_graded: rawOrGraded || "both",
+      game_count: gameResults.length,
+      failed_game_count: failedCount,
+      stored_cards: gameResults.reduce((total, result) => total + result.stored_cards, 0),
+      variants: gameResults.reduce((total, result) => total + result.variants, 0),
+      prices: gameResults.reduce((total, result) => total + result.prices, 0),
+      games: gameResults,
+      system_job: true,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+
+    return lastScryDexCatalogSyncResult
   }
 
   async function identifyScryDexCardImage(token, input = {}) {
@@ -3656,6 +3830,7 @@ export function createLocalSyncStore(options = {}) {
         raw_credentials_returned: false,
       },
       last_website_inventory_pull: lastWebsiteInventoryPullResult,
+      last_scrydex_catalog_sync: lastScryDexCatalogSyncResult,
       last_square_inventory_reconciliation: lastSquareInventoryReconciliationResult,
       last_square_sales_report_pull: publicSquareSalesReportSnapshot(latestSquareSalesReportSnapshot(), {
         includeRows: false,
@@ -6159,6 +6334,7 @@ export function createLocalSyncStore(options = {}) {
     searchInventory,
     identifyScryDexCardImage,
     indexScryDexCatalog,
+    indexScryDexCatalogForSystem,
     searchScryDexCards,
     lookupGradedTradeInValuation,
     syncStatus,
@@ -6173,6 +6349,8 @@ export function createLocalSyncStore(options = {}) {
     updateKioskOrderStatus,
     updateTradeInOrderStatus,
     updateUserAccess,
+    updateUserProfile,
+    removeUser,
   }
 }
 
@@ -7164,6 +7342,10 @@ function saveUser(database, user, now) {
       user.pinHash,
       now().toISOString(),
     )
+}
+
+function deleteUser(database, userId) {
+  database.prepare("DELETE FROM users WHERE id = ?").run(userId)
 }
 
 function saveInventoryItem(database, item, now) {

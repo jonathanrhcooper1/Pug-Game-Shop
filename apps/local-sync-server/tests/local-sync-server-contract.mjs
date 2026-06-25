@@ -118,6 +118,8 @@ for (const endpoint of [
   "GET /users/access-policy",
   "POST /users",
   "PATCH /users/:user_id/access",
+  "PATCH /users/:user_id",
+  "DELETE /users/:user_id",
   "GET /inventory/search",
   "GET /scrydex/cards/search",
   "POST /scrydex/cards/identify-image",

@@ -3,13 +3,13 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.202.14
 Release date: 2026-06-17
 Last updated: 2026-06-17
 Document purpose: Client-facing release notes for version handoff.
 Audience: Owner, manager, administrator, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
-## Release 0.202.0
+## Release 0.202.14
 
 This release packages the production WordPress/WooCommerce trading-card store platform into exactly three deliverables: Pug Store App, LAN Server + Pug Store App, and Kiosk Page, with handover documentation prepared by JC Electronics.
 

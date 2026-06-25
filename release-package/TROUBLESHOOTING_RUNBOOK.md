@@ -3,7 +3,7 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.202.14
 Release date: 2026-06-17
 Last updated: 2026-06-17
 Document purpose: Incident response guide for common website, sync, payment, inventory, event, and app failures.

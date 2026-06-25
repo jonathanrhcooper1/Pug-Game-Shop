@@ -297,7 +297,7 @@ const ACCESS_SECTIONS = [
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
 const HIDDEN_NORMAL_NAV_SECTIONS = new Set<string>(["Checkout"])
-const OFFLINE_APP_VERSION = "0.202.11"
+const OFFLINE_APP_VERSION = "0.202.14"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {
@@ -1190,6 +1190,24 @@ function safeSummaryValue(value: unknown) {
   }
 
   return "empty"
+}
+
+function statusObjectSummary(value: unknown, fallback: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return fallback
+  }
+
+  const entries = Object.entries(value)
+    .filter(([key]) => !key.toLowerCase().includes("credential") && !key.toLowerCase().includes("token"))
+    .slice(0, 6)
+
+  if (entries.length === 0) {
+    return fallback
+  }
+
+  return entries
+    .map(([key, entryValue]) => `${key.replace(/_/g, " ")}: ${safeSummaryValue(entryValue)}`)
+    .join("; ")
 }
 
 function countLabel(count: number, singular: string, plural = `${singular}s`) {
@@ -3849,6 +3867,21 @@ export function App() {
   const [inventoryEditFloorInput, setInventoryEditFloorInput] = useState("0.00")
   const [inventoryEditBarcode, setInventoryEditBarcode] = useState("")
   const [inventoryEditLocation, setInventoryEditLocation] = useState("")
+  const inventoryLocationOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [...inStoreInventoryLocations, intakeLocation, inventoryEditLocation]
+            .concat(inventoryItems.map((item) => item.location))
+            .map((location) => location.trim())
+            .filter((location) => {
+              const normalized = location.toLowerCase()
+              return normalized !== "" && !normalized.startsWith("website")
+            }),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [inStoreInventoryLocations, intakeLocation, inventoryEditLocation, inventoryItems],
+  )
   const [inventoryEditQuantityInput, setInventoryEditQuantityInput] = useState("0")
   const [inventoryEditOnlineVisibility, setInventoryEditOnlineVisibility] =
     useState<InventoryVisibility>("visible")
@@ -3856,6 +3889,7 @@ export function App() {
     useState<InventoryVisibility>("visible")
   const [inventoryEditPosVisibility, setInventoryEditPosVisibility] =
     useState<InventoryVisibility>("visible")
+  const [lastIntakeLabelItem, setLastIntakeLabelItem] = useState<InventoryItem | null>(null)
   const inventoryEditorDirtyRef = useRef(false)
   const inventoryEditorHydrationKeyRef = useRef("")
   const [intakeProductType, setIntakeProductType] = useState<"raw" | "graded">("raw")
@@ -4066,6 +4100,7 @@ export function App() {
     "Queue",
     "Status",
   ])
+  const [userEditDrafts, setUserEditDrafts] = useState<Record<string, { name: string; pin: string }>>({})
   const [kioskFirstName, setKioskFirstName] = useState("")
   const [kioskLastName, setKioskLastName] = useState("")
   const [kioskSearchQuery, setKioskSearchQuery] = useState("")
@@ -5150,6 +5185,149 @@ export function App() {
       value: `Setup ${lanSetupProbe.status}; manifest ${connectorManifestFetch.status}`,
       detail: `${lanSetupProbe.detail} Manifest: ${connectorManifestFetch.detail}`,
       tone: setupAndManifestTone,
+    },
+  ]
+  const scryDexDailyStatus =
+    localSyncStatus?.status === "ok" ? localSyncStatus.last_scrydex_catalog_sync : null
+  const apiHealthCards: StatusSummaryCard[] = [
+    {
+      id: "api-wordpress",
+      label: "WordPress API",
+      value:
+        localSyncStatus?.status === "ok"
+          ? localSyncStatus.wordpress_push_connected || localSyncStatus.wordpress_pull_connected
+            ? "Connected"
+            : "Not connected"
+          : "Unknown",
+      detail:
+        localSyncStatus?.status === "ok"
+          ? `Pull ${localSyncStatus.wordpress_pull_connected ? "on" : "off"}; inventory pull ${
+              localSyncStatus.wordpress_inventory_pull_connected ? "on" : "off"
+            }; push ${localSyncStatus.wordpress_push_connected ? "on" : "off"}; catalog export ${
+              localSyncStatus.wordpress_catalog_pull_connected ? "on" : "off"
+            }.`
+          : "Unlock the LAN server session to read WordPress connector health.",
+      tone:
+        localSyncStatus?.status === "ok" &&
+        localSyncStatus.wordpress_pull_connected &&
+        localSyncStatus.wordpress_push_connected
+          ? "ready"
+          : "warning",
+    },
+    {
+      id: "api-square",
+      label: "Square API",
+      value:
+        localSyncStatus?.status === "ok"
+          ? localSyncStatus.square_catalog_inventory_sync_connected ||
+            localSyncStatus.square_inventory_count_poller_connected
+            ? "Connected"
+            : "Not connected"
+          : "Unknown",
+      detail:
+        localSyncStatus?.status === "ok"
+          ? `Catalog sync ${localSyncStatus.square_catalog_inventory_sync_connected ? "on" : "off"}; inventory poll ${
+              localSyncStatus.square_inventory_count_poller_connected ? "on" : "off"
+            }; reports ${localSyncStatus.square_sales_report_puller_connected ? "on" : "off"}.`
+          : "Square connector status is waiting on LAN sync status.",
+      tone:
+        localSyncStatus?.status === "ok" &&
+        (localSyncStatus.square_catalog_inventory_sync_connected ||
+          localSyncStatus.square_inventory_count_poller_connected)
+          ? "ready"
+          : "warning",
+    },
+    {
+      id: "api-scrydex-worker",
+      label: "ScryDex daily worker",
+      value: scryDexDailyStatus
+        ? scryDexDailyStatus.status === "ok"
+          ? "Last run ok"
+          : "Last run blocked"
+        : localSyncStatus?.status === "ok" && localSyncStatus.scrydex_catalog_index_connected
+          ? "Scheduled"
+          : "Not configured",
+      detail: scryDexDailyStatus
+        ? `${scryDexDailyStatus.completed_at_utc ?? "No completion time"}; ${countLabel(
+            scryDexDailyStatus.stored_cards ?? 0,
+            "card row",
+          )}, ${countLabel(scryDexDailyStatus.variants ?? 0, "variant")}, ${countLabel(
+            scryDexDailyStatus.prices ?? 0,
+            "price row",
+          )}. ${scryDexDailyStatus.message ?? ""}`
+        : "The LAN middleman schedules catalog and price refreshes through the authenticated WordPress indexer.",
+      tone: scryDexDailyStatus
+        ? scryDexDailyStatus.status === "ok"
+          ? "ready"
+          : "blocked"
+        : localSyncStatus?.status === "ok" && localSyncStatus.scrydex_catalog_index_connected
+          ? "working"
+          : "warning",
+    },
+    {
+      id: "api-queues",
+      label: "Manual queues",
+      value:
+        localSyncStatus?.status === "ok"
+          ? `${countLabel(localSyncStatus.queue_depth, "LAN op")}; ${countLabel(
+              localSyncStatus.queue_summary?.local_only_count ?? 0,
+              "local-only op",
+            )}`
+          : "Unknown",
+      detail:
+        localSyncStatus?.status === "ok"
+          ? `Oldest queued at ${localSyncStatus.queue_summary?.oldest_queued_at_utc || "none"}. Device saved ${countLabel(
+              queuedOperations.length,
+              "operation",
+            )}; sync attempts ${countLabel(syncAttempts.length, "attempt")}.`
+          : "Queue status waits for LAN server health.",
+      tone:
+        localSyncStatus?.status === "ok" && localSyncStatus.queue_depth === 0
+          ? "ready"
+          : localSyncStatus?.status === "ok"
+            ? "warning"
+            : "idle",
+    },
+  ]
+  const apiResponseEntries: StatusTimelineEntry[] = [
+    {
+      id: "last-wordpress-pull",
+      title: "Latest website inventory pull",
+      detail:
+        localSyncStatus?.status === "ok"
+          ? statusObjectSummary(localSyncStatus.last_website_inventory_pull, "No website inventory pull recorded yet.")
+          : "Website pull details unavailable.",
+      tone: localSyncStatus?.status === "ok" && localSyncStatus.last_website_inventory_pull ? "ready" : "idle",
+    },
+    {
+      id: "last-scrydex-index",
+      title: "Latest ScryDex catalog/index response",
+      detail: scryDexDailyStatus
+        ? `${scryDexDailyStatus.status}; ${statusObjectSummary(scryDexDailyStatus, "No ScryDex worker detail.")}`
+        : "No ScryDex daily worker run has been recorded in this server session.",
+      tone: scryDexDailyStatus ? (scryDexDailyStatus.status === "ok" ? "ready" : "blocked") : "idle",
+    },
+    {
+      id: "last-square-counts",
+      title: "Latest Square inventory response",
+      detail:
+        localSyncStatus?.status === "ok"
+          ? statusObjectSummary(
+              localSyncStatus.last_square_inventory_reconciliation,
+              "No Square inventory count reconciliation recorded yet.",
+            )
+          : "Square inventory details unavailable.",
+      tone:
+        localSyncStatus?.status === "ok" && localSyncStatus.last_square_inventory_reconciliation ? "ready" : "idle",
+    },
+    {
+      id: "last-square-sales",
+      title: "Latest Square sales report response",
+      detail:
+        localSyncStatus?.status === "ok"
+          ? statusObjectSummary(localSyncStatus.last_square_sales_report_pull, "No Square sales report pull recorded yet.")
+          : "Square sales details unavailable.",
+      tone: localSyncStatus?.status === "ok" && localSyncStatus.last_square_sales_report_pull ? "ready" : "idle",
     },
   ]
   const statusTimelineEntries: StatusTimelineEntry[] = [
@@ -6631,7 +6809,11 @@ export function App() {
     const result = await localSyncClient.listInventoryLocations(sessionToken)
 
     if (result.status === "ok") {
-      setInventoryLocations(result.locations)
+      setInventoryLocations(
+        Array.from(new Set(result.locations.map((location) => location.trim()).filter(Boolean))).sort((left, right) =>
+          left.localeCompare(right),
+        ),
+      )
     } else {
       handleBlockedLocalSyncSession(result, "Inventory location session required")
     }
@@ -6672,6 +6854,7 @@ export function App() {
 
     setInventoryLocations(result.locations)
     setIntakeLocation(result.location)
+    setInventoryEditLocation((current) => current || result.location)
     setNewInventoryLocation("")
     setActivityMessage({
       title: "Inventory location saved",
@@ -7941,6 +8124,151 @@ export function App() {
     await refreshLocalSyncStatus()
   }
 
+  function userEditDraft(user: OfflineAppUser) {
+    return userEditDrafts[user.id] ?? { name: user.name, pin: "" }
+  }
+
+  function updateUserEditDraft(userId: string, patch: Partial<{ name: string; pin: string }>) {
+    setUserEditDrafts((drafts) => {
+      const user = offlineUsers.find((candidate) => candidate.id === userId)
+      const current = drafts[userId] ?? { name: user?.name ?? "", pin: "" }
+
+      return {
+        ...drafts,
+        [userId]: {
+          ...current,
+          ...patch,
+        },
+      }
+    })
+  }
+
+  async function handleOfflineUserProfileSave(userId: string) {
+    if (!managerControlsUnlocked) {
+      setActivityMessage({
+        title: "Manager unlock required",
+        detail: "Unlock settings before changing PIN users.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in through the LAN local sync server before changing PIN users.",
+      })
+      return
+    }
+
+    const targetUser = offlineUsers.find((user) => user.id === userId)
+
+    if (!targetUser) {
+      setActivityMessage({
+        title: "User not found",
+        detail: "The selected PIN user is not available in this app session.",
+      })
+      return
+    }
+
+    const draft = userEditDraft(targetUser)
+    const cleanName = draft.name.trim()
+    const cleanPin = draft.pin.trim()
+
+    if (!cleanName || (cleanPin && !/^\d{4}$/.test(cleanPin))) {
+      setActivityMessage({
+        title: "User update blocked",
+        detail: "Enter a name and use exactly 4 digits if you are changing the PIN.",
+      })
+      return
+    }
+
+    const serverResult = await localSyncClient.updateUserAccess(localSyncSessionToken, userId, {
+      name: cleanName,
+      pin: cleanPin || undefined,
+      role: targetUser.role,
+      access: targetUser.access,
+    })
+
+    if (serverResult.status !== "ok") {
+      setActivityMessage({
+        title: serverResult.status === "unavailable" ? "LAN server unavailable" : "User update blocked",
+        detail: serverResult.message,
+      })
+      return
+    }
+
+    setOfflineUsers((users) =>
+      users.map((user) =>
+        user.id === userId
+          ? {
+              ...user,
+              name: serverResult.user.name,
+              role: serverResult.user.role,
+              access: serverResult.user.access.filter(isAccessSection),
+            }
+          : user,
+      ),
+    )
+    setUserEditDrafts((drafts) => ({
+      ...drafts,
+      [userId]: { name: serverResult.user.name, pin: "" },
+    }))
+    await refreshLocalSyncStatus()
+    setActivityMessage({
+      title: "PIN user updated",
+      detail: `${serverResult.user.name}${serverResult.pin_changed ? " has a new PIN" : " was saved"}.`,
+    })
+  }
+
+  async function handleRemoveOfflineUser(userId: string) {
+    if (!managerControlsUnlocked) {
+      setActivityMessage({
+        title: "Manager unlock required",
+        detail: "Unlock settings before removing PIN users.",
+      })
+      return
+    }
+
+    if (!localSyncSessionToken) {
+      setActivityMessage({
+        title: "LAN server session required",
+        detail: "Sign in through the LAN local sync server before removing PIN users.",
+      })
+      return
+    }
+
+    const targetUser = offlineUsers.find((user) => user.id === userId)
+    const serverResult = await localSyncClient.removeUser(localSyncSessionToken, userId)
+
+    if (serverResult.status !== "ok") {
+      setActivityMessage({
+        title: serverResult.status === "unavailable" ? "LAN server unavailable" : "User removal blocked",
+        detail: serverResult.message,
+      })
+      return
+    }
+
+    setOfflineUsers(
+      serverResult.users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        pin: "",
+        role: user.role,
+        access: user.access.filter(isAccessSection),
+      })),
+    )
+    setUserEditDrafts((drafts) => {
+      const nextDrafts = { ...drafts }
+      delete nextDrafts[userId]
+      return nextDrafts
+    })
+    await refreshLocalSyncStatus()
+    setActivityMessage({
+      title: "PIN user removed",
+      detail: `${targetUser?.name ?? "The selected user"} can no longer sign in on this LAN server.`,
+    })
+  }
+
   function toggleNewUserAccess(section: AccessSection) {
     setNewUserAccess((sections) => {
       if (sections.includes(section)) {
@@ -8968,7 +9296,7 @@ export function App() {
     await finalizeStaffInventoryRemoval("remove", [selectedItem])
   }
 
-  async function handleInventoryIntake() {
+  async function handleInventoryIntake(options: { printAfter?: boolean } = {}) {
     if (
       intakeIssue ||
       intakePriceMinorUnits === null ||
@@ -9147,6 +9475,7 @@ export function App() {
 
     setInventoryItems((items) => [...displayedNextItems, ...items])
     setLocalInventoryIntakeReceipts((receipts) => [...displayedIntakeReceipts, ...receipts].slice(0, 50))
+    setLastIntakeLabelItem(displayedNextItems[0] ?? null)
     resetInventoryIntakeForm("Inventory added. Search or scan the next card.")
     setActiveSection("Inventory")
     void refreshLocalSyncStatus()
@@ -9155,6 +9484,9 @@ export function App() {
       detail:
         `${nextItem.cardName} x${intakeResult.quantity_added ?? nextItems.length} saved. ${autoPublishDetail}`,
     })
+    if (options.printAfter && displayedNextItems[0]) {
+      void handlePrintLabel(displayedNextItems[0])
+    }
   }
 
   function stopLiveCardScanStream() {
@@ -15063,6 +15395,36 @@ export function App() {
                   </article>
                 ))}
               </div>
+              <header className="status-dashboard-heading status-dashboard-subheading">
+                <div>
+                  <span className="micro-label">API health</span>
+                  <strong>WordPress, Square, ScryDex, and queue diagnostics</strong>
+                </div>
+                <button
+                  className="secondary-command"
+                  type="button"
+                  disabled={!localSyncSessionToken}
+                  onClick={() => {
+                    void refreshLocalSyncStatus()
+                    void refreshLocalDeviceStatus()
+                    void refreshInventoryLocations()
+                  }}
+                >
+                  <Icon name="refresh" />
+                  <span>Refresh Health</span>
+                </button>
+              </header>
+              <div className="status-summary-grid">
+                {apiHealthCards.map((card) => (
+                  <article className={`status-summary-card ${card.tone}`} key={card.id}>
+                    <div>
+                      <span>{card.label}</span>
+                      <strong>{card.value}</strong>
+                    </div>
+                    <p>{card.detail}</p>
+                  </article>
+                ))}
+              </div>
             </section>
 
             <section className="status-timeline" aria-label="Status message center">
@@ -15075,6 +15437,27 @@ export function App() {
               </header>
               <div className="status-timeline-list">
                 {statusTimelineEntries.map((entry) => (
+                  <article className={`status-timeline-entry ${entry.tone}`} key={entry.id}>
+                    <span className="status-timeline-dot" aria-hidden="true" />
+                    <div>
+                      <strong>{entry.title}</strong>
+                      <p>{entry.detail}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="status-timeline" aria-label="API response watcher">
+              <header className="status-dashboard-heading">
+                <div>
+                  <span className="micro-label">API response watcher</span>
+                  <strong>Latest website, ScryDex, and Square responses</strong>
+                </div>
+                <span>{countLabel(apiResponseEntries.length, "response")}</span>
+              </header>
+              <div className="status-timeline-list">
+                {apiResponseEntries.map((entry) => (
                   <article className={`status-timeline-entry ${entry.tone}`} key={entry.id}>
                     <span className="status-timeline-dot" aria-hidden="true" />
                     <div>
@@ -15407,7 +15790,7 @@ export function App() {
                     </button>
                   </div>
                   <div className="inventory-location-grid" aria-label="Saved in-store locations">
-                    {inStoreInventoryLocations.map((location) => (
+                    {inventoryLocationOptions.map((location) => (
                       <button
                         type="button"
                         key={location}
@@ -15422,7 +15805,7 @@ export function App() {
                         <small>Use for intake</small>
                       </button>
                     ))}
-                    {inStoreInventoryLocations.length === 0 ? (
+                    {inventoryLocationOptions.length === 0 ? (
                       <p className="empty-table">No in-store locations have been saved yet.</p>
                     ) : null}
                   </div>
@@ -15879,7 +16262,7 @@ export function App() {
                     />
                   </label>
                   <datalist id="inventory-location-options">
-                    {inStoreInventoryLocations.map((location) => (
+                    {inventoryLocationOptions.map((location) => (
                       <option key={location} value={location} />
                     ))}
                   </datalist>
@@ -15945,6 +16328,23 @@ export function App() {
                     <Icon name="plus" />
                     <span>Add Inventory</span>
                   </button>
+                  <button
+                    type="button"
+                    className="secondary-command"
+                    onClick={() => void handleInventoryIntake({ printAfter: true })}
+                  >
+                    <Icon name="tag" />
+                    <span>Add + Print Label</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-command"
+                    disabled={!lastIntakeLabelItem}
+                    onClick={() => lastIntakeLabelItem && void handlePrintLabel(lastIntakeLabelItem)}
+                  >
+                    <Icon name="tag" />
+                    <span>Print Last Label</span>
+                  </button>
                 </div>
               </div>
               ) : null}
@@ -15958,8 +16358,8 @@ export function App() {
                   {inventoryMode === "updates"
                     ? "Available stock only; updates never create new inventory"
                     : inventoryMode === "locations"
-                      ? `${inStoreInventoryLocations.length} in-store pull location${
-                          inStoreInventoryLocations.length === 1 ? "" : "s"
+                      ? `${inventoryLocationOptions.length} in-store pull location${
+                          inventoryLocationOptions.length === 1 ? "" : "s"
                         } saved on the LAN server`
                     : `${activeProfile.companyName} website authority after sync acceptance`}
                 </strong>
@@ -17190,7 +17590,7 @@ export function App() {
                       placeholder="Case, shelf, box, or binder"
                     />
                     <datalist id="inventory-edit-location-options">
-                      {inStoreInventoryLocations.map((location) => (
+                      {inventoryLocationOptions.map((location) => (
                         <option key={location} value={location} />
                       ))}
                     </datalist>
@@ -20102,6 +20502,31 @@ export function App() {
                         </small>
                       </div>
                       <label>
+                        <span className="micro-label">Display name</span>
+                        <input
+                          disabled={!managerControlsUnlocked}
+                          value={userEditDraft(user).name}
+                          onChange={(event) => updateUserEditDraft(user.id, { name: event.target.value })}
+                          placeholder="Employee name"
+                        />
+                      </label>
+                      <label>
+                        <span className="micro-label">Change PIN</span>
+                        <input
+                          disabled={!managerControlsUnlocked}
+                          inputMode="numeric"
+                          maxLength={4}
+                          type="password"
+                          value={userEditDraft(user).pin}
+                          onChange={(event) =>
+                            updateUserEditDraft(user.id, {
+                              pin: event.target.value.replace(/\D/g, "").slice(0, 4),
+                            })
+                          }
+                          placeholder="Leave blank"
+                        />
+                      </label>
+                      <label>
                         <span className="micro-label">Role</span>
                         <select
                           disabled={!managerControlsUnlocked || (user.role === "owner" && !ownerControlsUnlocked)}
@@ -20130,6 +20555,25 @@ export function App() {
                             <span>{section}</span>
                           </label>
                         ))}
+                      </div>
+                      <div className="settings-action-row">
+                        <button
+                          type="button"
+                          disabled={!managerControlsUnlocked}
+                          onClick={() => void handleOfflineUserProfileSave(user.id)}
+                        >
+                          <Icon name="check" />
+                          <span>Save User</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="danger-command"
+                          disabled={!managerControlsUnlocked || user.id === sessionUserId}
+                          onClick={() => void handleRemoveOfflineUser(user.id)}
+                        >
+                          <Icon name="trash" />
+                          <span>Remove</span>
+                        </button>
                       </div>
                     </article>
                   ))}

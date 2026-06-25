@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Pug Game Shop Card Manager
  * Description:       White-label serialized trading-card inventory and store operations for WooCommerce.
- * Version:           0.202.13
+ * Version:           0.202.14
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * WC requires at least: 8.2

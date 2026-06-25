@@ -1,5 +1,86 @@
 # Revision Log
 
+## 2026-06-25 - 0.202.14 Middleman Diagnostics And User Controls
+
+### What Changed
+
+- Bumped release metadata from `0.202.13` to `0.202.14`.
+- Added a guarded LAN middleman ScryDex catalog/price worker that schedules a
+  daily authenticated WordPress catalog index run and records the latest
+  system-job result.
+- Added `last_scrydex_catalog_sync` to `/sync/status` so the Store App can show
+  ScryDex worker status, card rows, variants, price rows, and failure detail.
+- Expanded the Store App Status screen into a system/API health console for
+  WordPress, Square, ScryDex daily worker, manual queues, and latest response
+  summaries.
+- Fixed the inventory location selectors so saved location-tab entries and
+  locations already attached to inventory rows both appear in intake/update
+  dropdowns.
+- Added intake-side label printing with `Add + Print Label` and `Print Last
+  Label`, using the same local DYMO first and LAN fallback print path as the
+  inventory update panel.
+- Added LAN-backed manager controls to rename PIN users, change 4-digit PINs,
+  and remove users while preserving hashed PIN storage and last-manager
+  protection.
+
+### Why
+
+The middleman should be the operational hub for sync and diagnostics, while
+WordPress remains the public source of truth and credential holder for the
+catalog index route. Staff also needed a single app screen that explains API
+health and queues in plain English, plus day-to-day controls for labels,
+locations, and employee PINs.
+
+### Files Affected
+
+- `apps/local-sync-server/src/cli.mjs`
+- `apps/local-sync-server/src/localSyncStore.mjs`
+- `apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `apps/local-sync-server/src/localSyncServerContract.mjs`
+- `apps/local-sync-server/package.json`
+- `apps/local-sync-server/tests/local-sync-server-contract.mjs`
+- `apps/local-sync-server/tests/local-sync-server-users-health.mjs`
+- `apps/offline-app/src/App.tsx`
+- `apps/offline-app/src/data/localSyncServerClient.ts`
+- `apps/offline-app/src/styles.css`
+- `apps/offline-app/package.json`
+- `apps/offline-app/package-lock.json`
+- `apps/offline-app/src-tauri/tauri.conf.json`
+- `apps/offline-app/src-tauri/Cargo.toml`
+- `apps/offline-app/src-tauri/Cargo.lock`
+- `apps/wordpress-plugin/tcg-store-platform.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `apps/wordpress-plugin/readme.txt`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+- `scripts/tests/production-release-package-contract.mjs`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- Added `apps/local-sync-server/tests/local-sync-server-users-health.mjs`.
+- `node --check apps/local-sync-server/src/localSyncStore.mjs`
+- `node --check apps/local-sync-server/src/localSyncHttpServer.mjs`
+- `node --check apps/local-sync-server/src/cli.mjs`
+- `npm.cmd --prefix apps/local-sync-server run test:users-health`
+- `npm.cmd --prefix apps/local-sync-server run test`
+- `npm.cmd --prefix apps/offline-app run build`
+
+### Rollback Notes
+
+- Set `PUG_SCRYDEX_DAILY_SYNC_DISABLED=true` or
+  `LOCAL_SYNC_SCRYDEX_DAILY_SYNC_DISABLED=true` to pause the new middleman
+  ScryDex daily worker without rolling back the release.
+- Set `PUG_SCRYDEX_DAILY_SYNC_HOUR` or `LOCAL_SYNC_SCRYDEX_DAILY_SYNC_HOUR`
+  to move the daily refresh window.
+- No database rollback is required. User PIN changes remain hashed in the
+  local SQLite user table; restore from the middleman SQLite backup if a user
+  policy change must be reversed wholesale.
+
 ## 2026-06-25 - 0.202.13 Full Inventory Bootstrap Sync
 
 ### What Changed

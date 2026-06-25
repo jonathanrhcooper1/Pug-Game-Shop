@@ -3,7 +3,7 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.202.14
 Release date: 2026-06-17
 Last updated: 2026-06-17
 Document purpose: Generated index of source/config/test files included in the repository handover.
@@ -39,13 +39,21 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/local-sync-server/config/windows-service.manifest.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/package.json | Project source/configuration | .json | Covered by related unit/contract test |
 | apps/local-sync-server/src/cli.mjs | LAN middleman server source | .mjs | Covered by related unit/contract test |
+| apps/local-sync-server/src/dymoLabelPrinter.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/gradedPricingProviders.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/lanServerUrl.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncDiscovery.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncHttpServer.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncServerContract.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncStore.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/scrydexVisionIdentifier.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/squareCatalogInventorySyncer.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/squareInventoryCountsPuller.mjs | LAN middleman server source | .mjs | Covered by related unit/contract test |
+| apps/local-sync-server/src/squareSalesReportsPuller.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/squareTerminalConnector.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/wordpressCatalogExportPull.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressCatalogFallback.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/wordpressCatalogIndex.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressCreditPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressCustomerUpsertPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressEventCheckinPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
@@ -64,14 +72,24 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/local-sync-server/tests/local-sync-server-event-create.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-fulfillment.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-hold-expiry.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-inventory-quantity-update.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-kiosk-payment.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-locations.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-maintenance.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-multi-client.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-persistence.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-runtime.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-square-sales-reporting.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-square-terminal.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-trade-ins.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-users-health.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-wordpress-inventory-square-sync.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/scrydex-reference-search.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/square-inventory-counts-puller.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/square-sales-reports-puller.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/wordpress-catalog-export-pull.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-catalog-fallback.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-credit-push.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-customer-push.mjs | End-to-end or contract test | .mjs | Test file |
@@ -85,6 +103,10 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/local-sync-server/tests/wordpress-inventory-sale-push.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-kiosk-push.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-reports-pull.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tools/daily-price-sync.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/dump-inventory-snapshots.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/force-pull-website.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/lib/ops-common.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/README.md | Project source/configuration | .md | Covered by related unit/contract test |
 | apps/offline-app/config/sqlite-schema.manifest.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/config/windows-package.manifest.json | Project source/configuration | .json | Covered by related unit/contract test |
@@ -98,7 +120,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/gen/schemas/windows-schema.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/migrations/0001_offline_foundation.sql | Offline app Windows shell source | .sql | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/src/lib.rs | Offline app Windows shell source | .rs | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/src/main.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/src/main.rs | Offline app Windows shell source | .rs | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/.rustc_info.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/adler2-708dea00d6a216f0/lib-adler2.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/ahash-1f91ace4ea87f7d9/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -402,16 +424,31 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-utils-42f4c2b5156c4012/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-utils-f832e78877122cda/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-winres-4e3ab25b6f2c47b1/lib-tauri_winres.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-0f2ea17e069aaa3f/test-bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-0f4720c1b6c57be1/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-4b8494d5fcbd18dd/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-51bbc55f557653ec/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-575d17ff3c794684/test-lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-681d7e0c07901592/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-68a5ceb981b6f2ac/test-lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-6b929a06964ce9f7/test-bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-7b184b692af0f5d6/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-7d70825afb185135/test-lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-8376e4b4bc722e61/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-8a7845a13713221d/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-9111ff56b117d3e5/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-920d858d4e9e3cd9/test-bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-9219f087df066777/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-945a96b7a9633f77/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-9ba80fbb313fe05d/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-aac48c9aa5811bc1/test-lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-ade9e3566cbeb53c/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-bd15e7e9619ada7d/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-c2765b1209e7618c/test-bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-c28b79c62e4e101d/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-e3bd45ac22e74e52/test-bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-ed11726ea865df6d/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-f9e9a0805776efac/test-lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/tendril-9b7dba683de5f9e0/lib-tendril.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-295b8b286a75f786/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-a54c91ae6ec73860/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -542,12 +579,21 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/debug/build/serde_core-2edbf5ce1d61934b/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/serde_core-35ba2c05936e7c77/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/tauri-plugin-shell-605119d3fea44e97/out/global-scope.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-51bbc55f557653ec/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-51bbc55f557653ec/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-51bbc55f557653ec/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-7b184b692af0f5d6/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-7b184b692af0f5d6/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-7b184b692af0f5d6/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ade9e3566cbeb53c/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ade9e3566cbeb53c/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ade9e3566cbeb53c/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-c28b79c62e4e101d/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-c28b79c62e4e101d/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-c28b79c62e4e101d/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ed11726ea865df6d/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ed11726ea865df6d/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ed11726ea865df6d/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/thiserror-e196c11b7df54c50/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/web_atoms-327bfd391b0ca720/out/generated.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/debug/build/web_atoms-327bfd391b0ca720/out/named_entities.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
@@ -749,7 +795,19 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/release/.fingerprint/tauri-runtime-wry-08b7167c61e37b5e/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/tauri-utils-9de669c7da58f7bb/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/tauri-winres-a7474e0510b7a51d/lib-tauri_winres.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-0c4bb15ad0ebb838/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-0f2a934f21cc8e5e/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-20fe8c0b8e44d93f/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-25610440e75d9839/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-70b196552d90310d/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-7ac34b269f979dc4/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-802e0f9adb1fac0b/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-8ec64449c7ae2d23/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-ac888bafdd6a3639/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-da06e41570641444/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-e6180fe3a0526de1/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-ea5ca69a984a1a6a/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-f84dae4b31070aca/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/tendril-58f1dcee953999bb/lib-tendril.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/thiserror-4d128aa971afa30b/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/thiserror-61fcb5faaba2b6c2/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -976,9 +1034,45 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tauri-runtime-wry-091e77664e9daa6a/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tauri-runtime-wry-0b165859664a396a/lib-tauri_runtime_wry.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tauri-utils-a533a043f80c7346/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-06c54500aee2de84/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-0f4720c1b6c57be1/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-0f4720c1b6c57be1/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-23da1fe3606343f2/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-2a4b06499e957a5f/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-2a4b06499e957a5f/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-2d7dcc6c3c369eff/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-2d7dcc6c3c369eff/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-3797014ab864827b/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-3797014ab864827b/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-3fa992f1abb00c75/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-3ffa27bb6bc9d667/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-5dad1e4a01651b56/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-5fcc0aa53958a982/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-7a5b2b30230d29ca/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-804cd54a5a7bd8af/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-8a7845a13713221d/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-8a7845a13713221d/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-8bb50ebdb41691f1/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-9111ff56b117d3e5/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-9111ff56b117d3e5/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-970a14d5b06b6857/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-9ba80fbb313fe05d/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-9ba80fbb313fe05d/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-9d421f10231ba2dd/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-a6a4b65ad67c8990/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-a6a4b65ad67c8990/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-ac3733f3bb65d442/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-ac3733f3bb65d442/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-ae5c8b4e1ec03e9b/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-bc3f99f2ddfc3f1d/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-bc3f99f2ddfc3f1d/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-ccfec68d5737c23f/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-ccfec68d5737c23f/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-cfc4003706710fa5/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-dfb3df23d60f7edb/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-dfb3df23d60f7edb/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-fe15cf74ce4c1b13/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-fe15cf74ce4c1b13/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/thiserror-01db21e857368487/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/thiserror-040be03b201db952/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/thiserror-2a9af6c4948fc03a/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -1057,20 +1151,141 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/serde-ac8dda2dbd7d2d1b/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/serde_core-1e83e2134ed52895/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tauri-plugin-shell-ed2d1f2ad9e73e1f/out/global-scope.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/135a8c710aa645b775a9b78a2fcac949a82632da6c2abbb83f419c220fbf9043.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/2115a8c9cfe9564b1d27f6bc617aa34d9f9c4e9973f2ea7b7b951a43df61ce44.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/32d421cb9ccad0f83b3923d3087928e52ab738b4f9d86eba4dbb7cb0a4cfbbda.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/5c097914cc25707575f168edee194187dcfc8e3bdafe3e57a38a25e31b70dc47.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/7e4959647b3b713e42fd9de58ce56cd4da1b542bc5f02ed9ea5705f642975f9f.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/8867a88fcf09715036d7aba2ddbdfff63c0aa74389691a07a1ee3c89840f8188.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/914549572e5b237c154432ea303e84491449a4fc8152e4e435025b8e0c80d21d.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/96a6c6734704f7b435a81c9e8adddf6f171c005a56375de85b1d7f74a7879d98.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/a3ecd604d49b95994b2c2db05a0b593104d5042b86e910887289d2cd56b2e77a.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/cf63d50d6616c29c8ac3e55228d8d73fcd13c9e29c60a3a9109d5e97cc681b39.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-06c54500aee2de84/out/tauri-codegen-assets/cf825fe6ae7518ec207cc7419ff9e72b0b47d3245ce17f6f8e6a64d6a4acdcc0.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-23da1fe3606343f2/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-23da1fe3606343f2/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-23da1fe3606343f2/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-23da1fe3606343f2/out/tauri-codegen-assets/2233b1935212eb6dac418e331a9c5228c6808db6505320094c0577052e68f678.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-23da1fe3606343f2/out/tauri-codegen-assets/7e7e91040c406f526ec84d70a4db560ece184ddfad4b2bb6ccdbdb1cb31f8c7e.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-23da1fe3606343f2/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3fa992f1abb00c75/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3fa992f1abb00c75/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3fa992f1abb00c75/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3fa992f1abb00c75/out/tauri-codegen-assets/03b7384b0b23ad1d5760053eb147ec27325adb6c9d1ee64726fc1530b9f92aff.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3fa992f1abb00c75/out/tauri-codegen-assets/c2f45f3be3b9f65d7aea4b9ecfe80adb51ea7b0a634e249d3310fbb68e8cd2f1.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3fa992f1abb00c75/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/0526c5566ce48d0bb3ce5551c3c6fe91e81f394b53b895728537e2d545f0c957.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/0696e67cb823dc7808c9725f316aa4f2472da9464e75bfa00790ce2f1018bc12.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/100eca1d8aba59f56244183180ee4797c05a91bc96a2607390b6b2a31d362d07.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/12284021589d38dfb35992ed1417667043146c1aa3451f541d11c6fc6538f411.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/30149519cf43d4ce44ab42e6deb62e5571a2aa5654bdb7196381afc956064958.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/40d0d8eb77055359b746e9d758ccf57e385c1f19796d9f748043df05de0ee942.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/4463b5589ec518cfaadc0f59d4a1d38638b731b3eb4c57fa3654d25c763410df.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/48762aa130aceaa50e358ddc3a1f817b7a2ec9ca3aaf85ed096f0ea5976d88e8.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/4d8a6718588dd3134262a19082e35d97c7492bc5efb081af7b20414db984bbe5.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/565aef26cc42cd6aa3ea549a0b5481053f355cc0f9d466802e42394759a7fd2f.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/56e611b2451db50292bb904785faba6b687bfe0448460eb8d495a55013d17bfd.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/5f5a53d297eb6512a035487c4779a3d4590cc18462b23bbc3b4b0ce01bb91e39.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/63a27a0f7c4c41902e54b62bca7ab8745dd1b9600c2524389dba323cdba14064.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/734e58b53f81d3fe3d5468687ecc65ca85b7b005ceebfcbdac9c86668cc23575.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/761acea8ad53bd2c2d64675bcff92c2791ebeae7a670e6ee293f2e56018bb640.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/76bfa5dbe67aaf1a1bbb636e449b9f3fee3a4d54ebb2730a1a6c1fb763540b52.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/83d80c9ab3367a0ec69f760becc02ed39cc4514c7297f6b95b48ba7ab1e249d2.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/893083e38902b845c927d3a080227ebca034cd43a4dd2573ca9bd2bb7b5bcec6.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/8c9f7619fad2941353fef02cd4c97553c3a726f8b1de287414e20954b8b67325.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/8dcb13b5edad72f40dab6e6c641916dce5c758c46c160898e2d56c3d377052b0.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/934859cbe0a273a1c800cff1bcd455c062dea22fdda165867115e81ed2003d8a.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/98be540c7eb19a977308fd584b6ca08c3bfe82c26b233f10a89eacb116f593c1.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/99219629c55f4d433e93ebd17e9e4438c81f78e853c2701b0e09077685dc2a25.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/9d760c8ffd5b900aa091aba5986dcae9479d501c3953a4be54fe29d86da30b6a.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/a150cc6aa112d65b7a25b2f2df37d9b9e126b266cc9fd9d5d09f82a89011ce76.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/a28b43eee1b99f6c810ee99e5634e62530fbb904f13ca555a614dd43a3374bed.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/ab6f7fede2d4ea740c90dde650ede27d846f1975e7dd6da0ba2b17d716fa9164.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/b47e449b26b6ae727db8313b45c235e1c27ceee0e9ce3883ec9a26fc2826d312.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/c03cc46a238f74e030eedbd5bd8cd06de7cb50a06fd9c1db90025060e71d132d.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/cc9e74355717ea02f768e29daf5a127c80ce41557903ba8ffd9c241e62dedf6c.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/da253a5683fca3a113b6e56bf29fe6c10f1785e47e2ce2b2273cdd822d6b48a7.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/f0273ec3e916d312ecaf4830dd4facccb5caf3c0018b4498d803e6934f5e6a28.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/f49a0dda90f80fdf66a542a778581e5829c3ad1eb271f0c7c20c253a5105cbac.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/f6a16eee99fad108ae08b1078344f85198d8127af339e541461cf008d235c29b.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/f8a800999682b36f25a1c43d40d6f4fdd77395a31ad62a8f62cbfeb5150d33ce.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/f8e57a8ae75b0d5e64523eb229af791f2f3436a117d6ca4fc53d081a4c26e15c.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5dad1e4a01651b56/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5dad1e4a01651b56/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5dad1e4a01651b56/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5dad1e4a01651b56/out/tauri-codegen-assets/4ab6f85e8913448be4dd00850676f43c4253d4093e9c0540c2265338fb9423cd.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5dad1e4a01651b56/out/tauri-codegen-assets/bfd6c4d952b4e27987901a7082603b7be738dfa3b89694e8d2edf6a43e11eab5.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5dad1e4a01651b56/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5fcc0aa53958a982/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5fcc0aa53958a982/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5fcc0aa53958a982/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5fcc0aa53958a982/out/tauri-codegen-assets/10bfd9b55f2e92d269d197c79aea6851092a903143403fb81735f3fd691bffa1.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5fcc0aa53958a982/out/tauri-codegen-assets/330b69ec0be4765d8e34a752124e58e270dd083b8c11cf92a86355a1ce3dcb19.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-5fcc0aa53958a982/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-7a5b2b30230d29ca/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-7a5b2b30230d29ca/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-7a5b2b30230d29ca/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-7a5b2b30230d29ca/out/tauri-codegen-assets/40407f58bedd739ceaed42b15f133792c522a8b29c3d7aab1dd0575aac7fb004.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-7a5b2b30230d29ca/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-7a5b2b30230d29ca/out/tauri-codegen-assets/f80fea71b0b82b4abe78c6984ec613658b891693d3a82a9a557c826554611740.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-804cd54a5a7bd8af/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-804cd54a5a7bd8af/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-804cd54a5a7bd8af/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-804cd54a5a7bd8af/out/tauri-codegen-assets/6fa849888b69dbb9125c91a3a4884df88ca496d3f31d3df4812aaec78df0d391.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-804cd54a5a7bd8af/out/tauri-codegen-assets/a76caeb85e272dc4eb57a0594a7004aabf3330d00573a966e4fe2724d2c42b4c.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-804cd54a5a7bd8af/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-8bb50ebdb41691f1/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-8bb50ebdb41691f1/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-8bb50ebdb41691f1/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-8bb50ebdb41691f1/out/tauri-codegen-assets/17aaf180c6c44aee66cb560bc62ad6253c5040df540e3c8dfc2746b950697313.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-8bb50ebdb41691f1/out/tauri-codegen-assets/2d0cf4c79dec2fd369d5cc5211e0702d63ae8a531dab9141c2205dbaea781c44.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-8bb50ebdb41691f1/out/tauri-codegen-assets/cc9e74355717ea02f768e29daf5a127c80ce41557903ba8ffd9c241e62dedf6c.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-970a14d5b06b6857/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-970a14d5b06b6857/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-970a14d5b06b6857/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-970a14d5b06b6857/out/tauri-codegen-assets/40407f58bedd739ceaed42b15f133792c522a8b29c3d7aab1dd0575aac7fb004.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-970a14d5b06b6857/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-970a14d5b06b6857/out/tauri-codegen-assets/f80fea71b0b82b4abe78c6984ec613658b891693d3a82a9a557c826554611740.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-9d421f10231ba2dd/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-9d421f10231ba2dd/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-9d421f10231ba2dd/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-9d421f10231ba2dd/out/tauri-codegen-assets/40407f58bedd739ceaed42b15f133792c522a8b29c3d7aab1dd0575aac7fb004.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-9d421f10231ba2dd/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-9d421f10231ba2dd/out/tauri-codegen-assets/f80fea71b0b82b4abe78c6984ec613658b891693d3a82a9a557c826554611740.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-ae5c8b4e1ec03e9b/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-ae5c8b4e1ec03e9b/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-ae5c8b4e1ec03e9b/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-ae5c8b4e1ec03e9b/out/tauri-codegen-assets/2f9b201c31f3f66623405c0035f24abd409e6978409a391dc0aa9290f969bb12.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-ae5c8b4e1ec03e9b/out/tauri-codegen-assets/9b4344f049171166663533f4a29194268d44f141ea80fc3ba3ba20b55d7f3ba4.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-ae5c8b4e1ec03e9b/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/20c8088ab4eb4b6e37288259f4e99d228c66593e3d7584393baee2fc29feab02.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/42c513df620294fe86a4d4e7bb0010d4060126da3bded8d86ed36edcc4caa2a9.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/4e235a69d4a4f6d0c5611c71da5bee116312e2daa24d6ba40eb9ec5316665285.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/5d05304a14cbbe2d483b21072c4c5aba2a6aaf6fcbdc94d13e5422091048757e.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/68966df326cf7cab8fabe9796c640bed55b278ef758597d1e5945efbe7a52257.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/7f22bfc7638203c4c1110cb6b189bbea3aa5751870e1bebc5ed69482fe8f2d97.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/82270724a1d4134fcf71298c0f3101e7c4846a7944e5f56813340712a12de81d.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/8aa450c48b438baeef66a66032011508daff179c4bd9961da064b097e91379bc.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/933fecfde3aa370286c97a26801590fd98bdf8a1e4449db5448e170826599800.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/a7bc9fc2a764a9f648ed15366ad5d07dd05654b3c8271a4e9ee5ed10f37d6e6b.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/acb90b0d61cf06dc29e33c3fb76c5fd163b15e6f8d94ffdd71d8f91ef1d47da2.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/b226c0457c916914421bde65930f32749c47d8608217d4a0d551d7e4ec5b86a1.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/b24243e0fc40f14856707f6b45e955b172e5039eb6a714766e3472ea27342835.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/b2680c34b52872026cbc39a3ce1523dcf29c07b54cb87fc1fb7e7c0b87f0c8b7.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/bade24478ee1e2b9e6694cb263c12f35e560509d2b587ab1879a478672fb5b54.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/c5b248a22ae3d3e377f52ac9f80bdb0b2d2147c838462e67977583920528555e.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/df7d980499b51b5c1a20583440dd38375418d67bd8abb62c96c1fa06f6470dc1.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/e1b1975af211e59538d2020c438e507b19414277ec6c8bfd49f9f0c1ad200d03.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-cfc4003706710fa5/out/tauri-codegen-assets/e7f5d57d84c8c16feedba8c2f04648d62fedddb810a6f37d6dd00b28dc934201.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/thiserror-040be03b201db952/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/tauri.conf.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/App.tsx | Offline app frontend source | .tsx | Covered by related unit/contract test |
@@ -1079,11 +1294,12 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src/data/offlineQueueBridge.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/offlineWorkspace.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/tauriDevicePairingAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src/data/tauriDymoPrinterAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/tauriLocalSyncDiscoveryAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/tauriOfflineSyncAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/tauriQueueAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/tauriSecureStoreAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src/main.tsx | Offline app frontend source | .tsx | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src/main.tsx | Offline app frontend source | .tsx | Covered by related unit/contract test |
 | apps/offline-app/src/styles.css | Offline app frontend source | .css | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/tests/local-queue-persistence-contract.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/offline-app/tests/local-sync-client-contract.mjs | End-to-end or contract test | .mjs | Test file |
@@ -1101,8 +1317,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/storefront-theme-or-blocks/README.md | WordPress storefront theme source | .md | Covered by related unit/contract test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/404.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/editor.css | WordPress storefront theme source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/main.css | WordPress storefront theme source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/js/main.js | WordPress storefront theme source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/main.css | WordPress storefront theme source | .css | Covered by related unit/contract test |
+| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/js/main.js | WordPress storefront theme source | .js | Covered by related unit/contract test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/footer.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/front-page.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
@@ -1150,6 +1366,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Api/V1/InventoryRouteRuntimeConfigurator.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandler.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandlerFactory.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/Api/V1/InventoryUpdateRouteHandler.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/KioskOrderController.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionCurrentRowProvider.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionRouteHandler.php | WordPress plugin source | .php | Covered by related unit/contract test |
@@ -1206,6 +1423,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/ReportsController.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/Api/V1/ScryDexWebhookController.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Auth/AdminAccess.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Auth/CapabilityRegistry.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Auth/RoleManager.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
@@ -1302,6 +1520,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Migrations/Version0013ExternalInventoryMappings.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Migrations/Version0014ReferenceVariantImages.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Migrations/Version0015ProviderPriceReferenceBackfill.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
+| apps/wordpress-plugin/src/Migrations/Version0016InventoryQuantityOnHand.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
+| apps/wordpress-plugin/src/Migrations/Version0017SquareLocationMapping.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Offline/OfflineConflictListRequest.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Offline/OfflineConflictListRequestParser.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Offline/OfflineConflictListRequestValidationResult.php | WordPress plugin source | .php | Covered by related unit/contract test |
@@ -1483,6 +1703,11 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/ScryDex/ScryDexSyncPageProcessor.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/ScryDex/ScryDexSyncPlanner.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookEventRepository.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookPayloadParser.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookRefreshRunner.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookSignatureVerifier.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookSyncDispatcher.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Settings/BrandingSettings.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Settings/CustomerCreditSettings.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Settings/FulfillmentNotificationSettings.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
@@ -1748,6 +1973,11 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/tests/Unit/ScryDexSyncPageProcessorTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetSettingsTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookControllerContractTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookPayloadParserTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookRefreshRunnerSourceTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookSignatureVerifierTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookSyncDispatcherTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SerializedCartItemValidatorTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SerializedInventoryHookRegistryTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SerializedOrderLifecyclePlannerTest.php | End-to-end or contract test | .php | Test file |
@@ -1808,8 +2038,17 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | docs/SYSTEM_MAP.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | docs/TESTING.md | Project source/configuration | .md | Covered by related unit/contract test |
 | docs/UI_FLOWS.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| docs/audit/deep-audit-2026-06-24T09-03-53-224Z/summary.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | docs/branding/the-pug-customer-ui.css | Project source/configuration | .css | Covered by package/build/smoke tests or pending targeted test |
 | docs/branding/the-pug-rebrand-plan.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| docs/runbooks/CODEX_FULL_RELEASE_INSTALL_PROMPT.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| docs/runbooks/LAN_SERVER_CODEX_INSTALL.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| docs/runbooks/MIDDLEMAN_CODEX_DEPLOYMENT_PROMPT.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| exports/inventory-snapshot-20260623T181543Z/local_app_inventory_items.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| exports/inventory-snapshot-20260623T181543Z/local_app_operation_queue.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| exports/inventory-snapshot-20260623T181543Z/local_app_reference_cards.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| exports/inventory-snapshot-20260623T181543Z/website_inventory_items.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| exports/inventory-snapshot-20260623T181543Z/website_reference_cards.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | fixtures/README.md | Project source/configuration | .md | Covered by related unit/contract test |
 | fixtures/mocks/pos/payment-responses.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | fixtures/mocks/scrydex/cards-page-1.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -1847,6 +2086,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | release-package/DATABASE_SCHEMA_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/ENVIRONMENT_VARIABLES.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/EVENTS_AND_TOPDECK_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| release-package/GO_LIVE_VERIFICATION_CHECKLIST.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/KIOSK_AND_OFFLINE_APP_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/OPEN_ITEMS.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
@@ -1865,19 +2105,25 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | release-package/TECHNICAL_ARCHITECTURE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/TROUBLESHOOTING_RUNBOOK.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | scripts/README.md | Build/deployment/test automation | .md | Covered by related unit/contract test |
+| scripts/copy-production-release-to-usb.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/generate-release-documentation.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/import-square-catalog-local-inventory.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/lib/local-env.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/lib/staging-ssh.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/local-clear-card-inventory-and-queues.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/local-sync-smoke.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/package-local-sync-server.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/package-production-release.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/package-wordpress-plugin.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/package-wordpress-theme.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/prepare-pug-grading-singles-import.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/production-clear-card-inventory.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/production-configure-commerce-menu.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-configure-public-pages.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-configure-scrydex.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-install-storefront-theme.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/production-install-wordpress-package.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/production-repair-imported-inventory.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-local-pickup-fulfillment-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-local-sync-inventory-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-local-sync-square-sale-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
@@ -1885,6 +2131,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | scripts/production-run-scrydex-index.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-woocommerce-card-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-seed-visible-card-inventory.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/production-upload-notification-sound.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-verify-active-syncs.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-verify-public-shortcodes.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-verify-reference-search.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
@@ -1892,6 +2139,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | scripts/run-offline-app-rust-tests.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/run-offline-app-windows-build.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/scrydex-live-smoke.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/square-one-card-standalone-probe.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/square-seed-pos-singles-layout.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/staging-check-routes.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/staging-configure-inventory-runtime.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/staging-configure-offline-pairing.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
@@ -1905,14 +2154,17 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | scripts/staging-run-scrydex-sync.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/staging-run-search-benchmark.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/staging-upload-wordpress-package.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/tests/local-clear-demo-data-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/local-sync-server-package-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/local-sync-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/production-clear-card-inventory-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-commerce-menu-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-install-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-pickup-fulfillment-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-sync-inventory-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-sync-square-sale-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-sync-workflows-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/production-notification-sound-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-public-pages-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-public-shortcodes-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-reference-search-contract.mjs | Build/deployment/test automation | .mjs | Test file |
@@ -1922,7 +2174,11 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | scripts/tests/production-scrydex-verify-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-theme-install-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-woocommerce-card-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/pug-grading-singles-import-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/scrydex-live-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/square-local-inventory-import-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/square-one-card-standalone-probe-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/square-pos-singles-layout-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/staging-install-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/staging-inventory-runtime-config-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/staging-inventory-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |

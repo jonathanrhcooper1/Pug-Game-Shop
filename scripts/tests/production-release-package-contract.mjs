@@ -139,8 +139,8 @@ assert.ok(
 for (const marker of [
   "LAN Server Codex Install Prompt",
   "Deploy-Pug-LAN-Server-Patch.ps1",
-  "Pug Store App-0.202.13.exe",
-  "Pug Kiosk App-0.202.13.exe",
+  "Pug Store App-0.202.14.exe",
+  "Pug Kiosk App-0.202.14.exe",
   "This workstation name",
   "/devices/status",
   "WordPress inventory bootstrap complete",
@@ -151,7 +151,7 @@ for (const marker of [
 
 for (const marker of [
   "Codex Full Release Install Prompt",
-  "0.202.13",
+  "0.202.14",
   "D:\\The Pug Installers",
   "LOCAL_SYNC_SECRETS_FOR_MIDDLEMAN.env",
   "LB1B9Z4GVG1BH",

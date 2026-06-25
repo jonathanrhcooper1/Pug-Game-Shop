@@ -1071,6 +1071,10 @@ h2 {
   flex: 0 0 auto;
 }
 
+.status-dashboard-subheading {
+  margin-top: 12px;
+}
+
 .status-inline-message {
   margin: 0;
   padding: 8px 10px;
@@ -1722,7 +1726,7 @@ h2 {
 
 .user-access-card {
   display: grid;
-  grid-template-columns: minmax(170px, 0.7fr) 130px minmax(240px, 1fr);
+  grid-template-columns: minmax(160px, 0.75fr) minmax(150px, 1fr) 120px 130px;
   gap: 9px;
   align-items: start;
   padding: 10px;
@@ -1759,6 +1763,7 @@ h2 {
   font-size: 12px;
 }
 
+.user-access-card input,
 .user-access-card select,
 .user-access-editor input,
 .user-access-editor select {
@@ -1772,6 +1777,7 @@ h2 {
 }
 
 .access-chip-grid {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1822,6 +1828,35 @@ h2 {
   border-radius: 7px;
   font-size: 12px;
   font-weight: 900;
+}
+
+.settings-action-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.settings-action-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  color: #102015;
+  background: var(--mint);
+  border: 1px solid rgba(64, 144, 88, 0.24);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.settings-action-row .danger-command {
+  color: #ffffff;
+  background: #c43e3e;
+  border-color: rgba(124, 22, 22, 0.32);
 }
 
 .content-grid {

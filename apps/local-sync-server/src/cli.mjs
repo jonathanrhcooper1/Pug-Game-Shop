@@ -99,6 +99,22 @@ const wordpressInventoryPollSeconds = boundedPollSeconds(
 const wordpressInventoryPollMaxPages = boundedPollPages(
   firstEnv("PUG_WORDPRESS_INVENTORY_POLL_MAX_PAGES", "LOCAL_SYNC_WORDPRESS_INVENTORY_POLL_MAX_PAGES") ?? "5",
 )
+const scryDexDailySyncDisabled = envFlag(
+  "PUG_SCRYDEX_DAILY_SYNC_DISABLED",
+  "LOCAL_SYNC_SCRYDEX_DAILY_SYNC_DISABLED",
+)
+const scryDexDailySyncCheckSeconds = boundedWorkerCheckSeconds(
+  firstEnv("PUG_SCRYDEX_DAILY_SYNC_CHECK_SECONDS", "LOCAL_SYNC_SCRYDEX_DAILY_SYNC_CHECK_SECONDS") ?? "300",
+)
+const scryDexDailySyncHour = boundedHour(
+  firstEnv("PUG_SCRYDEX_DAILY_SYNC_HOUR", "LOCAL_SYNC_SCRYDEX_DAILY_SYNC_HOUR") ?? "4",
+)
+const scryDexDailySyncGames = splitCsv(
+  firstEnv("PUG_SCRYDEX_DAILY_SYNC_GAMES", "LOCAL_SYNC_SCRYDEX_DAILY_SYNC_GAMES") ??
+    "pokemon,magicthegathering,lorcana,onepiece,gundam,yugioh,riftbound",
+)
+const scryDexDailySyncPageSize =
+  firstEnv("PUG_SCRYDEX_DAILY_SYNC_PAGE_SIZE", "LOCAL_SYNC_SCRYDEX_DAILY_SYNC_PAGE_SIZE") ?? "100"
 const eventsUsername = firstEnv("PUG_WORDPRESS_EVENTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const eventsApplicationPassword = firstEnv("PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
 const eventsAuthHeader = firstEnv("PUG_WORDPRESS_EVENTS_AUTH_HEADER", "PUG_WORDPRESS_AUTH_HEADER")
@@ -403,6 +419,19 @@ if (!wordpressInventoryPollDisabled && wordpressInventoryPull) {
   console.log("WordPress inventory polling not started; configure WordPress inventory pull credentials.")
 }
 
+if (!scryDexDailySyncDisabled && wordpressCatalogIndexer) {
+  startScryDexDailyCatalogSync(server, {
+    checkSeconds: scryDexDailySyncCheckSeconds,
+    hour: scryDexDailySyncHour,
+    games: scryDexDailySyncGames,
+    pageSize: scryDexDailySyncPageSize,
+  })
+} else if (scryDexDailySyncDisabled) {
+  console.log("ScryDex daily catalog/price sync disabled by environment.")
+} else {
+  console.log("ScryDex daily catalog/price sync not started; configure WordPress catalog index credentials.")
+}
+
 if (discoveryEnabled) {
   try {
     const discoveryResponder = await listenLocalSyncDiscoveryResponder({
@@ -487,6 +516,33 @@ function boundedPollPages(value) {
   }
 
   return Math.min(25, Math.max(1, parsed))
+}
+
+function boundedWorkerCheckSeconds(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+
+  if (!Number.isFinite(parsed)) {
+    return 300
+  }
+
+  return Math.min(3600, Math.max(60, parsed))
+}
+
+function boundedHour(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10)
+
+  if (!Number.isFinite(parsed)) {
+    return 4
+  }
+
+  return Math.min(23, Math.max(0, parsed))
+}
+
+function splitCsv(value) {
+  return String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function startSquareInventoryPolling(server, pollSeconds) {
@@ -624,4 +680,63 @@ function startWordPressInventoryPolling(server, pollSeconds, maxPages) {
     `WordPress inventory polling enabled every ${pollSeconds}s, up to ${maxPages} page(s) per cycle. First run will bootstrap all existing inventory before changed-since polling.`,
   )
   void run()
+}
+
+function startScryDexDailyCatalogSync(server, options) {
+  const store = server.localSyncStore
+
+  if (!store || typeof store.indexScryDexCatalogForSystem !== "function") {
+    console.warn("ScryDex daily catalog/price sync unavailable; local sync store was not attached to the HTTP server.")
+    return
+  }
+
+  let running = false
+  let lastRunKey = ""
+
+  const runIfDue = async () => {
+    if (running) {
+      return
+    }
+
+    const current = new Date()
+    const runKey = current.toISOString().slice(0, 10)
+
+    if (current.getHours() !== options.hour || lastRunKey === runKey) {
+      return
+    }
+
+    running = true
+    try {
+      const result = await store.indexScryDexCatalogForSystem({
+        source: "daily_middleman_worker",
+        games: options.games,
+        pageSize: options.pageSize,
+        maxPages: 10000,
+        maxExpansionPages: 10000,
+        indexExpansions: true,
+      })
+
+      lastRunKey = runKey
+
+      if (result.status === "ok") {
+        console.log(
+          `ScryDex daily catalog/price sync refreshed ${result.stored_cards ?? 0} card row(s), ${result.variants ?? 0} variant(s), ${result.prices ?? 0} price row(s).`,
+        )
+      } else {
+        console.warn(`ScryDex daily catalog/price sync blocked: ${result.code || result.status}`)
+      }
+    } catch (error) {
+      console.warn(`ScryDex daily catalog/price sync failed: ${error instanceof Error ? error.message : "Unknown error."}`)
+    } finally {
+      running = false
+    }
+  }
+
+  const interval = setInterval(runIfDue, options.checkSeconds * 1000)
+  interval.unref?.()
+  server.once("close", () => clearInterval(interval))
+  console.log(
+    `ScryDex daily catalog/price sync enabled around local hour ${options.hour}:00 for ${options.games.join(", ")}.`,
+  )
+  void runIfDue()
 }
