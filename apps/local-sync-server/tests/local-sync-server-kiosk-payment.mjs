@@ -77,6 +77,7 @@ try {
     },
   )
   assert.equal(paid.order.payment_status, "paid")
+  assert.equal(paid.order.status, "ready")
   assert.equal(paid.inventory_sale_finalized, true)
   assert.equal(paid.square_payment_capture_performed, false)
 
@@ -92,6 +93,59 @@ try {
 
   const soldInventory = await fetchJson(`${baseUrl}/inventory/search?q=${encodeURIComponent(item.barcode)}`)
   assert.equal(soldInventory.items[0].status, "sold")
+
+  const secondInventory = await fetchJson(`${baseUrl}/inventory/search?q=charizard`)
+  const secondItem = secondInventory.items[0]
+  const secondOrder = await fetchJson(`${baseUrl}/kiosk/orders`, {
+    method: "POST",
+    body: {
+      first_name: "Katherine",
+      last_name: "Johnson",
+      inventory_public_ids: [secondItem.public_id],
+    },
+  })
+
+  await fetchJson(`${baseUrl}/kiosk/orders/${secondOrder.order.order_id}/picks`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: { picked_item_ids: [secondItem.public_id] },
+  })
+
+  const secondPaid = await fetchJson(`${baseUrl}/kiosk/orders/${secondOrder.order.order_id}/payment`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: {
+      square_receipt_reference: "SQ-KIOSK-1002",
+      cashier_confirmed: true,
+    },
+  })
+  assert.equal(secondPaid.order.status, "pulling")
+  assert.equal(secondPaid.order.payment_status, "paid")
+
+  const completedBeforeReady = await fetchJson(
+    `${baseUrl}/kiosk/orders/${secondOrder.order.order_id}/status`,
+    {
+      method: "PATCH",
+      token: auth.session.token,
+      body: { status: "completed" },
+      expectedStatus: 409,
+    },
+  )
+  assert.equal(completedBeforeReady.code, "kiosk_ready_required")
+
+  const secondReady = await fetchJson(`${baseUrl}/kiosk/orders/${secondOrder.order.order_id}/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: { status: "ready" },
+  })
+  assert.equal(secondReady.order.status, "ready")
+
+  const secondCompleted = await fetchJson(`${baseUrl}/kiosk/orders/${secondOrder.order.order_id}/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: { status: "completed" },
+  })
+  assert.equal(secondCompleted.order.status, "completed")
 
   console.log("PASS local sync kiosk payment and picking")
 } finally {

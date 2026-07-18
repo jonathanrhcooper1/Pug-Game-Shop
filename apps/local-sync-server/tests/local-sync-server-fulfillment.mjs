@@ -4,6 +4,8 @@ import { createLocalSyncHttpServer } from "../src/localSyncHttpServer.mjs"
 
 let fulfillmentPullCalls = 0
 let fulfillmentStatusPushCalls = 0
+let remoteFulfillmentStatus = "awaiting_pull"
+let deferFulfillmentStatusPush = false
 
 const server = createLocalSyncHttpServer({
   storeId: "Pug Game Shop",
@@ -15,7 +17,7 @@ const server = createLocalSyncHttpServer({
     wordpressFulfillmentPull: async ({ limit, statuses }) => {
       fulfillmentPullCalls += 1
       assert.equal(limit, 25)
-      assert.deepEqual(statuses, ["processing", "completed", "on-hold"])
+      assert.deepEqual(statuses, ["processing", "ready-pickup", "completed", "on-hold"])
 
       return {
         status: "ok",
@@ -33,7 +35,7 @@ const server = createLocalSyncHttpServer({
             order_number: "9401",
             customer_name: "Ada Lovelace",
             order_status: "processing",
-            fulfillment_status: "awaiting_pull",
+            fulfillment_status: remoteFulfillmentStatus,
             payment_status: "paid",
             shipping_method_id: "local_pickup",
             shipping_method_title: "Local pickup",
@@ -64,7 +66,16 @@ const server = createLocalSyncHttpServer({
     wordpressFulfillmentStatusPush: async ({ orderId, status }) => {
       fulfillmentStatusPushCalls += 1
       assert.equal(orderId, 9401)
-      assert.equal(status, "ready_for_pickup")
+
+      if (deferFulfillmentStatusPush) {
+        return {
+          status: "blocked",
+          code: "wordpress_fulfillment_status_unavailable",
+          message: "WordPress fulfillment endpoint unavailable.",
+        }
+      }
+
+      remoteFulfillmentStatus = status
 
       return {
         status: "ok",
@@ -75,7 +86,7 @@ const server = createLocalSyncHttpServer({
           order_number: "9401",
           customer_name: "Ada Lovelace",
           order_status: "processing",
-          fulfillment_status: "ready_for_pickup",
+          fulfillment_status: remoteFulfillmentStatus,
           payment_status: "paid",
           shipping_method_id: "local_pickup",
           shipping_method_title: "Local pickup",
@@ -167,6 +178,14 @@ try {
   assert.equal(picked.order.all_items_picked, true)
   assert.deepEqual(picked.order.picked_item_ids, ["501"])
 
+  const refreshedAfterPick = await fetchJson(`${baseUrl}/fulfillment/orders?limit=25&status=pulling`, {
+    token: auth.session.token,
+  })
+
+  assert.equal(refreshedAfterPick.order_count, 1)
+  assert.equal(refreshedAfterPick.orders[0].fulfillment_status, "pulling")
+  assert.deepEqual(refreshedAfterPick.orders[0].picked_item_ids, ["501"])
+
   const statusUpdate = await fetchJson(`${baseUrl}/fulfillment/orders/9401/status`, {
     method: "PATCH",
     token: auth.session.token,
@@ -184,6 +203,68 @@ try {
   assert.equal(statusUpdate.payment_capture_performed, false)
   assertNoSecrets(statusUpdate)
 
+  const idempotentReady = await fetchJson(`${baseUrl}/fulfillment/orders/9401/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: { status: "ready_for_pickup" },
+  })
+  assert.equal(idempotentReady.transition_applied, false)
+  assert.equal(fulfillmentStatusPushCalls, 1)
+
+  const invalidRegression = await fetchJson(`${baseUrl}/fulfillment/orders/9401/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: { status: "pulling" },
+    expectedStatus: 409,
+  })
+  assert.equal(invalidRegression.code, "invalid_fulfillment_status_transition")
+  assert.equal(invalidRegression.current_status, "ready_for_pickup")
+  assert.equal(fulfillmentStatusPushCalls, 1)
+
+  const unknownOrder = await fetchJson(`${baseUrl}/fulfillment/orders/9999/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: { status: "pulling" },
+    expectedStatus: 409,
+  })
+  assert.equal(unknownOrder.code, "fulfillment_order_not_found")
+  assert.equal(fulfillmentStatusPushCalls, 1)
+
+  deferFulfillmentStatusPush = true
+  const deferredCompletion = await fetchJson(`${baseUrl}/fulfillment/orders/9401/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: { status: "completed" },
+  })
+  assert.equal(deferredCompletion.order.fulfillment_status, "completed")
+  assert.equal(deferredCompletion.order.source, "queued")
+  assert.deepEqual(deferredCompletion.order.picked_item_ids, ["501"])
+  assert.equal(deferredCompletion.wordpress_status_sync_deferred, true)
+
+  const refreshedQueuedCompletion = await fetchJson(`${baseUrl}/fulfillment/orders?limit=25`, {
+    token: auth.session.token,
+  })
+  assert.equal(refreshedQueuedCompletion.orders[0].fulfillment_status, "completed")
+  assert.equal(refreshedQueuedCompletion.orders[0].source, "queued")
+  assert.deepEqual(refreshedQueuedCompletion.orders[0].picked_item_ids, ["501"])
+
+  deferFulfillmentStatusPush = false
+  const replay = await fetchJson(`${baseUrl}/sync/push`, {
+    method: "POST",
+    token: auth.session.token,
+  })
+  const fulfillmentReplay = replay.results.find(
+    (result) => result.operation_type === "woocommerce_fulfillment_status",
+  )
+  assert.equal(fulfillmentReplay.status, "accepted")
+
+  const replayedOrder = await fetchJson(`${baseUrl}/fulfillment/orders?refresh=false`, {
+    token: auth.session.token,
+  })
+  assert.equal(replayedOrder.orders[0].fulfillment_status, "completed")
+  assert.equal(replayedOrder.orders[0].source, "queued")
+  assert.deepEqual(replayedOrder.orders[0].picked_item_ids, ["501"])
+
   const syncStatus = await fetchJson(`${baseUrl}/sync/status`)
   assert.equal(syncStatus.status, "ok")
   assert.equal(syncStatus.fulfillment_order_count, 1)
@@ -191,8 +272,8 @@ try {
   assert.equal(syncStatus.wordpress_fulfillment_status_push_connected, true)
   assertNoSecrets(syncStatus)
 
-  assert.equal(fulfillmentPullCalls, 1)
-  assert.equal(fulfillmentStatusPushCalls, 1)
+  assert.equal(fulfillmentPullCalls, 3)
+  assert.equal(fulfillmentStatusPushCalls, 3)
 
   console.log("PASS local sync server fulfillment")
 } finally {

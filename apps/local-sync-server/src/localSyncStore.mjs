@@ -61,6 +61,12 @@ const CLIENT_DEVICE_NETWORK_STATUSES = Object.freeze(["online", "offline", "degr
 const DEFAULT_HEARTBEAT_TIMEOUT_SECONDS = 90
 const DEFAULT_CARD_HOLD_SECONDS = 15 * 60
 const SCANNER_BARCODE_MAX_LENGTH = 13
+const DEFAULT_WOOCOMMERCE_FULFILLMENT_INGESTION_STATUSES = Object.freeze([
+  "processing",
+  "ready-pickup",
+  "completed",
+  "on-hold",
+])
 const SEED_REFERENCE_CARD_IDS = Object.freeze([
   "scrydex-pokemon-base-004",
   "scrydex-pokemon-jungle-060",
@@ -4840,8 +4846,28 @@ export function createLocalSyncStore(options = {}) {
       return blocked("invalid_kiosk_order_status", "Use queued, accepted, pulling, ready, completed, or expired for kiosk pickup status.")
     }
 
+    const transition = kioskOrderStatusTransition(order.status, nextStatus)
+    if (transition.status !== "ok") {
+      return transition
+    }
+
+    if (transition.idempotent) {
+      return {
+        status: "ok",
+        order: publicKioskOrder(order),
+        shared_queue_source: "local_sync_server",
+        wordpress_status_sync_deferred: false,
+        inventory_mutation_performed: false,
+        transition_applied: false,
+      }
+    }
+
     if (nextStatus === "completed" && order.payment_status !== "paid") {
       return blocked("kiosk_payment_required", "Enter the Square receipt and confirm payment before completing this pickup.")
+    }
+
+    if (nextStatus === "completed" && cleanKioskOrderStatus(order.status) !== "ready") {
+      return blocked("kiosk_ready_required", "Mark this fully picked order ready before completing the pickup.")
     }
 
     if (
@@ -4861,6 +4887,7 @@ export function createLocalSyncStore(options = {}) {
       shared_queue_source: "local_sync_server",
       wordpress_status_sync_deferred: true,
       inventory_mutation_performed: false,
+      transition_applied: true,
     }
   }
 
@@ -4945,7 +4972,9 @@ export function createLocalSyncStore(options = {}) {
     order.square_order_id = squareOrderId
     order.paid_at_utc = now().toISOString()
     order.paid_by_user_id = session.user.id
-    order.status = order.picked_item_ids.length > 0 ? "pulling" : "accepted"
+    if (cleanKioskOrderStatus(order.status) === "queued") {
+      order.status = order.picked_item_ids.length > 0 ? "pulling" : "accepted"
+    }
     order.updated_at_utc = now().toISOString()
     saveKioskOrder(database, order)
 
@@ -4989,6 +5018,34 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function upsertWordPressFulfillmentOrder(wordpressOrder, localOrder = null) {
+    const normalizedOrder = localFulfillmentOrderFromWordPress(wordpressOrder, now)
+
+    if (!normalizedOrder) {
+      return null
+    }
+
+    const existingIndex = fulfillmentOrders.findIndex(
+      (candidate) => candidate.order_id === normalizedOrder.order_id,
+    )
+    const existingOrder =
+      localOrder?.order_id === normalizedOrder.order_id
+        ? localOrder
+        : existingIndex >= 0
+          ? fulfillmentOrders[existingIndex]
+          : null
+    const mergedOrder = mergeWordPressFulfillmentOrder(existingOrder, normalizedOrder, now)
+
+    if (existingIndex >= 0) {
+      fulfillmentOrders[existingIndex] = mergedOrder
+    } else {
+      fulfillmentOrders.push(mergedOrder)
+    }
+    saveFulfillmentOrder(database, mergedOrder)
+
+    return mergedOrder
+  }
+
   async function listFulfillmentOrders(token, input = {}) {
     const session = requireWorkspaceAccess(token, "Kiosk")
 
@@ -4997,7 +5054,7 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const limit = boundedInt(input.limit, 1, 100, 25)
-    const statuses = cleanFulfillmentStatusList(input.statuses)
+    const localStatuses = cleanFulfillmentStatusList(input.statuses)
     const refreshRequested = input.refresh !== false && input.refresh !== "false" && input.refresh !== "0"
     let wordpressPullResult = null
     let wordpressPullBlocked = null
@@ -5005,7 +5062,7 @@ export function createLocalSyncStore(options = {}) {
     if (refreshRequested && wordpressFulfillmentPull) {
       wordpressPullResult = await wordpressFulfillmentPull({
         limit,
-        statuses: statuses.length > 0 ? statuses : ["processing", "completed", "on-hold"],
+        statuses: [...DEFAULT_WOOCOMMERCE_FULFILLMENT_INGESTION_STATUSES],
       })
 
       if (wordpressPullResult.status === "ok") {
@@ -5018,26 +5075,7 @@ export function createLocalSyncStore(options = {}) {
         }
 
         for (const order of wordpressPullResult.orders ?? []) {
-          const normalizedOrder = localFulfillmentOrderFromWordPress(order, now)
-
-          if (!normalizedOrder) {
-            continue
-          }
-
-          const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === normalizedOrder.order_id)
-
-          if (existingIndex >= 0) {
-            fulfillmentOrders[existingIndex] = {
-              ...fulfillmentOrders[existingIndex],
-              ...normalizedOrder,
-              source: "wordpress",
-              updated_at_utc: now().toISOString(),
-            }
-            saveFulfillmentOrder(database, fulfillmentOrders[existingIndex])
-          } else {
-            fulfillmentOrders.push(normalizedOrder)
-            saveFulfillmentOrder(database, normalizedOrder)
-          }
+          upsertWordPressFulfillmentOrder(order)
         }
       } else {
         wordpressPullBlocked = {
@@ -5049,7 +5087,10 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const orders = fulfillmentOrders
-      .filter((order) => statuses.length === 0 || statuses.includes(cleanFulfillmentStatus(order.fulfillment_status)))
+      .filter(
+        (order) =>
+          localStatuses.length === 0 || localStatuses.includes(cleanFulfillmentStatus(order.fulfillment_status)),
+      )
       .sort((a, b) => String(b.created_at_utc).localeCompare(String(a.created_at_utc)))
       .slice(0, limit)
       .map(publicFulfillmentOrder)
@@ -5090,31 +5131,37 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const existingOrder = fulfillmentOrders.find((candidate) => candidate.order_id === numericOrderId)
-    const localFallback = existingOrder ?? {
-      order_id: numericOrderId,
-      order_number: String(numericOrderId),
-      customer_name: "Website pickup customer",
-      order_status: "processing",
-      fulfillment_status: requestedStatus,
-      payment_status: "paid",
-      shipping_method_id: "local_pickup",
-      shipping_method_title: "Local pickup",
-      local_pickup: true,
-      item_count: 0,
-      total_minor_units: 0,
-      currency: "USD",
-      paid_at_utc: "",
-      created_at_utc: now().toISOString(),
-      updated_at_utc: now().toISOString(),
-      items: [],
-      source: "queued",
-      picked_item_ids: [],
+
+    if (!existingOrder) {
+      return blocked("fulfillment_order_not_found", "No paid website pickup order matched that ID.")
+    }
+
+    const transition = fulfillmentStatusTransition(existingOrder.fulfillment_status, requestedStatus)
+    if (transition.status !== "ok") {
+      return transition
+    }
+
+    if (transition.idempotent) {
+      const statusSyncDeferred = cleanFulfillmentOrderSource(existingOrder.source) === "queued"
+
+      return {
+        status: "ok",
+        order: publicFulfillmentOrder(existingOrder),
+        shared_queue_source: "local_sync_server",
+        wordpress_status_sync_deferred: statusSyncDeferred,
+        wordpress_status_sync_performed: false,
+        wordpress_status_sync_blocked: null,
+        inventory_mutation_performed: false,
+        payment_capture_performed: false,
+        transition_applied: false,
+        credentials_synced_to_client: false,
+      }
     }
 
     if (
       ["ready_for_pickup", "completed"].includes(requestedStatus) &&
-      cleanPickedItemIds(localFallback.picked_item_ids, localFallback.items).length <
-        cleanFulfillmentOrderItems(localFallback.items).length
+      cleanPickedItemIds(existingOrder.picked_item_ids, existingOrder.items).length <
+        cleanFulfillmentOrderItems(existingOrder.items).length
     ) {
       return blocked("fulfillment_items_not_picked", "Check off every card before marking this order ready or completed.")
     }
@@ -5130,17 +5177,17 @@ export function createLocalSyncStore(options = {}) {
     }
 
     let nextOrder = {
-      ...localFallback,
+      ...existingOrder,
       fulfillment_status: requestedStatus,
       updated_at_utc: now().toISOString(),
-      source: pushResult?.status === "ok" ? "wordpress" : "queued",
+      source:
+        pushResult?.status === "ok" && cleanFulfillmentOrderSource(existingOrder.source) !== "queued"
+          ? "wordpress"
+          : "queued",
     }
 
     if (pushResult?.status === "ok" && pushResult.order) {
-      nextOrder = localFulfillmentOrderFromWordPress(pushResult.order, now) ?? nextOrder
-      nextOrder.picked_item_ids = cleanPickedItemIds(localFallback.picked_item_ids, nextOrder.items)
-      nextOrder.updated_at_utc = now().toISOString()
-      nextOrder.source = "wordpress"
+      nextOrder = upsertWordPressFulfillmentOrder(pushResult.order, nextOrder) ?? nextOrder
     } else {
       statusSyncDeferred = true
       appendQueueOperation(database, queue, "woocommerce_fulfillment_status", `wc-order-${numericOrderId}`, {
@@ -5152,11 +5199,7 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === numericOrderId)
-    if (existingIndex >= 0) {
-      fulfillmentOrders[existingIndex] = nextOrder
-    } else {
-      fulfillmentOrders.push(nextOrder)
-    }
+    fulfillmentOrders[existingIndex] = nextOrder
     saveFulfillmentOrder(database, nextOrder)
 
     return {
@@ -5175,6 +5218,7 @@ export function createLocalSyncStore(options = {}) {
           : null,
       inventory_mutation_performed: false,
       payment_capture_performed: false,
+      transition_applied: true,
       credentials_synced_to_client: false,
     }
   }
@@ -8183,35 +8227,25 @@ export function createLocalSyncStore(options = {}) {
       }
 
       for (const row of fulfillmentPullResult.orders ?? []) {
-        const pulledOrder = localFulfillmentOrderFromWordPress(row, now)
+        const normalizedOrder = localFulfillmentOrderFromWordPress(row, now)
 
-        if (!pulledOrder) {
+        if (!normalizedOrder) {
           fulfillmentIgnoredCount += 1
           continue
         }
 
-        const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === pulledOrder.order_id)
+        const existingIndex = fulfillmentOrders.findIndex(
+          (candidate) => candidate.order_id === normalizedOrder.order_id,
+        )
+        const mergedOrder = upsertWordPressFulfillmentOrder(row)
 
         if (existingIndex >= 0) {
-          const previousOrder = fulfillmentOrders[existingIndex]
-          fulfillmentOrders[existingIndex] = {
-            ...previousOrder,
-            ...pulledOrder,
-            inventory_sale_applied_at_utc:
-              cleanIsoTimestamp(previousOrder.inventory_sale_applied_at_utc) ||
-              cleanIsoTimestamp(pulledOrder.inventory_sale_applied_at_utc),
-            source: previousOrder.source === "queued" ? "queued" : "wordpress",
-            updated_at_utc: now().toISOString(),
-          }
-          saveFulfillmentOrder(database, fulfillmentOrders[existingIndex])
-          fulfillmentInventorySaleResults.push(await applyWooCommerceSaleInventoryDelta(fulfillmentOrders[existingIndex]))
-          appliedFulfillmentOrders.push(publicFulfillmentOrder(fulfillmentOrders[existingIndex]))
+          fulfillmentInventorySaleResults.push(await applyWooCommerceSaleInventoryDelta(mergedOrder))
+          appliedFulfillmentOrders.push(publicFulfillmentOrder(mergedOrder))
           fulfillmentUpdatedCount += 1
         } else {
-          fulfillmentOrders.push(pulledOrder)
-          saveFulfillmentOrder(database, pulledOrder)
-          fulfillmentInventorySaleResults.push(await applyWooCommerceSaleInventoryDelta(pulledOrder))
-          appliedFulfillmentOrders.push(publicFulfillmentOrder(pulledOrder))
+          fulfillmentInventorySaleResults.push(await applyWooCommerceSaleInventoryDelta(mergedOrder))
+          appliedFulfillmentOrders.push(publicFulfillmentOrder(mergedOrder))
           fulfillmentInsertedCount += 1
         }
       }
@@ -9050,6 +9084,20 @@ export function createLocalSyncStore(options = {}) {
 
       const orderId = positiveInt(operation.payload?.order_id ?? operation.entity_id)
       const nextStatus = cleanFulfillmentStatus(operation.payload?.status)
+      const localOrder = fulfillmentOrders.find((candidate) => candidate.order_id === orderId)
+
+      if (!localOrder) {
+        results.push({
+          operation_id: operation.operation_id,
+          operation_type: operation.operation_type,
+          entity_id: operation.entity_id,
+          status: "rejected",
+          code: "fulfillment_order_not_found",
+          message: "No paid website pickup order matched that ID.",
+        })
+        continue
+      }
+
       const pushResult = await wordpressFulfillmentStatusPush({
         orderId,
         status: nextStatus,
@@ -9070,16 +9118,7 @@ export function createLocalSyncStore(options = {}) {
         continue
       }
 
-      const pushedOrder = localFulfillmentOrderFromWordPress(pushResult.order, now)
-      if (pushedOrder) {
-        const existingIndex = fulfillmentOrders.findIndex((candidate) => candidate.order_id === pushedOrder.order_id)
-        if (existingIndex >= 0) {
-          fulfillmentOrders[existingIndex] = pushedOrder
-        } else {
-          fulfillmentOrders.push(pushedOrder)
-        }
-        saveFulfillmentOrder(database, pushedOrder)
-      }
+      upsertWordPressFulfillmentOrder(pushResult.order)
 
       deleteQueueOperation(database, queue, operation.operation_id)
       results.push({
@@ -13424,6 +13463,38 @@ function cleanKioskPaymentStatus(value) {
   return value === "paid" ? "paid" : "pay_at_store"
 }
 
+function kioskOrderStatusTransition(currentValue, nextValue) {
+  const currentStatus = cleanKioskOrderStatus(currentValue)
+  const nextStatus = cleanKioskOrderStatus(nextValue)
+
+  if (currentStatus === nextStatus) {
+    return { status: "ok", idempotent: true }
+  }
+
+  if (["completed", "expired"].includes(currentStatus)) {
+    return blocked(
+      "invalid_kiosk_order_status_transition",
+      "Completed and expired kiosk pickup orders cannot change status.",
+      { current_status: currentStatus, requested_status: nextStatus },
+    )
+  }
+
+  if (nextStatus === "expired") {
+    return { status: "ok", idempotent: false }
+  }
+
+  const statuses = ["queued", "accepted", "pulling", "ready", "completed"]
+  if (statuses.indexOf(nextStatus) < statuses.indexOf(currentStatus)) {
+    return blocked(
+      "invalid_kiosk_order_status_transition",
+      "Kiosk pickup status cannot move backward.",
+      { current_status: currentStatus, requested_status: nextStatus },
+    )
+  }
+
+  return { status: "ok", idempotent: false }
+}
+
 function earliestReservationExpiry(reservations) {
   const timestamps = (Array.isArray(reservations) ? reservations : [])
     .map((reservation) => cleanIsoTimestamp(reservation?.expires_at_utc ?? reservation?.expiresAtUtc))
@@ -13823,6 +13894,36 @@ function localFulfillmentOrderFromWordPress(order, now = () => new Date()) {
     inventory_sale_applied_at_utc: cleanIsoTimestamp(order.inventory_sale_applied_at_utc),
     source: "wordpress",
     picked_item_ids: cleanPickedItemIds(order.picked_item_ids, items),
+  }
+}
+
+function mergeWordPressFulfillmentOrder(existingOrder, wordpressOrder, now = () => new Date()) {
+  if (!existingOrder) {
+    return wordpressOrder
+  }
+
+  const items = cleanFulfillmentOrderItems(wordpressOrder.items)
+  const localSourceQueued = cleanFulfillmentOrderSource(existingOrder.source) === "queued"
+  const localStatus = cleanFulfillmentStatus(existingOrder.fulfillment_status) || "awaiting_pull"
+  const wordpressStatus = cleanFulfillmentStatus(wordpressOrder.fulfillment_status) || "awaiting_pull"
+  const statuses = ["awaiting_pull", "pulling", "ready_for_pickup", "completed"]
+  const mergedStatus = localSourceQueued
+    ? localStatus
+    : statuses[Math.max(statuses.indexOf(localStatus), statuses.indexOf(wordpressStatus))]
+
+  return {
+    ...existingOrder,
+    ...wordpressOrder,
+    fulfillment_status: mergedStatus,
+    picked_item_ids: cleanPickedItemIds(
+      [...(existingOrder.picked_item_ids ?? []), ...(wordpressOrder.picked_item_ids ?? [])],
+      items,
+    ),
+    inventory_sale_applied_at_utc:
+      cleanIsoTimestamp(existingOrder.inventory_sale_applied_at_utc) ||
+      cleanIsoTimestamp(wordpressOrder.inventory_sale_applied_at_utc),
+    source: localSourceQueued ? "queued" : "wordpress",
+    updated_at_utc: now().toISOString(),
   }
 }
 
@@ -14833,6 +14934,26 @@ function cleanFulfillmentStatusList(value) {
   const raw = Array.isArray(value) ? value : String(value ?? "").split(",")
 
   return raw.map(cleanFulfillmentStatus).filter(Boolean)
+}
+
+function fulfillmentStatusTransition(currentValue, nextValue) {
+  const currentStatus = cleanFulfillmentStatus(currentValue) || "awaiting_pull"
+  const nextStatus = cleanFulfillmentStatus(nextValue)
+
+  if (currentStatus === nextStatus) {
+    return { status: "ok", idempotent: true }
+  }
+
+  const statuses = ["awaiting_pull", "pulling", "ready_for_pickup", "completed"]
+  if (statuses.indexOf(nextStatus) < statuses.indexOf(currentStatus)) {
+    return blocked(
+      "invalid_fulfillment_status_transition",
+      "Website pickup fulfillment status cannot move backward.",
+      { current_status: currentStatus, requested_status: nextStatus },
+    )
+  }
+
+  return { status: "ok", idempotent: false }
 }
 
 function cleanOrderStatus(value) {
