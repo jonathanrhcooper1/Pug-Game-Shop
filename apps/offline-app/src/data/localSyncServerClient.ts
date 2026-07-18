@@ -2,6 +2,7 @@ export type LocalSyncAccessSection =
   | "Inventory"
   | "Trade-Ins"
   | "ScryDex"
+  | "Price Review"
   | "Checkout"
   | "Kiosk"
   | "Queue"
@@ -1246,6 +1247,51 @@ export type LocalSyncScryDexCatalogSyncJobResult = LocalSyncResult<{
   raw_credentials_returned: false
 }>
 
+export type LocalSyncPriceReviewItem = {
+  review_id: string
+  decision_id: string
+  review_status: "pending" | "approved" | "rejected" | "cancelled"
+  review_reason: string
+  notes: string
+  inventory_public_id: string
+  current_price_minor_units: number
+  candidate_price_minor_units: number
+  effective_floor_minor_units: number
+  percent_change_basis_points: number
+  reason_code: string
+  provider_card_id: string
+  provider_variant_id: string
+  condition_code: string
+  grading_company: string
+  grade: string
+  source_provider: string
+  source_currency: string
+  source_amount_minor_units: number
+  fx_provider: string
+  fx_rate: string
+  converted_usd_minor_units: number
+  observed_at_utc: string
+  observation_payload: Record<string, unknown>
+  inventory_item: LocalSyncInventoryItem | null
+}
+
+export type LocalSyncPriceReviewListResult = LocalSyncResult<{
+  reviews: LocalSyncPriceReviewItem[]
+  review_count: number
+  pending_count: number
+  source_of_truth: "local_sync_server"
+  credentials_synced_to_client: false
+  raw_credentials_returned: false
+}>
+
+export type LocalSyncPriceReviewDecisionResult = LocalSyncResult<{
+  action: "price_review_approved" | "price_review_rejected" | "price_review_cancelled" | "price_review_already_decided"
+  idempotent: boolean
+  review: LocalSyncPriceReviewItem
+  item?: LocalSyncInventoryItem
+  active_price_changed?: boolean
+}>
+
 export type LocalSyncStatusResult = LocalSyncResult<{
   local_database: "store-sync.sqlite"
   persistence_mode: "sqlite_adapter_pending" | "sqlite"
@@ -1287,6 +1333,11 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   graded_pricing_provider_connected?: boolean
   graded_pricing_primary_source?: "scrydex_reference_cache"
   local_operations_preserved: true
+  authoritative_schema?: {
+    price_review_pending_count: number
+    outbox_pending_delivery_count: number
+    outbox_dead_letter_count: number
+  }
 }>
 
 export type LocalSyncPullResult = LocalSyncResult<{
@@ -1743,6 +1794,19 @@ export type LocalSyncServerClient = {
     sessionToken: string,
     input: { game?: LocalSyncScryDexCard["game"]; games?: LocalSyncScryDexCard["game"][] },
   ) => Promise<LocalSyncScryDexCatalogSyncJobResult>
+  listPriceReviews: (
+    sessionToken: string,
+    input?: { status?: LocalSyncPriceReviewItem["review_status"] | ""; limit?: number },
+  ) => Promise<LocalSyncPriceReviewListResult>
+  decidePriceReview: (
+    sessionToken: string,
+    reviewId: string,
+    input: {
+      status: "approved" | "rejected" | "cancelled"
+      candidatePriceMinorUnits?: number
+      notes?: string
+    },
+  ) => Promise<LocalSyncPriceReviewDecisionResult>
   identifyScryDexCardImage: (
     sessionToken: string,
     input: {
@@ -2273,6 +2337,25 @@ export function createLocalSyncServerClient(
           games: input.games,
         },
       }) as Promise<LocalSyncScryDexCatalogSyncJobResult>,
+    listPriceReviews: (sessionToken, input = {}) => {
+      const params = new URLSearchParams({
+        status: input.status ?? "",
+        limit: String(input.limit ?? 100),
+      })
+      return requestLocalSync(fetcher, baseUrl, `/pricing/reviews?${params.toString()}`, {
+        sessionToken,
+      }) as Promise<LocalSyncPriceReviewListResult>
+    },
+    decidePriceReview: (sessionToken, reviewId, input) =>
+      requestLocalSync(fetcher, baseUrl, `/pricing/reviews/${encodeURIComponent(reviewId)}`, {
+        method: "PATCH",
+        sessionToken,
+        body: {
+          status: input.status,
+          candidate_price_minor_units: input.candidatePriceMinorUnits,
+          notes: input.notes ?? "",
+        },
+      }) as Promise<LocalSyncPriceReviewDecisionResult>,
     identifyScryDexCardImage: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/scrydex/cards/identify-image", {
         method: "POST",

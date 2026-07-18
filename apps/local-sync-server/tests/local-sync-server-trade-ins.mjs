@@ -225,6 +225,23 @@ try {
   assert.equal(approved.order.customer_id_recorded_by_user_name, auth.user.name)
   assert.equal(approved.credit_application.applied, true)
   assert.equal(approved.credit_application.customer.credit.balance_minor_units, 900)
+  assert.equal(approved.sellable_inventory_created, true)
+  assert.equal(approved.inventory_creation.created_count, 1)
+  assert.equal(approved.order.inventory_created_count, 1)
+  assert.equal(approved.order.inventory_public_ids.length, 1)
+
+  const repeatedApproval = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}/status`, {
+    method: "PATCH",
+    token: auth.session.token,
+    body: {
+      status: "approved",
+      idempotency_key: "repeat-after-timeout",
+    },
+  })
+  assert.equal(repeatedApproval.status, "ok")
+  assert.equal(repeatedApproval.idempotent, true)
+  assert.equal(repeatedApproval.inventory_creation.created_count, 0)
+  assert.deepEqual(repeatedApproval.order.inventory_public_ids, approved.order.inventory_public_ids)
 
   const idLookup = await fetchJson(`${baseUrl}/trade-ins/orders?q=${encodeURIComponent("6789")}`, {
     token: auth.session.token,
@@ -274,7 +291,7 @@ try {
 
   assert.equal(converted.status, "ok")
   assert.equal(converted.order.status, "converted")
-  assert.equal(converted.order.sellable_inventory_created, false)
+  assert.equal(converted.order.sellable_inventory_created, true)
   assert.ok(converted.order.converted_at_utc)
   assert.equal(converted.order.converted_by_user_id, auth.user.id)
   assert.equal(converted.order.converted_by_user_name, auth.user.name)
@@ -317,6 +334,15 @@ try {
   assert.equal(voided.credit_reversal.entry_type, "trade_in_credit_reversal")
   assert.equal(voided.credit_reversal.amount_minor_units, -900)
   assert.equal(voided.customer.credit.balance_minor_units, 0)
+  assert.equal(voided.order.sellable_inventory_created, false)
+  assert.equal(voided.inventory_reversed_count, 1)
+
+  const voidedInventory = await fetchJson(
+    `${baseUrl}/inventory/search?q=${encodeURIComponent(approved.order.inventory_public_ids[0])}`,
+  )
+  assert.equal(voidedInventory.items.length, 1)
+  assert.equal(voidedInventory.items[0].status, "removed")
+  assert.equal(voidedInventory.items[0].quantity_on_hand, 0)
 
   const duplicateVoid = await fetchJson(`${baseUrl}/trade-ins/orders/${created.order.order_id}/void`, {
     method: "POST",

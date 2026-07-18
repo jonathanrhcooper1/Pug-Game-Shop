@@ -317,6 +317,7 @@ const webhookStore = createLocalSyncStore({
 })
 
 const rejectedWebhook = await webhookStore.triggerScryDexWebhookRefresh("wrong-secret", {
+  id: "evt-scrydex-rejected",
   game: "pokemon",
   expansion_ids: ["sv-test"],
 })
@@ -324,14 +325,17 @@ assert.equal(rejectedWebhook.status, "blocked")
 assert.equal(rejectedWebhook.code, "session_required")
 
 const webhookRefresh = await webhookStore.triggerScryDexWebhookRefresh("relay-secret", {
-  game: "pokemon",
-  update_type: "pokemon.expansions.prices.graded_updated",
-  expansion_ids: ["sv-test-1", "sv-test-2", "sv-test-1"],
+  id: "evt-scrydex-graded-001",
+  name: "pokemon.expansions.prices.graded_updated",
+  data: {
+    expansion_ids: ["sv-test-1", "sv-test-2", "sv-test-1"],
+  },
   pageSize: 25,
 })
 
 assert.equal(webhookRefresh.status, "ok")
 assert.equal(webhookRefresh.action, "scrydex_catalog_webhook_refresh_completed")
+assert.equal(webhookRefresh.webhook_event_id, "evt-scrydex-graded-001")
 assert.equal(webhookRefresh.requested_by_user_id, "system-scrydex-webhook")
 assert.equal(webhookRefresh.source_of_truth, "local_sync_server")
 assert.equal(webhookRefresh.raw_or_graded, "graded")
@@ -350,6 +354,20 @@ assert.equal(webhookCalls[0].maxExpansionPages, 1)
 assert.equal(webhookCalls[0].indexExpansions, false)
 assert.equal(webhookRefresh.expansion_runs[0].status, "ok")
 assert.equal(webhookRefresh.expansion_runs[1].status, "ok")
+
+const duplicateWebhookRefresh = await webhookStore.triggerScryDexWebhookRefresh("relay-secret", {
+  id: "evt-scrydex-graded-001",
+  name: "pokemon.expansions.prices.graded_updated",
+  data: {
+    expansion_ids: ["sv-test-1", "sv-test-2"],
+  },
+  pageSize: 25,
+})
+assert.equal(duplicateWebhookRefresh.status, "ok")
+assert.equal(duplicateWebhookRefresh.action, "scrydex_catalog_webhook_refresh_already_processed")
+assert.equal(duplicateWebhookRefresh.idempotent, true)
+assert.equal(duplicateWebhookRefresh.duplicate, true)
+assert.equal(webhookCalls.length, 2)
 
 const stuckDownstreamStore = createLocalSyncStore({
   databasePath: ":memory:",

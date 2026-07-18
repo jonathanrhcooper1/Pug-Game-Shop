@@ -1,4 +1,4 @@
-export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 8
+export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 9
 export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 3
 
 export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
@@ -20,6 +20,8 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "GET", path: "/scrydex/catalog/status", purpose: "Manager ScryDex catalog totals, active job, and recent sync history" },
   { method: "POST", path: "/scrydex/catalog/sync-jobs", purpose: "Manager-triggered per-game ScryDex full catalog sync job" },
   { method: "POST", path: "/scrydex/catalog/webhook-refresh", purpose: "WordPress ScryDex webhook relay trigger; LAN pulls refreshed catalog, reprices with floors, and syncs outward" },
+  { method: "GET", path: "/pricing/reviews", purpose: "Manager price-review queue with source, fallback, FX, floor, and candidate provenance" },
+  { method: "PATCH", path: "/pricing/reviews/:review_id", purpose: "Manager approve, edit-and-approve, reject, or cancel price-review decision" },
   { method: "POST", path: "/scrydex/cards/identify-image", purpose: "Server-side ScryDex Vision live card scan lookup for inventory and trade-ins" },
   { method: "GET", path: "/trade-ins/graded-valuation", purpose: "Server-side PriceCharting graded-card lookup for Trade-Ins" },
   { method: "POST", path: "/pos/square/inventory-pull-plan", purpose: "Manager Square POS barcode/SKU inventory-readiness plan" },

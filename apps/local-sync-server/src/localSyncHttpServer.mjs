@@ -204,6 +204,21 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, await store.triggerScryDexWebhookRefresh(token, await readJson(request)))
       }
 
+      if (request.method === "GET" && url.pathname === "/pricing/reviews") {
+        return sendStoreResult(response, store.listPriceReviews(token, {
+          status: url.searchParams.get("status") ?? "",
+          limit: url.searchParams.get("limit") ?? 100,
+        }))
+      }
+
+      const priceReviewMatch = url.pathname.match(/^\/pricing\/reviews\/([^/]+)$/)
+      if (request.method === "PATCH" && priceReviewMatch) {
+        return sendStoreResult(
+          response,
+          await store.decidePriceReview(token, decodeURIComponent(priceReviewMatch[1]), await readJson(request)),
+        )
+      }
+
       if (request.method === "POST" && url.pathname === "/scrydex/cards/identify-image") {
         return sendStoreResult(response, await store.identifyScryDexCardImage(token, await readJson(request)))
       }

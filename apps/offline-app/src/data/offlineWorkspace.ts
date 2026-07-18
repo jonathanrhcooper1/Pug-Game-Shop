@@ -12,6 +12,7 @@ export type IconName =
   | "history"
   | "database"
   | "checkout"
+  | "tag"
 
 export type InventoryStatus =
   | "available"
@@ -926,6 +927,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     { label: "Inventory", icon: "box", active: true },
     { label: "Trade-Ins", icon: "card" },
     { label: "ScryDex", icon: "database" },
+    { label: "Price Review", icon: "tag" },
     { label: "Checkout", icon: "checkout" },
     { label: "Sync", icon: "sync" },
     { label: "Status", icon: "history" },

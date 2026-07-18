@@ -574,8 +574,28 @@ try {
   })
   assert.equal(variantReprice.status, "ok")
   assert.equal(variantReprice.inventory_reprice.status, "ok")
-  assert.equal(variantReprice.inventory_reprice.changed_count, 1)
+  assert.equal(variantReprice.inventory_reprice.changed_count, 0)
+  assert.ok(variantReprice.inventory_reprice.price_review_required_count >= 1)
   assert.equal(variantReprice.inventory_reprice.floor_clamped_count, 0)
+
+  const priceReviews = store.listPriceReviews(auth.session.token, { status: "pending" })
+  assert.equal(priceReviews.status, "ok")
+  const variantPriceReview = priceReviews.reviews.find(
+    (review) => review.inventory_item?.provider_variant_id === "price-test-extended",
+  )
+  assert.ok(variantPriceReview)
+  assert.equal(variantPriceReview.current_price_minor_units, 100)
+  assert.equal(variantPriceReview.candidate_price_minor_units, 400)
+  assert.equal(variantPriceReview.percent_change_basis_points, 30000)
+
+  const approvedReprice = await store.decidePriceReview(
+    auth.session.token,
+    variantPriceReview.review_id,
+    { status: "approved", notes: "pricing engine contract approval" },
+  )
+  assert.equal(approvedReprice.status, "ok")
+  assert.equal(approvedReprice.action, "price_review_approved")
+  assert.equal(approvedReprice.item.price_minor_units, 400)
 
   const repriced = store.searchInventory({ query: "Variant Price Test" })
   assert.equal(repriced.status, "ok")

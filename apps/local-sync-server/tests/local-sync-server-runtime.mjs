@@ -199,7 +199,7 @@ const server = createLocalSyncHttpServer({
 
       assert.equal(operation.operation_type, "inventory_intake")
       assert.ok(["Mewtwo", "Local Only Pull Guard"].includes(item.card_name))
-      assert.equal(item.status, "pending_intake")
+      assert.equal(item.status, item.card_name === "Local Only Pull Guard" ? "pending_intake" : "available")
       assert.equal(item.source, "queued")
       assert.match(item.image_url, /mewtwo|pull-guard-local/)
       if (item.card_name === "Mewtwo") {
@@ -916,6 +916,7 @@ try {
       set_code: "TEST",
       card_number: "99",
       printed_number: "99/100",
+      status: "pending_intake",
       image_url: "https://images.example.test/pull-guard-local.png",
     },
   })

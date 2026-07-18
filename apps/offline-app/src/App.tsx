@@ -133,6 +133,7 @@ import {
   type LocalSyncKioskOrderStatus,
   type LocalSyncManagerReportResult,
   type LocalSyncPullResult,
+  type LocalSyncPriceReviewItem,
   type LocalSyncPushResult,
   type LocalSyncReportKey,
   type LocalSyncResult,
@@ -247,6 +248,7 @@ const ACCESS_SECTIONS = [
   "Inventory",
   "Trade-Ins",
   "ScryDex",
+  "Price Review",
   "Checkout",
   "Kiosk",
   "Queue",
@@ -3796,6 +3798,10 @@ export function App() {
     "idle" | "searching" | "ready" | "blocked"
   >("idle")
   const [scryDexLookupDetail, setScryDexLookupDetail] = useState("Ready")
+  const [priceReviews, setPriceReviews] = useState<LocalSyncPriceReviewItem[]>([])
+  const [priceReviewStatus, setPriceReviewStatus] = useState<"idle" | "working" | "ready" | "blocked">("idle")
+  const [priceReviewDetail, setPriceReviewDetail] = useState("Open this workspace to load pending price decisions.")
+  const [priceReviewDrafts, setPriceReviewDrafts] = useState<Record<string, string>>({})
   const [liveCardScanMode, setLiveCardScanMode] = useState<LiveCardScanMode | null>(null)
   const [liveCardScanStatus, setLiveCardScanStatus] = useState<
     "idle" | "starting" | "ready" | "identifying" | "blocked"
@@ -4351,6 +4357,10 @@ export function App() {
   const liveLanQueueIsAuthoritative = localSyncStatus?.status === "ok"
   const queueBadgeCount =
     liveLanQueueIsAuthoritative ? localSyncStatus.queue_depth : seededQueueCount + queuedOperations.length
+  const priceReviewBadgeCount =
+    localSyncStatus?.status === "ok"
+      ? localSyncStatus.authoritative_schema?.price_review_pending_count ?? priceReviews.filter((review) => review.review_status === "pending").length
+      : priceReviews.filter((review) => review.review_status === "pending").length
   const queuePanelPendingLabel = liveLanQueueIsAuthoritative
     ? `${countLabel(localSyncStatus.queue_depth, "LAN pending op")}; ${countLabel(
         queuedOperations.length,
@@ -5532,6 +5542,14 @@ export function App() {
   }, [activeSection, scryDexActiveJob?.job_id, localSyncSessionToken, localSyncClient])
 
   useEffect(() => {
+    if (activeSection !== "Price Review" || !localSyncSessionToken || !["manager", "owner"].includes(sessionRole)) {
+      return
+    }
+
+    void refreshPriceReviews()
+  }, [activeSection, localSyncSessionToken, localSyncClient, sessionRole])
+
+  useEffect(() => {
     setConnectorValidation((currentValidation) =>
       currentValidation?.profile.id === activeProfile.id ? currentValidation : null,
     )
@@ -5858,11 +5876,90 @@ export function App() {
   }
 
   function canAccessSection(label: string) {
-    if (label === "Reports" && !["manager", "owner"].includes(sessionRole)) {
+    if (["Reports", "Price Review"].includes(label) && !["manager", "owner"].includes(sessionRole)) {
       return false
     }
 
     return isAccessSection(label) && effectiveAccess.includes(label)
+  }
+
+  async function refreshPriceReviews() {
+    if (!localSyncSessionToken) {
+      setPriceReviewStatus("blocked")
+      setPriceReviewDetail("Sign in with a manager or owner PIN to review prices.")
+      return
+    }
+
+    setPriceReviewStatus("working")
+    setPriceReviewDetail("Loading pending price decisions from the LAN source of truth.")
+    const result = await localSyncClient.listPriceReviews(localSyncSessionToken, { status: "pending", limit: 250 })
+
+    if (result.status !== "ok") {
+      if (handleBlockedLocalSyncSession(result, "Price review locked")) {
+        return
+      }
+      setPriceReviewStatus("blocked")
+      setPriceReviewDetail(result.message)
+      return
+    }
+
+    setPriceReviews(result.reviews)
+    setPriceReviewDrafts((current) => Object.fromEntries(
+      result.reviews.map((review) => [
+        review.review_id,
+        current[review.review_id] ?? (review.candidate_price_minor_units / 100).toFixed(2),
+      ]),
+    ))
+    setPriceReviewStatus("ready")
+    setPriceReviewDetail(`${countLabel(result.pending_count, "price change")} waiting for a manager decision.`)
+  }
+
+  async function handlePriceReviewDecision(review: LocalSyncPriceReviewItem, status: "approved" | "rejected") {
+    if (!localSyncSessionToken) {
+      return
+    }
+
+    let candidatePriceMinorUnits: number | undefined
+    if (status === "approved") {
+      const parsed = Number(priceReviewDrafts[review.review_id])
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        setActivityMessage({ title: "Price not approved", detail: "Enter a valid non-negative sale price." })
+        return
+      }
+      candidatePriceMinorUnits = Math.round(parsed * 100)
+    }
+
+    setPriceReviewStatus("working")
+    const result = await localSyncClient.decidePriceReview(localSyncSessionToken, review.review_id, {
+      status,
+      candidatePriceMinorUnits,
+      notes: status === "approved" ? "Approved from employee app Price Review" : "Rejected from employee app Price Review",
+    })
+
+    if (result.status !== "ok") {
+      if (handleBlockedLocalSyncSession(result, "Price review locked")) {
+        return
+      }
+      setPriceReviewStatus("blocked")
+      setPriceReviewDetail(result.message)
+      setActivityMessage({ title: "Price decision not saved", detail: result.message })
+      return
+    }
+
+    setPriceReviews((reviews) => reviews.filter((candidate) => candidate.review_id !== review.review_id))
+    setPriceReviewStatus("ready")
+    setPriceReviewDetail(
+      status === "approved"
+        ? `${review.inventory_item?.card_name ?? "Card"} was approved and queued for verified website, Square, and kiosk delivery.`
+        : `${review.inventory_item?.card_name ?? "Card"} kept its current active price.`,
+    )
+    setActivityMessage({
+      title: status === "approved" ? "Price approved" : "Price rejected",
+      detail: status === "approved"
+        ? "The approved value is authoritative locally; external delivery remains pending until destination readback passes."
+        : "The candidate was rejected and was not published.",
+    })
+    void refreshLocalSyncStatus()
   }
 
   async function handleRefreshManagerReport() {
@@ -13203,6 +13300,7 @@ export function App() {
                   <Icon name={item.icon} />
                   <span>{employeeSectionLabel(item.label)}</span>
                   {item.label === "Queue" ? <strong>{queueBadgeCount}</strong> : null}
+                  {item.label === "Price Review" ? <strong>{priceReviewBadgeCount}</strong> : null}
                   {item.label === "Events" ? <strong>{eventBadgeCount}</strong> : null}
                   {item.label === "Conflicts" ? <strong>{conflictBadgeCount}</strong> : null}
                 </button>
@@ -13817,7 +13915,112 @@ export function App() {
             {renderOperationSyncVisibilityPanel()}
           </section>
 
-          <section className={`content-grid is-paged page-${activeSection.toLowerCase()}`}>
+          <section
+            className={activeSection === "Price Review" ? "price-review-workspace" : "price-review-workspace is-hidden"}
+            aria-label="Price review"
+          >
+            <header className="price-review-heading">
+              <div>
+                <span className="micro-label">Manager approval</span>
+                <strong>Price Review</strong>
+                <p>Changes above the configured threshold stay off the website, Square, and kiosk until approved.</p>
+              </div>
+              <div className={`price-review-state ${priceReviewStatus}`}>
+                <strong>{priceReviewStatus === "working" ? "Loading" : `${priceReviewBadgeCount} pending`}</strong>
+                <small>{priceReviewDetail}</small>
+                <button
+                  className="secondary-command"
+                  type="button"
+                  disabled={priceReviewStatus === "working"}
+                  onClick={() => void refreshPriceReviews()}
+                >
+                  <Icon name="sync" />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </header>
+
+            <div className="price-review-list">
+              {priceReviews.length === 0 ? (
+                <div className="price-review-empty">
+                  <Icon name="check" />
+                  <strong>No pending price changes</strong>
+                  <span>Automatic changes at or below the threshold can continue through verified delivery.</span>
+                </div>
+              ) : priceReviews.map((review) => {
+                const item = review.inventory_item
+                const differenceMinorUnits = review.candidate_price_minor_units - review.current_price_minor_units
+                const sourceLabel = review.source_currency === "JPY"
+                  ? `${review.source_amount_minor_units.toLocaleString()} JPY`
+                  : formatMoney(review.source_amount_minor_units, review.source_currency || "USD")
+                const fallbackUsed = Boolean(
+                  review.observation_payload?.condition_fallback_used || review.observation_payload?.grade_fallback_used,
+                )
+
+                return (
+                  <article className="price-review-row" key={review.review_id}>
+                    <div className="price-review-art">
+                      {item?.image_url ? <img src={item.image_url} alt="" /> : <Icon name="card" />}
+                    </div>
+                    <div className="price-review-identity">
+                      <span className="micro-label">{item?.game || "Card"}</span>
+                      <strong>{item?.card_name || review.inventory_public_id}</strong>
+                      <span>{[item?.set_name, item?.card_number, item?.variant, item?.finish].filter(Boolean).join(" / ")}</span>
+                      <small>
+                        {[review.condition_code, review.grading_company, review.grade].filter(Boolean).join(" / ") || "Condition review"}
+                      </small>
+                    </div>
+                    <div className="price-review-metrics">
+                      <span><small>Current</small><strong>{formatMoney(review.current_price_minor_units, "USD")}</strong></span>
+                      <span><small>Candidate</small><strong>{formatMoney(review.candidate_price_minor_units, "USD")}</strong></span>
+                      <span className={differenceMinorUnits >= 0 ? "increase" : "decrease"}>
+                        <small>Difference</small>
+                        <strong>{differenceMinorUnits >= 0 ? "+" : "-"}{formatMoney(Math.abs(differenceMinorUnits), "USD")}</strong>
+                        <em>{review.percent_change_basis_points >= 0 ? "+" : ""}{(review.percent_change_basis_points / 100).toFixed(1)}%</em>
+                      </span>
+                      <span><small>Floor</small><strong>{formatMoney(review.effective_floor_minor_units, "USD")}</strong></span>
+                    </div>
+                    <div className="price-review-provenance">
+                      <span><small>Source</small><strong>{review.source_provider || "ScryDex"}</strong></span>
+                      <span><small>Observed</small><strong>{sourceLabel}</strong></span>
+                      {review.source_currency === "JPY" ? (
+                        <span><small>FX</small><strong>{review.fx_rate || "Unavailable"}</strong></span>
+                      ) : null}
+                      <span><small>Fallback</small><strong>{fallbackUsed ? "Used, same variant" : "Exact"}</strong></span>
+                      <span><small>Reason</small><strong>{review.reason_code.replaceAll("_", " ")}</strong></span>
+                    </div>
+                    <div className="price-review-actions">
+                      <label>
+                        <span>Approved price</span>
+                        <div className="money-input">
+                          <span>$</span>
+                          <input
+                            inputMode="decimal"
+                            value={priceReviewDrafts[review.review_id] ?? ""}
+                            onChange={(event) => setPriceReviewDrafts((drafts) => ({
+                              ...drafts,
+                              [review.review_id]: event.target.value,
+                            }))}
+                            aria-label={`Approved price for ${item?.card_name ?? review.inventory_public_id}`}
+                          />
+                        </div>
+                      </label>
+                      <button type="button" onClick={() => void handlePriceReviewDecision(review, "approved")}>
+                        <Icon name="check" />
+                        <span>Approve</span>
+                      </button>
+                      <button className="secondary-command" type="button" onClick={() => void handlePriceReviewDecision(review, "rejected")}>
+                        <Icon name="minus" />
+                        <span>Keep current</span>
+                      </button>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className={`content-grid is-paged page-${activeSection.toLowerCase().replaceAll(" ", "-")}`}>
             <section className="inventory-panel" aria-label="Offline inventory" ref={inventoryPanelRef}>
               <div className="scanner-row">
                 <label htmlFor="offline-search">

@@ -71,6 +71,7 @@ try {
     barcode: "PUG-PERSIST",
     price_minor_units: 8800,
     location: "Restart Bin",
+    status: "pending_intake",
     online_visibility: "staff_only",
     kiosk_visibility: "visible",
     pos_visibility: "hidden",
@@ -204,5 +205,5 @@ try {
 
   console.log("PASS local sync server persistence")
 } finally {
-  await rm(tempDir, { recursive: true, force: true })
+  await rm(tempDir, { recursive: true, force: true, maxRetries: 8, retryDelay: 125 })
 }
