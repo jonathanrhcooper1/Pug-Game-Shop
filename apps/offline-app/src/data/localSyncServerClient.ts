@@ -762,6 +762,7 @@ export type LocalSyncTradeInItem = {
   calculated_final_value_minor_units?: number
   final_value_minor_units: number
   final_value_manually_set?: boolean
+  quantity: number
   payout_type: "cash" | "credit"
   image_url: string
   provider_card_id?: string
@@ -799,12 +800,21 @@ export type LocalSyncTradeInOrder = {
   credit_total_minor_units: number
   combined_total_minor_units: number
   currency: "USD"
+  inventory_public_ids: string[]
+  inventory_created_count: number
   converted_at_utc: string
   converted_by_user_id: string
   converted_by_user_name?: string
   created_at_utc: string
   updated_at_utc: string
-  sellable_inventory_created: false
+  sellable_inventory_created: boolean
+}
+
+export type LocalSyncTradeInInventoryCreation = {
+  created_count: number
+  existing_count: number
+  inventory_public_ids: string[]
+  items: LocalSyncInventoryItem[]
 }
 
 export type LocalSyncTradeInOrderListResult = LocalSyncResult<{
@@ -819,7 +829,10 @@ export type LocalSyncTradeInOrderListResult = LocalSyncResult<{
 export type LocalSyncTradeInOrderCreateResult = LocalSyncResult<{
   order: LocalSyncTradeInOrder
   credit_application?: LocalSyncTradeInCreditApplication | null
-  sellable_inventory_created: false
+  inventory_creation?: LocalSyncTradeInInventoryCreation
+  trade_acceptance_idempotency_key?: string
+  idempotent?: boolean
+  sellable_inventory_created: boolean
   shared_queue_source: "local_sync_server"
   credentials_synced_to_client: false
 }>
@@ -1933,6 +1946,7 @@ export type LocalSyncServerClient = {
         marketMidMinorUnits: number
         percentageBasisPoints: number
         finalValueMinorUnits?: number
+        quantity: number
         payoutType: "cash" | "credit"
         imageUrl?: string
         providerCardId?: string
@@ -1973,6 +1987,7 @@ export type LocalSyncServerClient = {
         marketMidMinorUnits: number
         percentageBasisPoints: number
         finalValueMinorUnits?: number
+        quantity: number
         payoutType: "cash" | "credit"
         imageUrl?: string
         providerCardId?: string
@@ -2540,6 +2555,7 @@ export function createLocalSyncServerClient(
             market_mid_minor_units: item.marketMidMinorUnits,
             trade_in_percentage_basis_points: item.percentageBasisPoints,
             final_value_minor_units: item.finalValueMinorUnits,
+            quantity: item.quantity,
             payout_type: item.payoutType,
             image_url: item.imageUrl ?? "",
             provider_card_id: item.providerCardId ?? "",
@@ -2581,6 +2597,7 @@ export function createLocalSyncServerClient(
             market_mid_minor_units: item.marketMidMinorUnits,
             trade_in_percentage_basis_points: item.percentageBasisPoints,
             final_value_minor_units: item.finalValueMinorUnits,
+            quantity: item.quantity,
             payout_type: item.payoutType,
             image_url: item.imageUrl ?? "",
             provider_card_id: item.providerCardId ?? "",

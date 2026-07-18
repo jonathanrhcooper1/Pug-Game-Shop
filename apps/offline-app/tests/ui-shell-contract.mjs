@@ -199,9 +199,11 @@ for (const requiredText of [
   "Cash total",
   "Credit total",
   "Combined total",
-  "Final value",
+  "Final value each",
   "Manual final value allowed without manager approval.",
-  "Convert to Inventory",
+  "Quantity",
+  "LAN trade-in processing results",
+  "Inventory linked",
   "Workflow boundary",
   "Converted",
   "Complete",
@@ -957,6 +959,43 @@ for (const historySemanticsMarker of [
   'websitePickupSourceLabel(ticket.source)',
 ]) {
   assert.ok(appSource.includes(historySemanticsMarker), `Missing fulfillment history marker: ${historySemanticsMarker}`)
+}
+
+for (const authoritativeTradeMarker of [
+  "tradeInSubmitInFlightRef.current",
+  "quantity: item.quantity",
+  "item.finalValueMinorUnits * item.quantity",
+  "inventory_creation?.created_count",
+  "The employee app did not create inventory separately.",
+  "LAN accepted",
+]) {
+  assert.ok(appSource.includes(authoritativeTradeMarker), `Missing authoritative trade marker: ${authoritativeTradeMarker}`)
+}
+assert.equal(
+  (appSource.match(/createInventoryIntake\(localSyncSessionToken/g) ?? []).length,
+  1,
+  "Only the inventory intake screen may call createInventoryIntake; accepted trades are server-owned",
+)
+assert.equal(
+  appSource.includes("createInventoryFromAcceptedTradeInItems"),
+  false,
+  "Accepted trade-ins must not run a second app-side inventory conversion",
+)
+assert.equal(
+  appSource.includes("Convert to Inventory"),
+  false,
+  "Draft trade lines must not bypass LAN approval through inventory intake",
+)
+
+for (const kioskPriceStateMarker of [
+  "Price pending approval",
+  "Price pending",
+  "Price unavailable",
+  "Offline cached price",
+  "Last sync {liveLastSyncLabel}",
+  "kioskCartHasPriceIssues",
+]) {
+  assert.ok(appSource.includes(kioskPriceStateMarker), `Missing kiosk price-state marker: ${kioskPriceStateMarker}`)
 }
 assert.equal(
   appSource.includes(

@@ -365,6 +365,7 @@ type TradeInDraftItem = {
   percentageBasisPoints: number
   finalValueMinorUnits: number
   finalValueManuallySet?: boolean
+  quantity: number
   payoutType: TradeInPayoutType
   imageUrl: string
   providerCardId?: string
@@ -380,6 +381,20 @@ type TradeInDraftItem = {
   backImageUrl?: string
   priceObservedAtUtc?: string | null
   priceSource?: string
+}
+
+type TradeInLineProcessingResult = {
+  itemId: string
+  cardName: string
+  quantity: number
+  status: "saved" | "accepted" | "rejected" | "blocked"
+  detail: string
+}
+
+type KioskPricePresentation = {
+  displayPrice: string
+  statusLabel: "Current price" | "Offline cached price" | "Price pending approval" | "Price pending" | "Price unavailable"
+  canOrder: boolean
 }
 
 type ActivityMessage = {
@@ -2494,6 +2509,47 @@ function tradeInValueMinorUnits(marketMidMinorUnits: number, percentageBasisPoin
   return Math.floor(rawMinorUnits / 100) * 100
 }
 
+function tradeInQuantityFromInput(value: string) {
+  const trimmed = value.trim()
+
+  if (!/^\d+$/.test(trimmed)) {
+    return null
+  }
+
+  const parsed = Number.parseInt(trimmed, 10)
+
+  return Number.isFinite(parsed) && parsed >= 1 && parsed <= 999 ? parsed : null
+}
+
+function kioskPricePresentation(
+  item: InventoryItem,
+  options: { online: boolean; pendingApproval: boolean },
+): KioskPricePresentation {
+  if (options.pendingApproval) {
+    return {
+      displayPrice: "Manager review",
+      statusLabel: "Price pending approval",
+      canOrder: false,
+    }
+  }
+
+  if (!Number.isFinite(item.priceMinorUnits) || item.priceMinorUnits <= 0) {
+    const pending = item.externalSyncState === "pending"
+
+    return {
+      displayPrice: pending ? "Pending" : "Unavailable",
+      statusLabel: pending ? "Price pending" : "Price unavailable",
+      canOrder: false,
+    }
+  }
+
+  return {
+    displayPrice: item.price,
+    statusLabel: options.online ? "Current price" : "Offline cached price",
+    canOrder: true,
+  }
+}
+
 function normalizeTradeInCustomerLookup(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase()
 }
@@ -3784,8 +3840,10 @@ export function App() {
     useState("ScryDex/reference cache is the primary pricing source.")
   const [tradeInPayoutType, setTradeInPayoutType] = useState<TradeInPayoutType>("credit")
   const [tradeInPercentageBasisPoints, setTradeInPercentageBasisPoints] = useState(6000)
+  const [tradeInQuantityInput, setTradeInQuantityInput] = useState("1")
   const [tradeInManualFinalValueInput, setTradeInManualFinalValueInput] = useState("")
   const [tradeInDraftItems, setTradeInDraftItems] = useState<TradeInDraftItem[]>([])
+  const [tradeInProcessingResults, setTradeInProcessingResults] = useState<TradeInLineProcessingResult[]>([])
   const [tradeInLoadedOrderId, setTradeInLoadedOrderId] = useState("")
   const [tradeInRecordSearch, setTradeInRecordSearch] = useState("")
   const [tradeInStaffFilter, setTradeInStaffFilter] = useState("")
@@ -3794,6 +3852,7 @@ export function App() {
   const [tradeInSyncDetail, setTradeInSyncDetail] = useState(
     "Drafts save to the LAN middleman so every employee station sees the same review queue.",
   )
+  const tradeInSubmitInFlightRef = useRef(false)
   const [scryDexQuery, setScryDexQuery] = useState("")
   const [scryDexGame, setScryDexGame] = useState<LocalSyncScryDexCard["game"]>("pokemon")
   const [scryDexCards, setScryDexCards] = useState<LocalSyncScryDexCard[]>([])
@@ -4329,11 +4388,36 @@ export function App() {
         .filter((item): item is NonNullable<ReturnType<typeof findInventoryItem>> => Boolean(item)),
     [inventoryItems, kioskCartIds],
   )
+  const pendingPriceReviewInventoryIds = useMemo(
+    () => new Set(
+      priceReviews
+        .filter((review) => review.review_status === "pending")
+        .map((review) => review.inventory_item?.public_id ?? "")
+        .filter(Boolean),
+    ),
+    [priceReviews],
+  )
+  const kioskPriceIsOnline = localSyncStatus?.status === "ok"
+  const kioskCartHasPriceIssues = kioskCartItems.some((item) =>
+    !kioskPricePresentation(item, {
+      online: kioskPriceIsOnline,
+      pendingApproval: pendingPriceReviewInventoryIds.has(item.publicId),
+    }).canOrder,
+  )
   const kioskCartTotalMinorUnits = kioskCartItems.reduce(
-    (total, item) => total + item.priceMinorUnits,
+    (total, item) => total + (
+      kioskPricePresentation(item, {
+        online: kioskPriceIsOnline,
+        pendingApproval: pendingPriceReviewInventoryIds.has(item.publicId),
+      }).canOrder
+        ? item.priceMinorUnits
+        : 0
+    ),
     0,
   )
-  const kioskCartTotalLabel = formatMoney(kioskCartTotalMinorUnits, "USD")
+  const kioskCartTotalLabel = kioskCartHasPriceIssues
+    ? "Price review needed"
+    : formatMoney(kioskCartTotalMinorUnits, "USD")
   const activeKioskFulfillmentTicket =
     activeFulfillmentTicket?.source === "kiosk"
       ? kioskOrderTickets.find((ticket) => ticket.orderId === activeFulfillmentTicket.orderId) ?? null
@@ -5096,12 +5180,16 @@ export function App() {
   const tradeInCurrentFinalValueMinorUnits =
     tradeInManualFinalValueMinorUnits ?? tradeInPreviewValueMinorUnits
   const tradeInCurrentFinalValueManuallySet = tradeInManualFinalValueMinorUnits !== null
+  const tradeInCurrentQuantity = tradeInQuantityFromInput(tradeInQuantityInput)
+  const tradeInQuantityIssue = tradeInCurrentQuantity === null
+    ? "Enter a whole-card quantity from 1 to 999."
+    : ""
   const tradeInCashTotalMinorUnits = tradeInDraftItems
     .filter((item) => item.payoutType === "cash")
-    .reduce((total, item) => total + item.finalValueMinorUnits, 0)
+    .reduce((total, item) => total + item.finalValueMinorUnits * item.quantity, 0)
   const tradeInCreditTotalMinorUnits = tradeInDraftItems
     .filter((item) => item.payoutType === "credit")
-    .reduce((total, item) => total + item.finalValueMinorUnits, 0)
+    .reduce((total, item) => total + item.finalValueMinorUnits * item.quantity, 0)
   const tradeInCombinedTotalMinorUnits = tradeInCashTotalMinorUnits + tradeInCreditTotalMinorUnits
   const tradeInCustomerLookupQuery = [
     tradeInCustomerLookupInput,
@@ -8633,6 +8721,7 @@ export function App() {
     detail = "Search ScryDex to add cards to this offer.",
   ) {
     setTradeInManualFinalValueInput("")
+    setTradeInQuantityInput("1")
     setTradeInCardQuery("")
     setTradeInCardResults([])
     setTradeInCardSetFilter("")
@@ -9073,6 +9162,15 @@ export function App() {
       return
     }
 
+    if (tradeInQuantityIssue || tradeInCurrentQuantity === null) {
+      setActiveSection("Trade-Ins")
+      setActivityMessage({
+        title: "Trade-in quantity needs attention",
+        detail: tradeInQuantityIssue,
+      })
+      return
+    }
+
     const nextItem: TradeInDraftItem = {
       id: `trade-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       productType: tradeInCurrentProductType,
@@ -9091,6 +9189,7 @@ export function App() {
       percentageBasisPoints: tradeInPercentageBasisPoints,
       finalValueMinorUnits: tradeInCurrentFinalValueMinorUnits,
       finalValueManuallySet: tradeInCurrentFinalValueManuallySet,
+      quantity: tradeInCurrentQuantity,
       payoutType: tradeInPayoutType,
       imageUrl: tradeInCurrentImageUrl,
       providerCardId: selectedTradeInCard?.provider_card_id,
@@ -9121,10 +9220,10 @@ export function App() {
     setActiveSection("Trade-Ins")
     setActivityMessage({
       title: "Trade-in line staged",
-      detail: `${nextItem.cardName} is staged at ${tradeInPercentageBasisPoints / 100}% for ${formatMoney(
-        nextItem.finalValueMinorUnits,
+      detail: `${nextItem.cardName} x${nextItem.quantity} is staged at ${tradeInPercentageBasisPoints / 100}% for ${formatMoney(
+        nextItem.finalValueMinorUnits * nextItem.quantity,
         "USD",
-      )} ${nextItem.payoutType}${nextItem.finalValueManuallySet ? " with a manual offer override" : ""}. It is not sellable inventory until approved and converted.`,
+      )} total ${nextItem.payoutType}${nextItem.finalValueManuallySet ? " with a manual per-copy offer override" : ""}. It is not sellable inventory until the LAN server accepts the offer.`,
     })
   }
 
@@ -9154,6 +9253,18 @@ export function App() {
   function handleTradeInLinePayoutChange(itemId: string, payoutType: TradeInPayoutType) {
     setTradeInDraftItems((items) =>
       items.map((item) => (item.id === itemId ? { ...item, payoutType } : item)),
+    )
+  }
+
+  function handleTradeInLineQuantityChange(itemId: string, value: string) {
+    const quantity = tradeInQuantityFromInput(value)
+
+    if (quantity === null) {
+      return
+    }
+
+    setTradeInDraftItems((items) =>
+      items.map((item) => (item.id === itemId ? { ...item, quantity } : item)),
     )
   }
 
@@ -9191,6 +9302,7 @@ export function App() {
       percentageBasisPoints: item.trade_in_percentage_basis_points,
       finalValueMinorUnits: item.final_value_minor_units,
       finalValueManuallySet: item.final_value_manually_set,
+      quantity: Math.max(1, item.quantity || 1),
       payoutType: item.payout_type,
       imageUrl: item.image_url,
       providerCardId: item.provider_card_id,
@@ -9269,6 +9381,7 @@ export function App() {
     setTradeInCustomerIdNumberOnFile(order.customer_id_number_masked ?? "")
     setTradeInCustomerLookupStatus("matched")
     setTradeInDraftItems(draftItems)
+    setTradeInProcessingResults([])
     setTradeInLoadedOrderId(order.order_id)
     setTradeInSyncStatus("ready")
     setActiveSection("Trade-Ins")
@@ -9276,88 +9389,6 @@ export function App() {
       title: "Saved trade-in loaded",
       detail: `${order.order_id} is back in the offer cart with ${draftItems.length} line item(s) for edits, additions, removals, accept, or decline.`,
     })
-  }
-
-  async function createInventoryFromAcceptedTradeInItems(itemsToConvert: TradeInDraftItem[]) {
-    if (!localSyncSessionToken || itemsToConvert.length === 0) {
-      return { createdCount: 0, blockedCount: itemsToConvert.length, detail: "" }
-    }
-
-    const createdRemoteItems: LocalSyncInventoryItem[] = []
-    const blockedMessages: string[] = []
-
-    for (const item of itemsToConvert) {
-      const autoPriceMinorUnits = autoRetailPriceMinorUnits(item.marketMidMinorUnits)
-      const minimumSalePriceMinorUnits = Math.max(item.finalValueMinorUnits, 100)
-      const finalPriceMinorUnits = finalRetailPriceMinorUnits(autoPriceMinorUnits, minimumSalePriceMinorUnits)
-      const result = await localSyncClient.createInventoryIntake(localSyncSessionToken, {
-        cardName: item.cardName,
-        setName: item.setName || "Trade-In Intake",
-        condition: item.condition || (item.productType === "graded" ? "RAW" : "LP"),
-        barcode: "",
-        priceMinorUnits: finalPriceMinorUnits,
-        location: "Intake Queue",
-        quantity: 1,
-        providerCardId: item.providerCardId,
-        referenceVariantId: item.referenceVariantId,
-        providerVariantId: item.providerVariantId,
-        game: item.game ?? tradeInCardGame,
-        setCode: item.setCode,
-        cardNumber: item.cardNumber,
-        printedNumber: item.printedNumber,
-        variant: item.variant,
-        finish: item.finish,
-        language: item.language,
-        rawOrGraded: item.productType,
-        gradingCompany: item.productType === "graded" ? item.gradingCompany : "",
-        grade: item.productType === "graded" ? item.grade : "",
-        certNumber: item.productType === "graded" ? item.certNumber : "",
-        imageUrl: item.imageUrl,
-        backImageUrl: item.backImageUrl,
-        priceSource: item.priceSource ?? "accepted_trade_in",
-        priceObservedAtUtc: item.priceObservedAtUtc ?? null,
-        suggestedPriceMinorUnits: item.marketMidMinorUnits,
-        autoPriceMinorUnits,
-        minimumSalePriceMinorUnits,
-        finalPriceMinorUnits,
-        priceOverrideReason:
-          finalPriceMinorUnits > autoPriceMinorUnits
-            ? "trade_in_floor"
-            : "trade_in_market_plus_10_percent",
-        onlineVisibility: "visible",
-        kioskVisibility: "visible",
-        posVisibility: "visible",
-      })
-
-      if (result.status !== "ok") {
-        blockedMessages.push(`${item.cardName}: ${result.message}`)
-        continue
-      }
-
-      createdRemoteItems.push(...((result.items && result.items.length > 0) ? result.items : [result.item]))
-    }
-
-    if (createdRemoteItems.length > 0) {
-      const nextId = inventoryItems.reduce((maxId, item) => Math.max(maxId, item.id), 0) + 1
-      const nextItems = createdRemoteItems.map((item, index) => inventoryItemFromLocalSync(item, nextId + index))
-
-      setInventoryItems((items) => [...nextItems, ...items])
-      setSelectedId(nextItems[0]?.id ?? selectedId)
-      setLocalInventoryIntakeReceipts((receipts) => [
-        ...buildLocalInventoryIntakeSyncReceipts(nextItems, {
-          profileId: activeProfile.id,
-          companyName: activeProfile.companyName,
-          localSyncServerUrl: localSyncClient.serverUrl,
-        }),
-        ...receipts,
-      ].slice(0, 50))
-    }
-
-    return {
-      createdCount: createdRemoteItems.length,
-      blockedCount: blockedMessages.length,
-      detail: blockedMessages.join("; "),
-    }
   }
 
   async function refreshTradeInOrders() {
@@ -9443,9 +9474,18 @@ export function App() {
       return
     }
 
+    if (tradeInSubmitInFlightRef.current) {
+      setTradeInSyncStatus("saving")
+      setTradeInSyncDetail("This trade-in request is already being processed by the LAN server.")
+      return
+    }
+
+    tradeInSubmitInFlightRef.current = true
+
+    try {
     setTradeInSyncStatus("saving")
-    setTradeInSyncDetail("Saving this offer to the LAN middleman.")
-    const itemsForInventoryConversion = [...tradeInDraftItems]
+    setTradeInSyncDetail("Saving this offer once to the LAN middleman.")
+    setTradeInProcessingResults([])
     const loadedOrderId = tradeInLoadedOrderId
     const tradeInOrderPayload = {
       customerName: tradeInSelectedCustomer.display_name.trim() || tradeInCustomerName.trim() || "Selected customer",
@@ -9465,6 +9505,7 @@ export function App() {
         marketMidMinorUnits: item.marketMidMinorUnits,
         percentageBasisPoints: item.percentageBasisPoints,
         finalValueMinorUnits: item.finalValueMinorUnits,
+        quantity: item.quantity,
         payoutType: item.payoutType,
         imageUrl: item.imageUrl,
         providerCardId: item.providerCardId,
@@ -9488,6 +9529,13 @@ export function App() {
 
     if (result.status !== "ok") {
       const detail = localSyncErrorDetail(result)
+      setTradeInProcessingResults(tradeInDraftItems.map((item) => ({
+        itemId: item.id,
+        cardName: item.cardName,
+        quantity: item.quantity,
+        status: "blocked",
+        detail,
+      })))
       setTradeInSyncStatus("blocked")
       setTradeInSyncDetail(detail)
       setActivityMessage({
@@ -9498,6 +9546,7 @@ export function App() {
     }
 
     let savedOrder = result.order
+    let serverResult: Extract<LocalSyncTradeInOrderStatusUpdateResult, { status: "ok" }> = result
     let inventoryConversionDetail = ""
     if (nextStatus !== "draft") {
       const statusResult = await localSyncClient.updateTradeInOrderStatus(
@@ -9512,9 +9561,22 @@ export function App() {
 
       if (statusResult.status === "ok") {
         savedOrder = statusResult.order
+        serverResult = statusResult
         inventoryConversionDetail += applyTradeInCreditApplication(statusResult.credit_application)
       } else {
         const detail = `${result.order.customer_name} offer ${result.order.order_id} saved, but status update was blocked: ${localSyncErrorDetail(statusResult)}`
+        setServerTradeInOrders((orders) => [
+          result.order,
+          ...orders.filter((order) => order.order_id !== result.order.order_id),
+        ])
+        setTradeInLoadedOrderId(result.order.order_id)
+        setTradeInProcessingResults(tradeInDraftItems.map((item) => ({
+          itemId: item.id,
+          cardName: item.cardName,
+          quantity: item.quantity,
+          status: "blocked",
+          detail,
+        })))
         setTradeInSyncStatus("blocked")
         setTradeInSyncDetail(detail)
         setActivityMessage({
@@ -9526,29 +9588,23 @@ export function App() {
     }
 
     if (nextStatus === "approved") {
-      const inventoryResult = await createInventoryFromAcceptedTradeInItems(itemsForInventoryConversion)
-      inventoryConversionDetail =
-        inventoryResult.createdCount > 0
-          ? ` ${inventoryResult.createdCount} accepted card(s) were added to inventory intake and queued for website product sync.`
-          : " No inventory rows were created from the accepted offer."
-
-      if (inventoryResult.detail) {
-        inventoryConversionDetail += ` Review: ${inventoryResult.detail}`
-      }
-
-      if (inventoryResult.createdCount > 0) {
-        const conversionResult = await localSyncClient.updateTradeInOrderStatus(
-          localSyncSessionToken,
-          savedOrder.order_id,
-          "converted",
-          { notes: "Accepted offer converted to inventory intake from the employee app." },
-        )
-
-        if (conversionResult.status === "ok") {
-          savedOrder = conversionResult.order
-        }
-      }
+      const createdCount = serverResult.inventory_creation?.created_count ?? 0
+      const existingCount = serverResult.inventory_creation?.existing_count ?? 0
+      inventoryConversionDetail += ` The LAN server atomically linked ${savedOrder.inventory_created_count} inventory row(s) to this trade (${createdCount} created, ${existingCount} already present). The employee app did not create inventory separately.`
     }
+
+    setTradeInProcessingResults(savedOrder.items.map((item) => ({
+      itemId: item.item_id,
+      cardName: item.card_name,
+      quantity: item.quantity,
+      status: nextStatus === "approved" ? "accepted" : nextStatus === "rejected" ? "rejected" : "saved",
+      detail:
+        nextStatus === "approved"
+          ? `LAN accepted ${item.quantity} ${item.quantity === 1 ? "copy" : "copies"}; inventory ownership and idempotency are recorded on ${savedOrder.order_id}.`
+          : nextStatus === "rejected"
+            ? `LAN saved ${item.quantity} ${item.quantity === 1 ? "copy" : "copies"} as rejected history; no inventory was created.`
+            : `LAN saved ${item.quantity} ${item.quantity === 1 ? "copy" : "copies"} in the editable ${savedOrder.status} offer.`,
+    })))
 
     setServerTradeInOrders((orders) => [savedOrder, ...orders.filter((order) => order.order_id !== savedOrder.order_id)])
     setTradeInDraftItems([])
@@ -9574,6 +9630,23 @@ export function App() {
             ? `${savedOrder.customer_name} declined offer ${savedOrder.order_id}. The offer is saved for lookup by name, phone, receipt, staff, or card.`
             : `${savedOrder.customer_name} draft ${savedOrder.order_id} saved to the shared middleman queue. It is not sellable inventory yet.`,
     })
+    } catch (error) {
+      const detail = error instanceof Error && error.message.trim()
+        ? error.message
+        : "The LAN trade-in request stopped before a safe response was returned."
+      setTradeInProcessingResults(tradeInDraftItems.map((item) => ({
+        itemId: item.id,
+        cardName: item.cardName,
+        quantity: item.quantity,
+        status: "blocked",
+        detail,
+      })))
+      setTradeInSyncStatus("blocked")
+      setTradeInSyncDetail(detail)
+      setActivityMessage({ title: "Trade-in request stopped", detail })
+    } finally {
+      tradeInSubmitInFlightRef.current = false
+    }
   }
 
   async function handleTradeInStatus(order: LocalSyncTradeInOrder, status: LocalSyncTradeInOrder["status"]) {
@@ -9594,12 +9667,30 @@ export function App() {
       return
     }
 
+    if (tradeInSubmitInFlightRef.current) {
+      setTradeInSyncStatus("saving")
+      setTradeInSyncDetail("This trade-in request is already being processed by the LAN server.")
+      return
+    }
+
+    tradeInSubmitInFlightRef.current = true
+    setTradeInSyncStatus("saving")
+    setTradeInSyncDetail(`Moving ${order.order_id} to ${status} once on the LAN server.`)
+
+    try {
     const result = await localSyncClient.updateTradeInOrderStatus(localSyncSessionToken, order.order_id, status)
 
     if (result.status !== "ok") {
       const detail = localSyncErrorDetail(result)
       setTradeInSyncStatus("blocked")
       setTradeInSyncDetail(detail)
+      setTradeInProcessingResults(order.items.map((item) => ({
+        itemId: item.item_id,
+        cardName: item.card_name,
+        quantity: item.quantity,
+        status: "blocked",
+        detail,
+      })))
       setActivityMessage({ title: "Trade-in status blocked", detail })
       return
     }
@@ -9609,31 +9700,20 @@ export function App() {
 
     if (status === "approved") {
       detail += applyTradeInCreditApplication(result.credit_application)
-      const itemsForInventoryConversion = result.order.items.map(tradeInDraftItemFromSavedOrderItem)
-      const inventoryResult = await createInventoryFromAcceptedTradeInItems(itemsForInventoryConversion)
-
-      detail +=
-        inventoryResult.createdCount > 0
-          ? ` ${inventoryResult.createdCount} card(s) added to inventory intake.`
-          : " No inventory rows were created."
-
-      if (inventoryResult.detail) {
-        detail += ` Review: ${inventoryResult.detail}`
-      }
-
-      if (inventoryResult.createdCount > 0) {
-        const conversionResult = await localSyncClient.updateTradeInOrderStatus(
-          localSyncSessionToken,
-          result.order.order_id,
-          "converted",
-          { notes: "Approved saved trade-in converted to inventory intake." },
-        )
-
-        if (conversionResult.status === "ok") {
-          nextOrder = conversionResult.order
-        }
-      }
+      const createdCount = result.inventory_creation?.created_count ?? 0
+      const existingCount = result.inventory_creation?.existing_count ?? 0
+      detail += ` LAN atomically linked ${result.order.inventory_created_count} inventory row(s) (${createdCount} created, ${existingCount} already present); the app did not submit a second intake.`
     }
+
+    setTradeInProcessingResults(result.order.items.map((item) => ({
+      itemId: item.item_id,
+      cardName: item.card_name,
+      quantity: item.quantity,
+      status: status === "approved" ? "accepted" : status === "rejected" ? "rejected" : "saved",
+      detail: status === "approved"
+        ? `LAN accepted ${item.quantity} ${item.quantity === 1 ? "copy" : "copies"} and owns its inventory conversion.`
+        : `LAN moved ${item.quantity} ${item.quantity === 1 ? "copy" : "copies"} to ${result.order.status}.`,
+    })))
 
     setServerTradeInOrders((orders) =>
       orders.map((order) => (order.order_id === nextOrder.order_id ? nextOrder : order)),
@@ -9645,27 +9725,23 @@ export function App() {
     setTradeInSyncStatus("ready")
     setTradeInSyncDetail(`${nextOrder.customer_name} moved to ${nextOrder.status}.`)
     setActivityMessage({ title: "Trade-in status updated", detail })
-  }
-
-  function handleLoadTradeInItemForInventory(item: TradeInDraftItem) {
-    setIntakeProductType(item.productType)
-    setIntakeCardName(item.cardName)
-    setIntakeSetName(item.setName)
-    setIntakeCondition(item.condition)
-    setIntakeGradingCompany(item.gradingCompany || "PSA")
-    setIntakeGrade(item.grade)
-    setIntakeCertNumber(item.certNumber)
-    setIntakePriceInput(creditRedemptionInputFromMinorUnits(item.marketMidMinorUnits))
-    setIntakeMinimumPriceInput(
-      creditRedemptionInputFromMinorUnits(
-        Math.max(tradeInValueMinorUnits(item.marketMidMinorUnits, item.percentageBasisPoints), 100),
-      ),
-    )
-    setActiveSection("Inventory")
-    setActivityMessage({
-      title: "Trade-in loaded for inventory",
-      detail: `${item.cardName} is copied into inventory intake. Add Inventory only after manager approval/payment is complete.`,
-    })
+    } catch (error) {
+      const detail = error instanceof Error && error.message.trim()
+        ? error.message
+        : "The LAN trade-in status request stopped before a safe response was returned."
+      setTradeInProcessingResults(order.items.map((item) => ({
+        itemId: item.item_id,
+        cardName: item.card_name,
+        quantity: item.quantity,
+        status: "blocked",
+        detail,
+      })))
+      setTradeInSyncStatus("blocked")
+      setTradeInSyncDetail(detail)
+      setActivityMessage({ title: "Trade-in status stopped", detail })
+    } finally {
+      tradeInSubmitInFlightRef.current = false
+    }
   }
 
   function handleScryDexVariantChange(nextVariantId: string) {
@@ -9771,6 +9847,20 @@ export function App() {
       setActivityMessage({
         title: "Kiosk item hidden",
         detail: `${item.cardName} is marked ${inventoryVisibilityLabel(item.kioskVisibility).toLowerCase()} for kiosk browsing, so it stays staff-only until a manager changes visibility.`,
+      })
+      return
+    }
+
+    const pricePresentation = kioskPricePresentation(item, {
+      online: kioskPriceIsOnline,
+      pendingApproval: pendingPriceReviewInventoryIds.has(item.publicId),
+    })
+
+    if (!pricePresentation.canOrder) {
+      setActiveSection("Kiosk")
+      setActivityMessage({
+        title: pricePresentation.statusLabel,
+        detail: `${item.cardName} cannot be added until the LAN source of truth has an approved price greater than $0.00.`,
       })
       return
     }
@@ -10016,14 +10106,22 @@ export function App() {
     }
 
     const availableItems = kioskCartItems.filter(
-      (item) => item.status === "available" && (item.kioskVisibility ?? "visible") === "visible",
+      (item) =>
+        item.status === "available" &&
+        (item.kioskVisibility ?? "visible") === "visible" &&
+        kioskPricePresentation(item, {
+          online: kioskPriceIsOnline,
+          pendingApproval: pendingPriceReviewInventoryIds.has(item.publicId),
+        }).canOrder,
     )
 
-    if (availableItems.length === 0) {
+    if (availableItems.length !== kioskCartItems.length) {
       setActiveSection("Kiosk")
       setActivityMessage({
-        title: "Kiosk cart empty",
-        detail: "Select at least one available card before sending a pickup order.",
+        title: kioskCartItems.length === 0 ? "Kiosk cart empty" : "Kiosk price review required",
+        detail: kioskCartItems.length === 0
+          ? "Select at least one available card before sending a pickup order."
+          : "Remove cards with pending, unavailable, or unapproved prices before sending this pickup order.",
       })
       return
     }
@@ -13039,6 +13137,7 @@ export function App() {
           >
             <span>Inventory status</span>
             <strong>{kioskInventoryStatusLabel}</strong>
+            <small>Last sync {liveLastSyncLabel}</small>
           </div>
         </header>
 
@@ -13095,7 +13194,13 @@ export function App() {
           </div>
           <div className="kiosk-layout">
             <div className="kiosk-inventory-list kiosk-card-grid" aria-label="Kiosk inventory results">
-              {kioskVisibleItems.map((item) => (
+              {kioskVisibleItems.map((item) => {
+                const pricePresentation = kioskPricePresentation(item, {
+                  online: kioskPriceIsOnline,
+                  pendingApproval: pendingPriceReviewInventoryIds.has(item.publicId),
+                })
+
+                return (
                 <article className="kiosk-card" key={item.id}>
                   <div className="kiosk-card-art" aria-hidden="true">
                     {item.imageUrl ? (
@@ -13112,18 +13217,23 @@ export function App() {
                     </small>
                   </div>
                   <div className="kiosk-card-price">
-                    <strong>{item.price}</strong>
-                    <span>In stock</span>
+                    <strong>{pricePresentation.displayPrice}</strong>
+                    <span>{pricePresentation.statusLabel}</span>
                   </div>
                   <button
                     type="button"
-                    disabled={kioskCartIds.includes(item.id)}
+                    disabled={kioskCartIds.includes(item.id) || !pricePresentation.canOrder}
                     onClick={() => handleKioskAddItem(item)}
                   >
-                    {kioskCartIds.includes(item.id) ? "Selected" : "Add"}
+                    {kioskCartIds.includes(item.id)
+                      ? "Selected"
+                      : pricePresentation.canOrder
+                        ? "Add"
+                        : "Price unavailable"}
                   </button>
                 </article>
-              ))}
+                )
+              })}
               {kioskVisibleItems.length === 0 ? (
                 <p className="panel-empty">No in-stock cards match that search.</p>
               ) : null}
@@ -13140,7 +13250,13 @@ export function App() {
               </header>
               {kioskCartItems.length > 0 ? (
                 <div className="kiosk-cart-items">
-                  {kioskCartItems.map((item) => (
+                  {kioskCartItems.map((item) => {
+                    const pricePresentation = kioskPricePresentation(item, {
+                      online: kioskPriceIsOnline,
+                      pendingApproval: pendingPriceReviewInventoryIds.has(item.publicId),
+                    })
+
+                    return (
                     <article className="kiosk-cart-item" key={item.id}>
                       <div className="kiosk-cart-thumbnail" aria-hidden="true">
                         {item.imageUrl ? (
@@ -13157,7 +13273,8 @@ export function App() {
                         </small>
                       </div>
                       <div className="kiosk-cart-item-actions">
-                        <strong>{item.price}</strong>
+                        <strong>{pricePresentation.displayPrice}</strong>
+                        <small>{pricePresentation.statusLabel}</small>
                         <button
                           type="button"
                           aria-label={`Remove ${item.cardName} from pickup list`}
@@ -13168,7 +13285,8 @@ export function App() {
                         </button>
                       </div>
                     </article>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="kiosk-cart-empty">
@@ -13204,7 +13322,7 @@ export function App() {
                 </div>
                 <button
                   type="button"
-                  disabled={!kioskCustomerReady || kioskCartItems.length === 0}
+                  disabled={!kioskCustomerReady || kioskCartItems.length === 0 || kioskCartHasPriceIssues}
                   onClick={() => void handleKioskSubmitOrder()}
                 >
                   <Icon name="check" />
@@ -15337,6 +15455,19 @@ export function App() {
                         ))}
                       </select>
                     </label>
+                    <label htmlFor="trade-in-quantity">
+                      <span className="micro-label">Quantity</span>
+                      <input
+                        id="trade-in-quantity"
+                        disabled={!tradeInCustomerSelected}
+                        inputMode="numeric"
+                        min="1"
+                        max="999"
+                        type="number"
+                        value={tradeInQuantityInput}
+                        onChange={(event) => setTradeInQuantityInput(event.target.value)}
+                      />
+                    </label>
                     <label htmlFor="trade-in-manual-final-value">
                       <span className="micro-label">Manual offer value</span>
                       <input
@@ -15369,7 +15500,12 @@ export function App() {
                           ? "Leave manual offer blank to use the calculated market-mid percentage."
                           : "Enter a manual offer because no graded market value is available for this card.")}
                   </small>
-                  <button type="button" disabled={!tradeInCustomerSelected} onClick={handleStageTradeInItem}>
+                  {tradeInQuantityIssue ? <small className="field-error">{tradeInQuantityIssue}</small> : null}
+                  <button
+                    type="button"
+                    disabled={!tradeInCustomerSelected || Boolean(tradeInQuantityIssue)}
+                    onClick={handleStageTradeInItem}
+                  >
                     Add Card to Offer
                   </button>
                 </div>
@@ -15399,12 +15535,16 @@ export function App() {
                   <div className="trade-in-sync-actions">
                     <button
                       type="button"
-                      disabled={!tradeInCustomerSelected}
+                      disabled={!tradeInCustomerSelected || tradeInSyncStatus === "saving"}
                       onClick={() => void handleSaveTradeInDraft()}
                     >
                       Save Draft
                     </button>
-                    <button type="button" onClick={() => void refreshTradeInOrders()}>
+                    <button
+                      type="button"
+                      disabled={tradeInSyncStatus === "saving"}
+                      onClick={() => void refreshTradeInOrders()}
+                    >
                       Refresh
                     </button>
                   </div>
@@ -15432,13 +15572,13 @@ export function App() {
                   <strong>{formatMoney(tradeInCombinedTotalMinorUnits, "USD")}</strong>
                   <small>
                     {tradeInLoadedOrderId ? `Editing saved quote ${tradeInLoadedOrderId}. ` : ""}
-                    {tradeInDraftItems.length} line item(s). Save as a quote, record customer acceptance, or keep a
+                    {tradeInDraftItems.length} line item(s), {tradeInDraftItems.reduce((total, item) => total + item.quantity, 0)} total card(s). Save as a quote, record customer acceptance, or keep a
                     declined offer on file for later lookup.
                   </small>
                 </div>
                 <button
                   type="button"
-                  disabled={!tradeInCustomerSelected}
+                  disabled={!tradeInCustomerSelected || tradeInSyncStatus === "saving"}
                   onClick={() => void handleSaveTradeInDraft()}
                 >
                   Save Quote
@@ -15446,7 +15586,7 @@ export function App() {
                 <button
                   type="button"
                   className="accept-command"
-                  disabled={!tradeInCustomerSelected}
+                  disabled={!tradeInCustomerSelected || tradeInSyncStatus === "saving"}
                   onClick={() => void handleSaveTradeInDraft("approved")}
                 >
                   Customer Accepts
@@ -15454,12 +15594,39 @@ export function App() {
                 <button
                   type="button"
                   className="decline-command"
-                  disabled={!tradeInCustomerSelected}
+                  disabled={!tradeInCustomerSelected || tradeInSyncStatus === "saving"}
                   onClick={() => void handleSaveTradeInDraft("rejected")}
                 >
                   Customer Declines
                 </button>
               </div>
+
+              {tradeInProcessingResults.length > 0 ? (
+                <div className="trade-in-draft-list" aria-label="LAN trade-in processing results" aria-live="polite">
+                  {tradeInProcessingResults.map((result) => (
+                    <article className="trade-in-draft-card is-order" key={`${result.itemId}-${result.status}`}>
+                      <div>
+                        <span className="micro-label">{result.status}</span>
+                        <strong>{result.cardName}</strong>
+                        <small>Quantity {result.quantity}</small>
+                      </div>
+                      <div>
+                        <span className="micro-label">LAN processing</span>
+                        <strong>
+                          {result.status === "accepted"
+                            ? "Inventory linked"
+                            : result.status === "blocked"
+                              ? "Blocked"
+                              : result.status === "rejected"
+                                ? "Rejected"
+                                : "Saved"}
+                        </strong>
+                        <small>{result.detail}</small>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
 
               <div className="trade-in-draft-list" aria-label="Draft trade-in line items">
                 {tradeInDraftItems.length > 0 ? (
@@ -15482,7 +15649,7 @@ export function App() {
                           </span>
                           <strong>{item.cardName}</strong>
                           <small>
-                            {tradeInDraftSetLabel(item)} / {item.condition}
+                            {tradeInDraftSetLabel(item)} / {item.condition} / quantity {item.quantity}
                             {item.productType === "graded"
                               ? ` / ${item.gradingCompany} ${item.grade}${item.certNumber ? ` / ${item.certNumber}` : ""}`
                               : ""}
@@ -15493,7 +15660,8 @@ export function App() {
                           <strong>{formatMoney(item.marketMidMinorUnits, "USD")}</strong>
                           <small>
                             {item.finalValueManuallySet ? "Manual override" : "Default floor"}{" "}
-                            {formatMoney(calculatedValueMinorUnits, "USD")}
+                            {formatMoney(calculatedValueMinorUnits, "USD")} each / line total{" "}
+                            {formatMoney(valueMinorUnits * item.quantity, "USD")}
                           </small>
                         </div>
                         <div className="trade-in-line-controls" aria-label={`${item.cardName} trade-in line controls`}>
@@ -15528,8 +15696,21 @@ export function App() {
                               <option value="cash">Cash</option>
                             </select>
                           </label>
+                          <label htmlFor={`${lineControlId}-quantity`}>
+                            <span className="micro-label">Quantity</span>
+                            <input
+                              id={`${lineControlId}-quantity`}
+                              name={`${lineControlId}-quantity`}
+                              inputMode="numeric"
+                              min="1"
+                              max="999"
+                              type="number"
+                              value={item.quantity}
+                              onChange={(event) => handleTradeInLineQuantityChange(item.id, event.target.value)}
+                            />
+                          </label>
                           <label htmlFor={`${lineControlId}-final-value`}>
-                            <span className="micro-label">Final value</span>
+                            <span className="micro-label">Final value each</span>
                             <input
                               id={`${lineControlId}-final-value`}
                               name={`${lineControlId}-final-value`}
@@ -15541,9 +15722,6 @@ export function App() {
                           <small>Manual final value allowed without manager approval.</small>
                         </div>
                         <div className="trade-in-draft-actions">
-                          <button type="button" onClick={() => handleLoadTradeInItemForInventory(item)}>
-                            Convert to Inventory
-                          </button>
                           <button type="button" onClick={() => handleRemoveTradeInItem(item.id)}>
                             Remove
                           </button>
@@ -15610,15 +15788,18 @@ export function App() {
                 </div>
                 {visibleServerTradeInOrders.length > 0 ? (
                   visibleServerTradeInOrders.map((order) => {
+                    const tradeInActionInFlight = tradeInSyncStatus === "saving"
                     const isLockedTradeIn =
+                      tradeInActionInFlight ||
                       order.status === "approved" ||
                       order.status === "paid" ||
                       order.status === "converted" ||
                       order.status === "completed"
-                    const canConvertTradeIn = order.status === "approved" || order.status === "paid"
-                    const canCompleteTradeIn = order.status === "converted"
+                    const canConvertTradeIn = !tradeInActionInFlight && (order.status === "approved" || order.status === "paid")
+                    const canCompleteTradeIn = !tradeInActionInFlight && order.status === "converted"
                     const canEditTradeIn =
-                      order.status === "draft" || order.status === "review" || order.status === "rejected"
+                      !tradeInActionInFlight &&
+                      (order.status === "draft" || order.status === "review" || order.status === "rejected")
 
                     return (
                     <article className="trade-in-draft-card is-order" key={order.order_id}>
