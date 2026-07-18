@@ -51,5 +51,11 @@ final class ScryDexWebhookRelayControllerContractTest extends TestCase {
 		) {
 			$this->assert_contains( $marker, (string) $source );
 		}
+
+		$transition_offset = strpos( (string) $source, 'public function transition_for_lan' );
+		$claim_offset      = strpos( (string) $source, '$claim_guard =' );
+		$this->assert_true( false !== $transition_offset );
+		$this->assert_true( false !== $claim_offset );
+		$this->assert_true( $claim_offset > $transition_offset );
 	}
 }

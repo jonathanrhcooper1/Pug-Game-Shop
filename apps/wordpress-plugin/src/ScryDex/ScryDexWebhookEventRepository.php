@@ -93,10 +93,7 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 			return $this->result( 'rejected', array( 'scrydex_webhook_event_relay_identifier_invalid' ) );
 		}
 
-		$claim_guard = 'processing' === $status
-			? " AND (processing_status IN ('queued', 'ready_for_lan', 'retry') OR (processing_status = 'processing' AND next_attempt_at IS NOT NULL AND next_attempt_at <= %s))"
-			: '';
-		$sql         = $this->database->prepare(
+		$sql = $this->database->prepare(
 			"UPDATE {$table_name}
 			SET processing_status = 'ready_for_lan', next_attempt_at = NULL
 			WHERE provider_name = %s AND provider_event_id = %s AND processing_status = 'queued'", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -223,7 +220,10 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 			$processed_at = $now;
 		}
 
-		$sql = $this->database->prepare(
+		$claim_guard = 'processing' === $status
+			? " AND (processing_status IN ('queued', 'ready_for_lan', 'retry') OR (processing_status = 'processing' AND next_attempt_at IS NOT NULL AND next_attempt_at <= %s))"
+			: '';
+		$sql         = $this->database->prepare(
 			"UPDATE {$table_name}
 			SET processing_status = %s,
 				relay_attempt_count = %d,
