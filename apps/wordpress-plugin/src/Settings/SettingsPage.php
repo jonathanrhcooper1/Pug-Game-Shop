@@ -549,6 +549,10 @@ final class SettingsPage {
 		$field_id = 'tcg-fulfillment-notification-sound-url';
 
 		echo '<fieldset>';
+		echo '<input type="hidden" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )
+			. '][audio_enabled]" value="0" />';
 		echo '<label><input type="checkbox" name="'
 			. esc_attr( Settings::OPTION_NAME )
 			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )
@@ -557,6 +561,10 @@ final class SettingsPage {
 			. ' /> ';
 		echo esc_html__( 'Enable staff audio notification for new pickup orders.', 'tcg-store-platform' );
 		echo '</label><br />';
+		echo '<input type="hidden" name="'
+			. esc_attr( Settings::OPTION_NAME )
+			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )
+			. '][ready_pickup_email_enabled]" value="0" />';
 		echo '<label><input type="checkbox" name="'
 			. esc_attr( Settings::OPTION_NAME )
 			. '[' . esc_attr( FulfillmentNotificationSettings::KEY )

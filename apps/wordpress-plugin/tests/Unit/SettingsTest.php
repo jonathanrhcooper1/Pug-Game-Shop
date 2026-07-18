@@ -157,6 +157,23 @@ final class SettingsTest extends TestCase {
 		$this->assert_same( '', $result['fulfillment_notifications']['notification_sound_url'] );
 	}
 
+	public function test_unchecked_fulfillment_notification_settings_persist_false(): void {
+		$result = Settings::sanitize(
+			array(
+				'fulfillment_notifications' => array(
+					'notification_sound_url' => 'https://example.test/pickup.mp3',
+				),
+			)
+		);
+
+		$this->assert_false( $result['fulfillment_notifications']['audio_enabled'] );
+		$this->assert_false( $result['fulfillment_notifications']['ready_pickup_email_enabled'] );
+		$this->assert_same(
+			'https://example.test/pickup.mp3',
+			$result['fulfillment_notifications']['notification_sound_url']
+		);
+	}
+
 	public function test_offline_route_runtime_settings_are_sanitized(): void {
 		$result = Settings::sanitize(
 			array(

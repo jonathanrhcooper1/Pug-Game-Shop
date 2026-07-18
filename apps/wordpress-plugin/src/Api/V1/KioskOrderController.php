@@ -111,13 +111,25 @@ final class KioskOrderController {
 		$wpdb->query( 'START TRANSACTION' );
 
 		foreach ( $item_public_ids as $index => $public_id ) {
-			$inventory = $wpdb->get_row(
+			$reservation_idempotency = KioskReservationReplay::idempotency_key( $order_id, $public_id );
+			$inventory               = $wpdb->get_row(
 				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name comes from the WordPress prefix.
 					"SELECT * FROM {$inventory_table} WHERE public_id = %s LIMIT 1 FOR UPDATE",
 					$public_id
 				),
 				ARRAY_A
 			);
+			$replayed_reservation    = $this->find_reservation_replay(
+				$reservations_table,
+				$reservation_idempotency,
+				$public_id
+			);
+
+			if ( null !== $replayed_reservation ) {
+				$reservations[] = $replayed_reservation;
+				continue;
+			}
 
 			if ( ! is_array( $inventory ) ) {
 				$wpdb->query( 'ROLLBACK' );
@@ -131,8 +143,7 @@ final class KioskOrderController {
 				return $this->blocked( 'inventory_unavailable', __( 'Inventory item is not available for kiosk pickup.', 'tcg-store-platform' ) );
 			}
 
-			$reservation_idempotency = $order_id . ':' . $public_id;
-			$inserted                = $wpdb->insert(
+			$inserted = $wpdb->insert(
 				$reservations_table,
 				array(
 					'public_id'           => $this->uuid(),
@@ -169,6 +180,17 @@ final class KioskOrderController {
 			);
 
 			if ( false === $inserted ) {
+				$replayed_reservation = $this->find_reservation_replay(
+					$reservations_table,
+					$reservation_idempotency,
+					$public_id
+				);
+
+				if ( null !== $replayed_reservation ) {
+					$reservations[] = $replayed_reservation;
+					continue;
+				}
+
 				$wpdb->query( 'ROLLBACK' );
 
 				return $this->blocked( 'reservation_insert_failed', __( 'Kiosk reservation could not be created.', 'tcg-store-platform' ) );
@@ -209,6 +231,26 @@ final class KioskOrderController {
 			'status'       => 'ok',
 			'reservations' => $reservations,
 		);
+	}
+
+	/**
+	 * @return array<string, mixed>|null
+	 */
+	private function find_reservation_replay( string $reservations_table, string $idempotency_key, string $public_id ): ?array {
+		global $wpdb;
+
+		$existing = $wpdb->get_row(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name comes from the WordPress prefix.
+				"SELECT * FROM {$reservations_table} WHERE idempotency_key = %s LIMIT 1 FOR UPDATE",
+				$idempotency_key
+			),
+			ARRAY_A
+		);
+
+		return is_array( $existing )
+			? KioskReservationReplay::response_item( $existing, $public_id )
+			: null;
 	}
 
 	private function request_payload( \WP_REST_Request $request ): array {

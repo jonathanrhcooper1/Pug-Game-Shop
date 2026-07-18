@@ -27,6 +27,14 @@ final class FulfillmentOrderControllerTest extends TestCase {
 		$this->assert_same( 'create_inventory', $contracts[1]['permission'] );
 	}
 
+	public function test_ready_pickup_remains_a_paid_woocommerce_status(): void {
+		$controller = new FulfillmentOrderController();
+		$statuses   = $controller->add_ready_pickup_paid_order_status( array( 'processing', 'completed' ) );
+
+		$this->assert_same( array( 'processing', 'completed', 'ready-pickup' ), $statuses );
+		$this->assert_same( $statuses, $controller->add_ready_pickup_paid_order_status( $statuses ) );
+	}
+
 	public function test_source_keeps_fulfillment_paid_pickup_and_inventory_boundaries(): void {
 		$source = $this->source();
 
@@ -34,6 +42,7 @@ final class FulfillmentOrderControllerTest extends TestCase {
 			array(
 				'register_ready_pickup_order_status',
 				'wc_order_statuses',
+				'woocommerce_order_is_paid_statuses',
 				'wc_get_orders',
 				'local_pickup',
 				'is_paid',
@@ -59,6 +68,20 @@ final class FulfillmentOrderControllerTest extends TestCase {
 		) {
 			$this->assert_contains( $marker, $source );
 		}
+	}
+
+	public function test_source_checks_eligibility_and_transition_before_order_mutation(): void {
+		$source             = $this->source();
+		$eligibility_offset = strpos( $source, '$eligibility = $this->fulfillment_eligibility( $order );' );
+		$transition_offset  = strpos( $source, 'FulfillmentOrderMutationPolicy::transition' );
+		$mutation_offset    = strpos( $source, '$order->update_meta_data( self::STATUS_META, $status );' );
+
+		$this->assert_true( false !== $eligibility_offset );
+		$this->assert_true( false !== $transition_offset );
+		$this->assert_true( false !== $mutation_offset );
+		$this->assert_true( $eligibility_offset < $mutation_offset );
+		$this->assert_true( $transition_offset < $mutation_offset );
+		$this->assert_contains( "array( 'processing', 'ready-pickup', 'completed', 'on-hold' )", $source );
 	}
 
 	private function source(): string {

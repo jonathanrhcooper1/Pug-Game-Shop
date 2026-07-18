@@ -137,12 +137,15 @@ final class Settings {
 				? $existing['customer_credit']
 				: CustomerCreditSettings::defaults()
 		);
-		$fulfillment_notifications     = FulfillmentNotificationSettings::sanitize(
-			$value['fulfillment_notifications'] ?? ( $existing['fulfillment_notifications'] ?? array() ),
-			is_array( $existing['fulfillment_notifications'] ?? null )
-				? $existing['fulfillment_notifications']
-				: FulfillmentNotificationSettings::defaults()
-		);
+		$fulfillment_fallback          = is_array( $existing['fulfillment_notifications'] ?? null )
+			? $existing['fulfillment_notifications']
+			: FulfillmentNotificationSettings::defaults();
+		$fulfillment_notifications     = array_key_exists( 'fulfillment_notifications', $value )
+			? FulfillmentNotificationSettings::sanitize_submission(
+				$value['fulfillment_notifications'],
+				$fulfillment_fallback
+			)
+			: FulfillmentNotificationSettings::sanitize( $fulfillment_fallback, $fulfillment_fallback );
 		$scrydex_provider              = ScryDexProviderSettings::sanitize(
 			$value['scrydex_provider'] ?? ( $existing['scrydex_provider'] ?? array() ),
 			is_array( $existing['scrydex_provider'] ?? null )

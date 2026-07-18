@@ -16,19 +16,10 @@ final class FulfillmentOrderController {
 	private const READY_EMAIL_SENT_META = '_tcg_ready_for_pickup_email_sent_at';
 	private const READY_ORDER_STATUS = 'ready-pickup';
 
-	/**
-	 * @var list<string>
-	 */
-	private const FULFILLMENT_STATUSES = array(
-		'awaiting_pull',
-		'pulling',
-		'ready_for_pickup',
-		'completed',
-	);
-
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_ready_pickup_order_status' ), 20 );
 		add_filter( 'wc_order_statuses', array( $this, 'add_ready_pickup_order_status_label' ) );
+		add_filter( 'woocommerce_order_is_paid_statuses', array( $this, 'add_ready_pickup_paid_order_status' ) );
 		add_action( 'rest_api_init', array( $this, 'register_routes' ), 25 );
 	}
 
@@ -74,6 +65,18 @@ final class FulfillmentOrderController {
 		}
 
 		return $next;
+	}
+
+	/**
+	 * @param list<string> $statuses WooCommerce statuses considered paid.
+	 * @return list<string>
+	 */
+	public function add_ready_pickup_paid_order_status( array $statuses ): array {
+		if ( ! in_array( self::READY_ORDER_STATUS, $statuses, true ) ) {
+			$statuses[] = self::READY_ORDER_STATUS;
+		}
+
+		return $statuses;
 	}
 
 	public function register_routes(): void {
@@ -202,6 +205,30 @@ final class FulfillmentOrderController {
 			return $this->blocked_response( 'order_not_found', __( 'No WooCommerce order matched that ID.', 'tcg-store-platform' ), 404 );
 		}
 
+		$eligibility = $this->fulfillment_eligibility( $order );
+		if ( ! $eligibility['eligible'] ) {
+			return $this->blocked_response(
+				$eligibility['code'],
+				$this->fulfillment_eligibility_message( $eligibility['code'] ),
+				409
+			);
+		}
+
+		$current_status = $this->fulfillment_status( $order );
+		$transition     = FulfillmentOrderMutationPolicy::transition( $current_status, $status );
+
+		if ( ! $transition['accepted'] ) {
+			return $this->blocked_response(
+				$transition['code'],
+				__( 'Fulfillment status cannot move backward.', 'tcg-store-platform' ),
+				409
+			);
+		}
+
+		if ( $transition['idempotent'] ) {
+			return $this->fulfillment_status_response( $order, $transition['code'], false, true );
+		}
+
 		if ( method_exists( $order, 'update_meta_data' ) ) {
 			$order->update_meta_data( self::STATUS_META, $status );
 		}
@@ -229,17 +256,23 @@ final class FulfillmentOrderController {
 			$order->save();
 		}
 
+		return $this->fulfillment_status_response( $order, $transition['code'], $email_sent, false );
+	}
+
+	private function fulfillment_status_response( mixed $order, string $code, bool $email_sent, bool $idempotent ): \WP_REST_Response {
 		return new \WP_REST_Response(
 			array(
 				'data' => array(
-					'resource'              => 'fulfillment_order',
-					'accepted'              => true,
-					'code'                  => 'fulfillment_status_updated',
-					'order'                 => $this->fulfillment_order_payload( $order, true ),
-					'ready_for_pickup_email_sent' => $email_sent,
-					'inventory_mutation_performed' => false,
-					'payment_capture_performed' => false,
-					'credentials_synced_to_client' => false,
+					'resource'                       => 'fulfillment_order',
+					'accepted'                       => true,
+					'code'                           => $code,
+					'order'                          => $this->fulfillment_order_payload( $order ),
+					'idempotent_replay'              => $idempotent,
+					'fulfillment_mutation_performed' => ! $idempotent,
+					'ready_for_pickup_email_sent'    => $email_sent,
+					'inventory_mutation_performed'   => false,
+					'payment_capture_performed'      => false,
+					'credentials_synced_to_client'   => false,
 				),
 			),
 			200
@@ -302,10 +335,11 @@ final class FulfillmentOrderController {
 			return false;
 		}
 
-		$order_number = method_exists( $order, 'get_order_number' ) ? (string) $order->get_order_number() : '';
-		$subject      = sprintf( __( 'Your Pug order %s is ready for pickup', 'tcg-store-platform' ), $order_number );
-		$lines        = array(
-			sprintf( __( 'Hi %s,', 'tcg-store-platform' ), $this->customer_name( $order ) ?: __( 'there', 'tcg-store-platform' ) ),
+		$order_number  = method_exists( $order, 'get_order_number' ) ? (string) $order->get_order_number() : '';
+		$customer_name = $this->customer_name( $order );
+		$subject       = sprintf( __( 'Your Pug order %s is ready for pickup', 'tcg-store-platform' ), $order_number );
+		$lines         = array(
+			sprintf( __( 'Hi %s,', 'tcg-store-platform' ), '' !== $customer_name ? $customer_name : __( 'there', 'tcg-store-platform' ) ),
 			'',
 			sprintf( __( 'Order %s is ready for pickup at The Pug.', 'tcg-store-platform' ), $order_number ),
 			__( 'Please bring your order number and ID when you arrive.', 'tcg-store-platform' ),
@@ -333,17 +367,17 @@ final class FulfillmentOrderController {
 		return (bool) $sent;
 	}
 
-	private function fulfillment_order_payload( mixed $order, bool $include_non_pickup = false ): ?array {
+	private function fulfillment_order_payload( mixed $order ): ?array {
 		if ( ! is_object( $order ) || ! method_exists( $order, 'get_items' ) ) {
 			return null;
 		}
 
-		if ( method_exists( $order, 'is_paid' ) && ! $order->is_paid() ) {
+		if ( ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) {
 			return null;
 		}
 
 		$pickup = $this->local_pickup_summary( $order );
-		if ( ! $include_non_pickup && ! $pickup['is_local_pickup'] ) {
+		if ( ! $pickup['is_local_pickup'] ) {
 			return null;
 		}
 
@@ -352,13 +386,7 @@ final class FulfillmentOrderController {
 			return null;
 		}
 
-		$fulfillment_status = method_exists( $order, 'get_meta' )
-			? $this->clean_fulfillment_status( $order->get_meta( self::STATUS_META, true ) )
-			: '';
-
-		if ( '' === $fulfillment_status ) {
-			$fulfillment_status = 'awaiting_pull';
-		}
+		$fulfillment_status = $this->fulfillment_status( $order );
 
 		$order_id = method_exists( $order, 'get_id' ) ? (int) $order->get_id() : 0;
 
@@ -411,6 +439,42 @@ final class FulfillmentOrderController {
 		}
 
 		return $items;
+	}
+
+	/**
+	 * @return array{eligible: bool, code: string}
+	 */
+	private function fulfillment_eligibility( mixed $order ): array {
+		if ( ! is_object( $order ) || ! method_exists( $order, 'get_items' ) ) {
+			return FulfillmentOrderMutationPolicy::eligibility( false, false, 0 );
+		}
+
+		$paid             = method_exists( $order, 'is_paid' ) && (bool) $order->is_paid();
+		$local_pickup     = $this->local_pickup_summary( $order )['is_local_pickup'];
+		$serialized_lines = $this->serialized_line_items( $order );
+
+		return FulfillmentOrderMutationPolicy::eligibility( $paid, $local_pickup, count( $serialized_lines ) );
+	}
+
+	private function fulfillment_eligibility_message( string $code ): string {
+		if ( 'order_not_local_pickup' === $code ) {
+			return __( 'Only local-pickup orders can enter pickup fulfillment.', 'tcg-store-platform' );
+		}
+
+		if ( 'order_has_no_serialized_lines' === $code ) {
+			return __( 'Pickup fulfillment requires at least one serialized inventory line.', 'tcg-store-platform' );
+		}
+
+		return __( 'Only paid WooCommerce orders can enter pickup fulfillment.', 'tcg-store-platform' );
+	}
+
+	private function fulfillment_status( mixed $order ): string {
+		$stored_status = method_exists( $order, 'get_meta' )
+			? $order->get_meta( self::STATUS_META, true )
+			: '';
+		$order_status  = method_exists( $order, 'get_status' ) ? $order->get_status() : '';
+
+		return FulfillmentOrderMutationPolicy::derive_status( $stored_status, $order_status );
 	}
 
 	/**
@@ -467,14 +531,11 @@ final class FulfillmentOrderController {
 			);
 		}
 
-		return array( 'processing', 'completed', 'on-hold' );
+		return array( 'processing', 'ready-pickup', 'completed', 'on-hold' );
 	}
 
 	private function clean_fulfillment_status( mixed $value ): string {
-		$status = preg_replace( '/[^a-z0-9_]+/', '_', strtolower( trim( (string) $value ) ) ) ?? '';
-		$status = trim( $status, '_' );
-
-		return in_array( $status, self::FULFILLMENT_STATUSES, true ) ? $status : '';
+		return FulfillmentOrderMutationPolicy::clean_status( $value );
 	}
 
 	private function customer_name( mixed $order ): string {

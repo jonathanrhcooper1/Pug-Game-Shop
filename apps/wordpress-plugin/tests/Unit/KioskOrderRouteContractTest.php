@@ -32,4 +32,15 @@ final class KioskOrderRouteContractTest extends TestCase {
 		$this->assert_false( method_exists( $controller, 'create_woocommerce_order' ) );
 		$this->assert_contains( 'KIOSK_HOLD_SECONDS = 900', $source );
 	}
+
+	public function test_kiosk_order_replays_reservations_before_inventory_availability_rejection(): void {
+		$source        = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/Api/V1/KioskOrderController.php' );
+		$replay_offset = strpos( $source, '$this->find_reservation_replay(' );
+		$status_offset = strpos( $source, 'InventoryStatus::AVAILABLE !==' );
+
+		$this->assert_true( false !== $replay_offset );
+		$this->assert_true( false !== $status_offset );
+		$this->assert_true( $replay_offset < $status_offset );
+		$this->assert_contains( 'KioskReservationReplay::idempotency_key( $order_id, $public_id )', $source );
+	}
 }

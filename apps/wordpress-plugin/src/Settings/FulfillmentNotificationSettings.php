@@ -52,6 +52,23 @@ final class FulfillmentNotificationSettings {
 		);
 	}
 
+	/**
+	 * Sanitize an HTML settings submission where unchecked boxes are omitted.
+	 *
+	 * @param mixed                $value Submitted settings.
+	 * @param array<string, mixed> $fallback Existing safe settings.
+	 * @return array<string, mixed>
+	 */
+	public static function sanitize_submission( mixed $value, array $fallback = array() ): array {
+		$value  = is_array( $value ) ? $value : array();
+		$result = self::sanitize( $value, $fallback );
+
+		$result['audio_enabled']              = ! empty( $value['audio_enabled'] );
+		$result['ready_pickup_email_enabled'] = ! empty( $value['ready_pickup_email_enabled'] );
+
+		return $result;
+	}
+
 	private function __construct() {
 	}
 }
