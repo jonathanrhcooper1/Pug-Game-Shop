@@ -1000,7 +1000,7 @@ export const offlineWorkspaceSeed: OfflineWorkspaceState = {
     { label: "Queued writes", value: "0" },
     { label: "Cached cards", value: "0" },
     { label: "Open conflicts", value: "0" },
-    { label: "Website authority", value: "After sync" },
+    { label: "Inventory authority", value: "LAN ledger" },
   ],
   inventoryItems: [],
   queueItems: [],

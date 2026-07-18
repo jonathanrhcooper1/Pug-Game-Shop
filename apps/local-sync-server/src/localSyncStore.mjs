@@ -13426,7 +13426,7 @@ function seedInventoryItems() {
       currency: "USD",
       location: "Case 2",
       status: "available",
-      image_url: "https://images.pokemontcg.io/jungle/60_hires.png",
+      image_url: "https://images.pokemontcg.io/base2/60_hires.png",
       source: "cached",
     },
   ]
@@ -17596,7 +17596,7 @@ function seedScryDexReferenceCards() {
       suggested_barcode: "PKM-JGL-060-YLW",
       market_price_minor_units: 1800,
       currency: "USD",
-      image_url: "https://images.pokemontcg.io/jungle/60_hires.png",
+      image_url: "https://images.pokemontcg.io/base2/60_hires.png",
       variants: [
         {
           provider_variant_id: "scrydex-pokemon-jungle-060-yellow-cheeks",

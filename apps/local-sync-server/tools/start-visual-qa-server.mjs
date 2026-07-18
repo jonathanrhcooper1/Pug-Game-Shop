@@ -11,6 +11,8 @@ const fixtureDirectory = mkdtempSync(join(tmpdir(), "pug-visual-qa-"))
 const databasePath = join(fixtureDirectory, "visual-qa.sqlite")
 const store = createLocalSyncStore({
   databasePath,
+  seedDemoData: true,
+  seedDemoInventory: true,
   removeSeedReferenceCards: false,
   wordpressPushEnabled: false,
   squareConfigured: false,
