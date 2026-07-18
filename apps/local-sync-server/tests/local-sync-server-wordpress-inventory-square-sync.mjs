@@ -46,6 +46,9 @@ const store = createLocalSyncStore({
 
       return {
         status: "ok",
+        readback_verified: true,
+        verification: { verified: true },
+        readback: { quantity_on_hand: item.quantity_on_hand },
         code: "square_catalog_inventory_synced",
         square_catalog_item_id: item.square_catalog_item_id || "SQ-WP-ITEM-1",
         square_catalog_variation_id: item.square_catalog_variation_id || "SQ-WP-VARIATION-1",

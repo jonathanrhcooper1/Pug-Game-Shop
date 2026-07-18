@@ -3,10 +3,13 @@ import assert from "node:assert/strict"
 import { createSquareCatalogInventorySyncer } from "../src/squareCatalogInventorySyncer.mjs"
 
 const requests = []
+const variationState = new Map()
+const inventoryState = new Map()
 const syncer = createSquareCatalogInventorySyncer({
   accessToken: "test-square-token",
   environment: "production",
   locationId: "LB1B9Z4GVG1BH",
+  readbackDelayMs: 0,
   fetcher: async (url, options = {}) => {
     if (String(url) === "https://images.example/card.png") {
       return {
@@ -32,6 +35,26 @@ const syncer = createSquareCatalogInventorySyncer({
       return jsonResponse(200, { objects: [] })
     }
 
+    if (String(url).includes("/v2/catalog/object/")) {
+      const variationId = decodeURIComponent(String(url).split("/v2/catalog/object/")[1].split("?")[0])
+      const stored = variationState.get(variationId)
+      if (stored) {
+        return jsonResponse(200, {
+          object: {
+            type: "ITEM_VARIATION",
+            id: variationId,
+            version: stored.version,
+            item_variation_data: {
+              item_id: stored.itemId,
+              sku: stored.sku,
+              price_money: { amount: stored.price, currency: stored.currency },
+            },
+          },
+          related_objects: [{ type: "ITEM", id: stored.itemId, version: 4 }],
+        })
+      }
+    }
+
     if (String(url).includes("/v2/catalog/object/SQUARE-GRADED-VARIATION")) {
       return jsonResponse(200, {
         object: {
@@ -41,6 +64,7 @@ const syncer = createSquareCatalogInventorySyncer({
           item_variation_data: {
             item_id: "SQUARE-GRADED-ITEM",
             sku: "PUG-GRADED-CHARIZARD",
+            price_money: { amount: 90000, currency: "USD" },
           },
         },
         related_objects: [
@@ -73,6 +97,25 @@ const syncer = createSquareCatalogInventorySyncer({
         })
       }
 
+      if (firstObject?.type === "ITEM_VARIATION") {
+        variationState.set(firstObject.id, {
+          itemId: firstObject.item_variation_data.item_id,
+          sku: firstObject.item_variation_data.sku,
+          price: firstObject.item_variation_data.price_money.amount,
+          currency: firstObject.item_variation_data.price_money.currency,
+          version: Number(firstObject.version ?? 1) + 1,
+        })
+      } else if (firstObject?.type === "ITEM") {
+        const variation = firstObject.item_data?.variations?.[0]
+        variationState.set("SQUARE-VARIATION-1", {
+          itemId: "SQUARE-ITEM-1",
+          sku: variation?.item_variation_data?.sku,
+          price: variation?.item_variation_data?.price_money?.amount,
+          currency: variation?.item_variation_data?.price_money?.currency,
+          version: 1,
+        })
+      }
+
       return jsonResponse(200, {
         id_mappings: [
           { client_object_id: "#pug_catalog_item", object_id: "SQUARE-ITEM-1" },
@@ -92,6 +135,12 @@ const syncer = createSquareCatalogInventorySyncer({
     }
 
     if (String(url).endsWith("/v2/inventory/changes/batch-create")) {
+      const physicalCount = parsedBody?.changes?.[0]?.physical_count
+      inventoryState.set(`${physicalCount?.catalog_object_id}:${physicalCount?.location_id}`, {
+        catalogObjectId: physicalCount?.catalog_object_id,
+        locationId: physicalCount?.location_id,
+        quantity: physicalCount?.quantity,
+      })
       return jsonResponse(200, {
         counts: [
           {
@@ -101,6 +150,22 @@ const syncer = createSquareCatalogInventorySyncer({
             state: "IN_STOCK",
           },
         ],
+      })
+    }
+
+    if (String(url).endsWith("/v2/inventory/counts/batch-retrieve")) {
+      const key = `${parsedBody?.catalog_object_ids?.[0]}:${parsedBody?.location_ids?.[0]}`
+      const count = inventoryState.get(key)
+      return jsonResponse(200, {
+        counts: count
+          ? [{
+              catalog_object_id: count.catalogObjectId,
+              location_id: count.locationId,
+              quantity: count.quantity,
+              state: "IN_STOCK",
+              calculated_at: "2026-07-18T18:00:00.000Z",
+            }]
+          : [],
       })
     }
 
@@ -161,6 +226,8 @@ assert.equal(result.square_image_id, "SQUARE-IMAGE-1")
 assert.equal(result.image_sync_status, "ok")
 assert.equal(result.credentials_synced_to_client, false)
 assert.equal(result.raw_credentials_returned, false)
+assert.equal(result.readback_verified, true)
+assert.equal(result.verification.verified, true)
 
 const searchRequest = requests.find((request) => request.url.endsWith("/v2/catalog/search"))
 const catalogRequest = requests.find((request) =>
@@ -341,6 +408,70 @@ assert.equal(gradedExistingResult.status, "ok")
 assert.equal(gradedExistingResult.category_sync_status, "existing_item_skipped")
 assert.equal(gradedItemObject, undefined, "existing Square item category refresh should not block inventory retries")
 assert.equal(gradedVariationObject.item_variation_data.sku, "PUG-GRADED-CHARIZARD")
+
+const staleReadbackSyncer = createSquareCatalogInventorySyncer({
+  accessToken: "test-square-token",
+  environment: "production",
+  locationId: "LB1B9Z4GVG1BH",
+  readbackAttempts: 2,
+  readbackDelayMs: 0,
+  fetcher: async (url) => {
+    if (String(url).includes("/v2/catalog/object/STALE-VARIATION")) {
+      return jsonResponse(200, {
+        object: {
+          type: "ITEM_VARIATION",
+          id: "STALE-VARIATION",
+          version: 3,
+          item_variation_data: {
+            item_id: "STALE-ITEM",
+            sku: "PUG-STALE-1",
+            price_money: { amount: 1200, currency: "USD" },
+          },
+        },
+        related_objects: [{ type: "ITEM", id: "STALE-ITEM", version: 2 }],
+      })
+    }
+    if (String(url).endsWith("/v2/catalog/batch-upsert")) {
+      return jsonResponse(200, { objects: [] })
+    }
+    if (String(url).endsWith("/v2/inventory/changes/batch-create")) {
+      return jsonResponse(200, { counts: [] })
+    }
+    if (String(url).endsWith("/v2/inventory/counts/batch-retrieve")) {
+      return jsonResponse(200, {
+        counts: [{
+          catalog_object_id: "STALE-VARIATION",
+          location_id: "LB1B9Z4GVG1BH",
+          quantity: "1",
+          state: "IN_STOCK",
+        }],
+      })
+    }
+    return jsonResponse(404, {})
+  },
+})
+const staleResult = await staleReadbackSyncer.syncInventoryItem({
+  operation: { operation_id: "stale-readback", operation_type: "inventory_update" },
+  item: {
+    public_id: "stale-card",
+    game: "pokemon",
+    card_name: "Stale Count Card",
+    condition: "NM",
+    barcode: "PUG-STALE-1",
+    price_minor_units: 1200,
+    quantity_on_hand: 3,
+    currency: "USD",
+    status: "available",
+    kiosk_visibility: "visible",
+    square_catalog_item_id: "STALE-ITEM",
+    square_catalog_variation_id: "STALE-VARIATION",
+  },
+})
+
+assert.equal(staleResult.status, "blocked")
+assert.equal(staleResult.code, "square_projection_readback_mismatch")
+assert.equal(staleResult.readback_verified, false)
+assert.ok(staleResult.verification.mismatches.includes("quantity_on_hand"))
 
 console.log("Square catalog inventory syncer contract passed")
 

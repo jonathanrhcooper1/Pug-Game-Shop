@@ -124,6 +124,28 @@ final class InventoryProductProjectionPlannerTest extends TestCase {
 		$this->assert_same( array( 42, 43 ), $options[0]['inventory_ids'] );
 	}
 
+	public function test_grouped_projection_sums_authoritative_quantity_rows(): void {
+		$near_mint                      = $this->available_row();
+		$near_mint['reference_card_id'] = 777;
+		$near_mint['quantity_on_hand']  = 4;
+		$light_played                   = $near_mint;
+		$light_played['inventory_id']   = 43;
+		$light_played['public_id']      = 'card-public-43';
+		$light_played['condition_code'] = 'LP';
+		$light_played['sale_price']     = '80.00';
+		$light_played['quantity_on_hand'] = 2;
+		unset( $light_played['sale_price_minor_units'] );
+
+		$plan    = ( new InventoryProductProjectionPlanner() )->plan_group( array( $near_mint, $light_played ) );
+		$product = $plan->product_operations()[0]['product'];
+		$options = json_decode( $this->meta_value( '_tcg_inventory_options_json', $product['meta_data'] ), true );
+
+		$this->assert_same( 6, $product['stock_quantity'] );
+		$this->assert_same( 2, count( $options ) );
+		$this->assert_same( 2, $options[0]['stock_quantity'] );
+		$this->assert_same( 4, $options[1]['stock_quantity'] );
+	}
+
 	public function test_existing_card_group_with_no_available_copies_projects_stockout_without_price(): void {
 		$sold                           = $this->available_row();
 		$sold['status']                 = 'sold';

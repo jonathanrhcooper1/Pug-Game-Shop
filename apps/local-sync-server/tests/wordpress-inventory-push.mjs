@@ -123,6 +123,7 @@ assert.equal(roundedPriceBody.sale_price_minor_units, 500)
 assert.equal(roundedPriceBody.minimum_sale_price_minor_units, 200)
 
 let observedRequest = null
+let observedProjectionRequest = null
 const push = createWordPressInventoryPush({
   websiteUrl: "https://example.test",
   username: "sync-user",
@@ -132,6 +133,48 @@ const push = createWordPressInventoryPush({
   defaultKioskVisibility: "staff_only",
   defaultPosVisibility: "visible",
   fetcher: async (url, init) => {
+    if (url.toString().includes("/inventory-projections/")) {
+      const projectionBody = JSON.parse(init.body)
+      observedProjectionRequest = {
+        url: url.toString(),
+        headers: init.headers,
+        body: projectionBody,
+      }
+
+      return Response.json(
+        {
+          status: "updated",
+          code: "inventory_projection_updated",
+          data: {
+            inventory_id: 77,
+            public_id: "wp-inventory-001",
+            sku: projectionBody.sku,
+            barcode: projectionBody.barcode,
+            status: projectionBody.status,
+            quantity_on_hand: projectionBody.quantity_on_hand,
+            sale_price_minor_units: projectionBody.sale_price_minor_units,
+            minimum_sale_price_minor_units: projectionBody.minimum_sale_price_minor_units,
+            market_price_minor_units: projectionBody.market_price_minor_units,
+            sale_currency: "USD",
+            online_visibility: projectionBody.online_visibility,
+            kiosk_visibility: projectionBody.kiosk_visibility,
+            pos_visibility: projectionBody.pos_visibility,
+            woocommerce_product_id: 9001,
+            row_version: 3,
+          },
+          meta: {
+            woocommerce_product_sync: {
+              requested: true,
+              synced: true,
+              verified: true,
+              product_ids: [9001],
+            },
+          },
+        },
+        { status: 200 },
+      )
+    }
+
     observedRequest = {
       url: url.toString(),
       headers: init.headers,
@@ -185,6 +228,7 @@ assert.equal(result.woocommerce_product_sync.synced, true)
 assert.deepEqual(result.woocommerce_product_sync.product_ids, [9001])
 assert.equal(result.woocommerce_product_sync.payment_capture_deferred, true)
 assert.equal(result.woocommerce_product_sync.square_inventory_deferred, true)
+assert.equal(result.readback_verified, true)
 assert.equal(result.credentials_synced_to_client, false)
 assert.equal(result.authorization_header_printed, false)
 assert.equal(observedRequest.url, "https://example.test/wp-json/tcg-store/v1/inventory")
@@ -200,6 +244,9 @@ assert.equal(observedRequest.body.sync_woocommerce_product, false)
 assert.equal("production_write_approval" in observedRequest.body, false)
 assert.equal(observedRequest.body.provider_variant_id, "scrydex-pokemon-base-004-holo-unlimited")
 assert.equal(observedRequest.body.variant, "Unlimited Holo")
+assert.equal(observedProjectionRequest.url, "https://example.test/wp-json/tcg-store/v1/inventory-projections/wp-inventory-001")
+assert.equal(observedProjectionRequest.body.quantity_on_hand, 1)
+assert.equal(observedProjectionRequest.body.status, "available")
 
 const rejectedPush = createWordPressInventoryPush({
   websiteUrl: "https://example.test",

@@ -58,13 +58,40 @@ export function createWordPressInventoryPush(options = {}) {
         }
       }
 
+      const createdInventory = inventoryCreateResponseData(responseBody)
+      const projection = await writeInventoryProjection({
+        endpointBase,
+        identity: createdInventory.public_id,
+        operation,
+        item: {
+          ...item,
+          wordpress_public_id: createdInventory.public_id,
+          status: body.status,
+          quantity_on_hand: nonNegativeInteger(item?.quantity_on_hand ?? 1),
+          online_visibility: body.online_visibility,
+          kiosk_visibility: body.kiosk_visibility,
+          pos_visibility: body.pos_visibility,
+        },
+        fetcher,
+        authorizationHeader,
+        signal: controller?.signal,
+      })
+
+      if (!projection.ok) {
+        return projectionFailure("wordpress_inventory_create_readback_unverified", projection)
+      }
+
       return {
         status: "ok",
         code: "wordpress_inventory_item_created",
         http_status: Number(response.status ?? 201),
         wordpress_code: String(responseBody.code ?? "inventory_item_created"),
-        inventory: inventoryCreateResponseData(responseBody),
-        woocommerce_product_sync: woocommerceProductSyncResponse(responseBody),
+        inventory: projection.inventory,
+        woocommerce_product_sync: projection.woocommerceProductSync,
+        readback_verified: projection.verification.verified,
+        wordpress_readback_verified: projection.verification.verified,
+        wordpress_readback: projection.inventory,
+        wordpress_verification: projection.verification,
         credentials_synced_to_client: false,
         authorization_header_printed: false,
         endpoint: secretSafeEndpoint(endpoint),
@@ -109,51 +136,40 @@ export function createWordPressInventoryUpdatePush(options = {}) {
       }
     }
 
-    const endpoint = new URL(`${endpointBase}/inventory/${encodeURIComponent(identity)}`)
-    const body = inventoryUpdateBody(operation, item)
     const controller = typeof AbortController === "function" ? new AbortController() : null
     const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
 
     try {
-      const response = await fetcher(endpoint, {
-        method: "PUT",
-        headers: {
-          accept: "application/json",
-          authorization: authorizationHeader,
-          "content-type": "application/json",
-          "idempotency-key": String(operation?.operation_id ?? item?.public_id ?? ""),
-        },
-        body: JSON.stringify(body),
+      const projection = await writeInventoryProjection({
+        endpointBase,
+        identity,
+        operation,
+        item,
+        fetcher,
+        authorizationHeader,
         signal: controller?.signal,
       })
-      const responseBody = await safeJson(response)
 
-      if (!response?.ok || responseBody?.status !== "updated") {
-        return {
-          status: "blocked",
-          code: "wordpress_inventory_update_rejected",
-          http_status: Number(response?.status ?? 0),
-          wordpress_code: String(responseBody?.code ?? ""),
-          message: "WordPress rejected this inventory update.",
-          errors: Array.isArray(responseBody?.errors) ? responseBody.errors : [],
-          credentials_synced_to_client: false,
-          authorization_header_printed: false,
-          endpoint: secretSafeEndpoint(endpoint),
-        }
+      if (!projection.ok) {
+        return projectionFailure("wordpress_inventory_update_rejected", projection)
       }
 
       return {
         status: "ok",
         code: "wordpress_inventory_item_updated",
-        http_status: Number(response.status ?? 200),
-        wordpress_code: String(responseBody.code ?? "inventory_item_updated"),
-        inventory: inventoryUpdateResponseData(responseBody),
-        woocommerce_product_sync: woocommerceProductSyncResponse(responseBody),
+        http_status: projection.httpStatus,
+        wordpress_code: projection.wordpressCode,
+        inventory: projection.inventory,
+        woocommerce_product_sync: projection.woocommerceProductSync,
+        readback_verified: projection.verification.verified,
+        wordpress_readback_verified: projection.verification.verified,
+        wordpress_readback: projection.inventory,
+        wordpress_verification: projection.verification,
         square_payment_capture_supported: false,
         payment_capture_authority: "official_woocommerce_square_extension",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
-        endpoint: secretSafeEndpoint(endpoint),
+        endpoint: projection.endpoint,
       }
     } catch (error) {
       return {
@@ -162,7 +178,7 @@ export function createWordPressInventoryUpdatePush(options = {}) {
         message: error instanceof Error ? error.message : "WordPress inventory update unavailable.",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
-        endpoint: secretSafeEndpoint(endpoint),
+        endpoint: secretSafeEndpoint(new URL(`${endpointBase}/inventory-projections/${encodeURIComponent(identity)}`)),
       }
     } finally {
       if (timeout) {
@@ -195,51 +211,43 @@ export function createWordPressInventorySalePush(options = {}) {
       }
     }
 
-    const endpoint = new URL(`${endpointBase}/inventory/${encodeURIComponent(identity)}/mark-sold`)
-    const body = inventorySaleBody(operation, item)
     const controller = typeof AbortController === "function" ? new AbortController() : null
     const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
 
     try {
-      const response = await fetcher(endpoint, {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          authorization: authorizationHeader,
-          "content-type": "application/json",
-          "idempotency-key": String(operation?.operation_id ?? item?.public_id ?? ""),
+      const projection = await writeInventoryProjection({
+        endpointBase,
+        identity,
+        operation,
+        item: {
+          ...item,
+          status: nonNegativeInteger(operation?.payload?.quantity_on_hand ?? item?.quantity_on_hand) > 0 ? "available" : "sold",
         },
-        body: JSON.stringify(body),
+        fetcher,
+        authorizationHeader,
         signal: controller?.signal,
       })
-      const responseBody = await safeJson(response)
 
-      if (!response?.ok || responseBody?.status !== "sold") {
-        return {
-          status: "blocked",
-          code: "wordpress_inventory_sale_rejected",
-          http_status: Number(response?.status ?? 0),
-          wordpress_code: String(responseBody?.code ?? ""),
-          message: "WordPress rejected this Square POS sale inventory finalization.",
-          errors: Array.isArray(responseBody?.errors) ? responseBody.errors : [],
-          credentials_synced_to_client: false,
-          authorization_header_printed: false,
-          endpoint: secretSafeEndpoint(endpoint),
-        }
+      if (!projection.ok) {
+        return projectionFailure("wordpress_inventory_sale_rejected", projection)
       }
 
       return {
         status: "ok",
         code: "wordpress_inventory_item_marked_sold",
-        http_status: Number(response.status ?? 200),
-        wordpress_code: String(responseBody.code ?? "inventory_item_marked_sold"),
-        inventory: inventorySaleResponseData(responseBody),
-        woocommerce_product_sync: woocommerceProductSyncResponse(responseBody),
+        http_status: projection.httpStatus,
+        wordpress_code: projection.wordpressCode,
+        inventory: projection.inventory,
+        woocommerce_product_sync: projection.woocommerceProductSync,
+        readback_verified: projection.verification.verified,
+        wordpress_readback_verified: projection.verification.verified,
+        wordpress_readback: projection.inventory,
+        wordpress_verification: projection.verification,
         square_payment_capture_supported: false,
         payment_capture_authority: "official_woocommerce_square_extension",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
-        endpoint: secretSafeEndpoint(endpoint),
+        endpoint: projection.endpoint,
       }
     } catch (error) {
       return {
@@ -248,7 +256,7 @@ export function createWordPressInventorySalePush(options = {}) {
         message: error instanceof Error ? error.message : "WordPress inventory sale push unavailable.",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
-        endpoint: secretSafeEndpoint(endpoint),
+        endpoint: secretSafeEndpoint(new URL(`${endpointBase}/inventory-projections/${encodeURIComponent(identity)}`)),
       }
     } finally {
       if (timeout) {
@@ -353,8 +361,8 @@ function woocommerceProductSyncResponse(body) {
     requested: Boolean(sync.requested),
     synced: Boolean(sync.synced),
     status: String(sync.status ?? (sync.requested ? "unknown" : "deferred")),
-    product_ids: Array.isArray(sync.execution?.product_ids)
-      ? sync.execution.product_ids
+    product_ids: Array.isArray(sync.product_ids ?? sync.execution?.product_ids)
+      ? (sync.product_ids ?? sync.execution.product_ids)
           .map((value) => positiveInt(value))
           .filter((value) => value !== null)
       : [],
@@ -426,13 +434,14 @@ function inventoryUpdateBody(operation = {}, item = {}) {
   const minimumSalePriceMinorUnits = roundSalePriceMinorUnits(
     payload.minimum_sale_price_minor_units ?? item.minimum_sale_price_minor_units ?? priceMinorUnits,
   )
+  const status = cleanInventoryStatus(payload.status ?? item.status)
   const quantityOnHand = nonNegativeInteger(
-    payload.quantity_on_hand ?? item.quantity_on_hand ?? (cleanInventoryStatus(payload.status ?? item.status) === "available" ? 1 : 0),
+    payload.quantity_on_hand ?? item.quantity_on_hand ?? (["sold", "removed"].includes(status) ? 0 : 1),
   )
 
-  return {
+  const body = {
     source: "offline",
-    status: cleanInventoryStatus(payload.status ?? item.status),
+    status,
     barcode: cleanBarcode(payload.barcode ?? item.barcode),
     sku: cleanBarcode(payload.barcode ?? item.barcode),
     sale_currency: "USD",
@@ -454,6 +463,12 @@ function inventoryUpdateBody(operation = {}, item = {}) {
     sync_woocommerce_product: true,
     production_write_approval: "woocommerce-product-sync",
   }
+
+  if (payload.market_price_minor_units !== undefined || item.market_price_minor_units !== undefined) {
+    body.market_price_minor_units = boundedMinorUnits(payload.market_price_minor_units ?? item.market_price_minor_units)
+  }
+
+  return body
 }
 
 function inventoryUpdateResponseData(body) {
@@ -465,13 +480,125 @@ function inventoryUpdateResponseData(body) {
     sku: String(data.sku ?? ""),
     barcode: String(data.barcode ?? ""),
     status: String(data.status ?? ""),
+    quantity_on_hand: nonNegativeInteger(data.quantity_on_hand),
     row_version: positiveInt(data.row_version),
     sale_price: String(data.sale_price ?? ""),
+    sale_price_minor_units: boundedMinorUnits(data.sale_price_minor_units),
+    minimum_sale_price_minor_units: boundedMinorUnits(data.minimum_sale_price_minor_units),
+    market_price_minor_units: boundedMinorUnits(data.market_price_minor_units),
     sale_currency: String(data.sale_currency ?? "USD"),
+    online_visibility: String(data.online_visibility ?? ""),
+    kiosk_visibility: String(data.kiosk_visibility ?? ""),
+    pos_visibility: String(data.pos_visibility ?? ""),
+    woocommerce_product_id: positiveInt(data.woocommerce_product_id),
+    external_sync_state: String(data.external_sync_state ?? ""),
+    woocommerce: data.woocommerce && typeof data.woocommerce === "object" ? data.woocommerce : {},
     square_catalog_item_id: cleanText(data.square_catalog_item_id),
     square_catalog_variation_id: cleanText(data.square_catalog_variation_id),
     square_location_id: cleanText(data.square_location_id),
     price_change_log_persisted: Boolean(data.price_change_log_persisted),
+  }
+}
+
+async function writeInventoryProjection({
+  endpointBase,
+  identity,
+  operation,
+  item,
+  fetcher,
+  authorizationHeader,
+  signal,
+}) {
+  const endpoint = new URL(`${endpointBase}/inventory-projections/${encodeURIComponent(cleanPublicIdentity(identity))}`)
+  const body = inventoryUpdateBody(operation, item)
+  const response = await fetcher(endpoint, {
+    method: "PUT",
+    headers: {
+      accept: "application/json",
+      authorization: authorizationHeader,
+      "content-type": "application/json",
+      "idempotency-key": String(operation?.operation_id ?? item?.public_id ?? ""),
+    },
+    body: JSON.stringify(body),
+    signal,
+  })
+  const responseBody = await safeJson(response)
+  const inventory = inventoryUpdateResponseData(responseBody)
+  const verification = verifyWordPressProjection(body, inventory, responseBody)
+
+  return {
+    ok: Boolean(response?.ok && responseBody?.status === "updated" && verification.verified),
+    httpStatus: Number(response?.status ?? 0),
+    wordpressCode: String(responseBody?.code ?? ""),
+    errors: Array.isArray(responseBody?.errors) ? responseBody.errors : [],
+    message: String(responseBody?.message ?? ""),
+    endpoint: secretSafeEndpoint(endpoint),
+    inventory,
+    verification,
+    woocommerceProductSync: woocommerceProductSyncResponse(responseBody),
+  }
+}
+
+function verifyWordPressProjection(expected, actual, responseBody) {
+  const expectedStatus = normalizedProjectedStatus(expected.status, expected.quantity_on_hand)
+  const checks = {
+    identity_present: Boolean(actual.public_id || actual.inventory_id),
+    quantity: actual.quantity_on_hand === nonNegativeInteger(expected.quantity_on_hand),
+    status: actual.status === expectedStatus,
+    barcode: actual.barcode === cleanBarcode(expected.barcode),
+    sku: actual.sku === cleanBarcode(expected.sku ?? expected.barcode),
+    sale_price: actual.sale_price_minor_units === boundedMinorUnits(expected.sale_price_minor_units),
+    minimum_sale_price:
+      actual.minimum_sale_price_minor_units === boundedMinorUnits(expected.minimum_sale_price_minor_units),
+    online_visibility: actual.online_visibility === cleanVisibility(expected.online_visibility, "visible"),
+    kiosk_visibility: actual.kiosk_visibility === cleanVisibility(expected.kiosk_visibility, "visible"),
+    pos_visibility: actual.pos_visibility === cleanVisibility(expected.pos_visibility, "visible"),
+    woocommerce:
+      responseBody?.meta?.woocommerce_product_sync?.verified === true ||
+      (expectedStatus !== "available" && !actual.woocommerce_product_id) ||
+      cleanVisibility(expected.online_visibility, "visible") !== "visible",
+  }
+  const mismatches = Object.entries(checks)
+    .filter(([, matched]) => !matched)
+    .map(([field]) => field)
+
+  return {
+    verified: mismatches.length === 0,
+    checks,
+    mismatches,
+    source_of_truth: "local_sync_server",
+  }
+}
+
+function normalizedProjectedStatus(status, quantity) {
+  const cleaned = cleanInventoryStatus(status)
+  const count = nonNegativeInteger(quantity)
+
+  if (count === 0 && !["sold", "removed", "damaged", "return_review"].includes(cleaned)) {
+    return "removed"
+  }
+  if (count > 0 && ["sold", "removed"].includes(cleaned)) {
+    return "available"
+  }
+
+  return cleaned
+}
+
+function projectionFailure(code, projection) {
+  return {
+    status: "blocked",
+    code,
+    http_status: projection.httpStatus,
+    wordpress_code: projection.wordpressCode,
+    message: projection.message || "WordPress did not return an exact verified inventory readback.",
+    errors: [...projection.errors, ...projection.verification.mismatches],
+    inventory: projection.inventory,
+    wordpress_readback: projection.inventory,
+    wordpress_verification: projection.verification,
+    readback_verified: false,
+    credentials_synced_to_client: false,
+    authorization_header_printed: false,
+    endpoint: projection.endpoint,
   }
 }
 

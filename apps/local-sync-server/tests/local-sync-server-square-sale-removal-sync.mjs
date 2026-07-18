@@ -17,6 +17,9 @@ const store = createLocalSyncStore({
 
     return {
       status: "ok",
+      readback_verified: true,
+      wordpress_readback: { quantity_on_hand: 0 },
+      wordpress_verification: { verified: true },
       code: "wordpress_inventory_item_marked_sold",
       http_status: 200,
       wordpress_code: "inventory_item_marked_sold",
@@ -61,6 +64,9 @@ const store = createLocalSyncStore({
 
       return {
         status: "ok",
+        readback_verified: true,
+        verification: { verified: true },
+        readback: { quantity_on_hand: item.quantity_on_hand },
         code: "square_catalog_inventory_synced",
         square_catalog_item_id: item.square_catalog_item_id || "SQ-SALE-ITEM-1",
         square_catalog_variation_id: item.square_catalog_variation_id || "SQ-SALE-VAR-1",

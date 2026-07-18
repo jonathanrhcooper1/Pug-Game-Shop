@@ -121,9 +121,10 @@ final class ScryDexWebhookController {
 
 		$log_result      = $this->event_repository()->record( $event, (string) $verified['payload_hash'], 'verified', 'queued' );
 		$dispatch_result = $this->sync_dispatcher->dispatch( $event );
-		if ( ! in_array( (string) $dispatch_result['status'], array( 'scheduled', 'scheduled_existing' ), true ) ) {
+		$dispatch_deferred = ! in_array( (string) $dispatch_result['status'], array( 'scheduled', 'scheduled_existing' ), true );
+		if ( $dispatch_deferred ) {
 			$this->logger->warning(
-				'scrydex.webhook_dispatch_failed',
+				'scrydex.webhook_dispatch_deferred',
 				array(
 					'event_id'                   => $event['event_id'],
 					'event_name'                 => $event['event_name'],
@@ -131,20 +132,6 @@ final class ScryDexWebhookController {
 					'dispatch'                   => $dispatch_result,
 					'credential_values_redacted' => true,
 				)
-			);
-
-			return $this->response(
-				array(
-					'status'                     => 'accepted_but_not_scheduled',
-					'code'                       => 'scrydex_webhook_dispatch_failed',
-					'event_id'                   => $event['event_id'],
-					'event_name'                 => $event['event_name'],
-					'payload_hash'               => $verified['payload_hash'],
-					'event_log'                  => $log_result,
-					'dispatch'                   => $dispatch_result,
-					'credential_values_redacted' => true,
-				),
-				503
 			);
 		}
 
@@ -159,6 +146,8 @@ final class ScryDexWebhookController {
 			'payload_hash'                   => $verified['payload_hash'],
 			'event_log'                      => $log_result,
 			'dispatch'                       => $dispatch_result,
+			'dispatch_deferred'              => $dispatch_deferred,
+			'lan_relay_pollable'             => true,
 			'targeted_expansion_sync'        => true,
 			'full_catalog_polling_requested' => false,
 			'credential_values_redacted'     => true,

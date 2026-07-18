@@ -225,6 +225,9 @@ const server = createLocalSyncHttpServer({
 
       return {
         status: "ok",
+        readback_verified: true,
+        wordpress_readback: { public_id: `wp-${item.public_id}`, quantity_on_hand: item.quantity_on_hand },
+        wordpress_verification: { verified: true },
         code: "wordpress_inventory_item_created",
         http_status: 201,
         wordpress_code: "inventory_item_created",
@@ -251,6 +254,9 @@ const server = createLocalSyncHttpServer({
 
       return {
         status: "ok",
+        readback_verified: true,
+        wordpress_readback: { public_id: "wp-inventory-charizard", quantity_on_hand: 0 },
+        wordpress_verification: { verified: true },
         code: "wordpress_inventory_item_marked_sold",
         http_status: 200,
         wordpress_code: "inventory_item_marked_sold",

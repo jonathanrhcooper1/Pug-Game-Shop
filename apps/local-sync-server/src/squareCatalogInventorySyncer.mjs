@@ -14,6 +14,8 @@ export function createSquareCatalogInventorySyncer(options = {}) {
   const fetcher = typeof options.fetcher === "function" ? options.fetcher : globalThis.fetch
   const timeoutMs = boundedInt(options.timeoutMs, 2_000, 120_000, 20_000)
   const imageSyncEnabled = options.imageSyncEnabled !== false
+  const readbackAttempts = boundedInt(options.readbackAttempts, 1, 5, 3)
+  const readbackDelayMs = boundedInt(options.readbackDelayMs, 0, 5_000, 250)
   const categoryCache = new Map()
 
   function status() {
@@ -153,6 +155,16 @@ export function createSquareCatalogInventorySyncer(options = {}) {
       return inventory
     }
 
+    const verification = await verifySquareProjection({
+      ...plan,
+      square_catalog_item_id: catalog.square_catalog_item_id,
+      square_catalog_variation_id: catalog.square_catalog_variation_id,
+    })
+
+    if (verification.status !== "ok") {
+      return verification
+    }
+
     return {
       status: "ok",
       code: "square_catalog_inventory_synced",
@@ -171,6 +183,9 @@ export function createSquareCatalogInventorySyncer(options = {}) {
       item_created: catalog.item_created === true,
       variation_reused: catalog.variation_reused === true,
       inventory_count_returned: inventory.inventory_count_returned,
+      readback_verified: true,
+      verification: verification.verification,
+      readback: verification.readback,
       payment_capture_supported: false,
       payment_capture_authority: "square_pos_or_square_terminal",
       credentials_synced_to_client: false,
@@ -677,6 +692,10 @@ export function createSquareCatalogInventorySyncer(options = {}) {
       square_catalog_variation_id: cleanExternalId(object.id),
       variation_version: positiveInt(object.version),
       item_version: positiveInt(relatedItem?.version),
+      sku: cleanSku(object.item_variation_data?.sku),
+      price_minor_units: boundedMinorUnits(object.item_variation_data?.price_money?.amount),
+      currency: cleanCurrency(object.item_variation_data?.price_money?.currency),
+      is_deleted: object.is_deleted === true,
     }
   }
 
@@ -784,6 +803,114 @@ export function createSquareCatalogInventorySyncer(options = {}) {
       code: "square_inventory_physical_count_set",
       http_status: result.http_status,
       inventory_count_returned: Array.isArray(result.payload?.counts) ? result.payload.counts.length : 0,
+    }
+  }
+
+  async function verifySquareProjection(plan) {
+    let lastReadback = null
+    let lastChecks = null
+
+    for (let attempt = 1; attempt <= readbackAttempts; attempt += 1) {
+      const [catalog, inventory] = await Promise.all([
+        retrieveVariation(plan.square_catalog_variation_id),
+        retrieveInventoryCount(plan.square_catalog_variation_id, plan.square_location_id),
+      ])
+      const readback = { catalog, inventory }
+      const checks = {
+        catalog_available: catalog.status === "ok",
+        inventory_available: inventory.status === "ok",
+        catalog_item_id: catalog.square_catalog_item_id === plan.square_catalog_item_id,
+        catalog_variation_id: catalog.square_catalog_variation_id === plan.square_catalog_variation_id,
+        sku: catalog.sku === plan.sku,
+        price_minor_units: catalog.price_minor_units === plan.price_minor_units,
+        currency: catalog.currency === plan.currency,
+        not_deleted: catalog.is_deleted !== true,
+        location_id: inventory.location_id === plan.square_location_id,
+        quantity_on_hand: inventory.quantity_on_hand === plan.square_quantity,
+      }
+      const mismatches = Object.entries(checks)
+        .filter(([, matched]) => !matched)
+        .map(([field]) => field)
+
+      lastReadback = readback
+      lastChecks = checks
+
+      if (mismatches.length === 0) {
+        return {
+          status: "ok",
+          code: "square_projection_readback_verified",
+          verification: {
+            verified: true,
+            attempt,
+            checks,
+            mismatches: [],
+            source_of_truth: "local_sync_server",
+          },
+          readback,
+        }
+      }
+
+      if (attempt < readbackAttempts && readbackDelayMs > 0) {
+        await delay(readbackDelayMs)
+      }
+    }
+
+    const mismatches = Object.entries(lastChecks ?? {})
+      .filter(([, matched]) => !matched)
+      .map(([field]) => field)
+
+    return blocked(
+      "square_projection_readback_mismatch",
+      "Square accepted the write but did not return the exact expected catalog and inventory state.",
+      {
+        http_status: 409,
+        readback_verified: false,
+        verification: {
+          verified: false,
+          attempts: readbackAttempts,
+          checks: lastChecks ?? {},
+          mismatches,
+          source_of_truth: "local_sync_server",
+        },
+        readback: lastReadback,
+      },
+    )
+  }
+
+  async function retrieveInventoryCount(variationId, locationId) {
+    const result = await squareRequest("/v2/inventory/counts/batch-retrieve", {
+      method: "POST",
+      body: {
+        catalog_object_ids: [variationId],
+        location_ids: [locationId],
+        states: ["IN_STOCK"],
+        limit: 100,
+      },
+    })
+
+    if (result.status !== "ok") {
+      return result
+    }
+
+    const count = (Array.isArray(result.payload?.counts) ? result.payload.counts : []).find(
+      (candidate) =>
+        cleanExternalId(candidate?.catalog_object_id) === variationId &&
+        cleanExternalId(candidate?.location_id) === locationId &&
+        String(candidate?.state ?? "").toUpperCase() === "IN_STOCK",
+    )
+
+    if (!count) {
+      return { status: "not_found", location_id: locationId, quantity_on_hand: null }
+    }
+
+    const quantity = Number(count.quantity)
+    return {
+      status: "ok",
+      catalog_object_id: cleanExternalId(count.catalog_object_id),
+      location_id: cleanExternalId(count.location_id),
+      state: "IN_STOCK",
+      quantity_on_hand: Number.isFinite(quantity) ? quantity : null,
+      calculated_at: cleanIsoTimestamp(count.calculated_at),
     }
   }
 
@@ -1104,6 +1231,10 @@ async function safeJson(response) {
   } catch {
     return {}
   }
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
 }
 
 function skipped(code, message, extra = {}) {

@@ -3523,10 +3523,16 @@ export function createLocalSyncStore(options = {}) {
       })
     }
 
-    const catalogPull = await pullLatestReferenceCatalogFromWordPress({
-      pageSize: input.catalogPageSize ?? input.catalog_page_size ?? input.pageSize ?? input.page_size ?? 250,
-      maxPages: input.catalogMaxPages ?? input.catalog_max_pages ?? input.maxCatalogPages ?? 10000,
-    })
+    const catalogPull = scryDexCatalogIndexerMode === "local_scrydex_api"
+      ? {
+          status: "skipped",
+          code: "local_catalog_pull_skipped",
+          message: "LAN ScryDex indexer already saved provider rows to local SQLite.",
+        }
+      : await pullLatestReferenceCatalogFromWordPress({
+          pageSize: input.catalogPageSize ?? input.catalog_page_size ?? input.pageSize ?? input.page_size ?? 250,
+          maxPages: input.catalogMaxPages ?? input.catalog_max_pages ?? input.maxCatalogPages ?? 10000,
+        })
     const inventoryReprice = await repriceInventoryFromReferenceCatalog({
       source: "wordpress_scrydex_webhook_trigger",
       squareSyncDelayMs: input.squareSyncDelayMs ?? input.square_sync_delay_ms ?? 350,
@@ -8281,6 +8287,8 @@ export function createLocalSyncStore(options = {}) {
           wordpress_code: pushResult.wordpress_code ?? "",
           http_status: pushResult.http_status ?? 200,
           readback_verified: pushResult.readback_verified === true,
+          wordpress_readback: pushResult.wordpress_readback,
+          wordpress_verification: pushResult.wordpress_verification,
         }
       : {
           status: "retry",
@@ -8306,7 +8314,7 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
-    const projectionsAccepted = wordpressProjection.status === "accepted" && projectionResultCompleted(squareSync)
+    const projectionsAccepted = projectionResultCompleted(wordpressProjection) && projectionResultCompleted(squareSync)
     const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
     if (localItem) {
       localItem.external_sync_state = projectionsAccepted ? "synced" : "pending"
@@ -8343,7 +8351,7 @@ export function createLocalSyncStore(options = {}) {
     const outbox = outboxEventByIdempotency(database, operationId)
     const delivery = outbox?.deliveries?.find((candidate) => candidate.destination === destination)
 
-    return ["verified", "delivered_unverified", "cancelled"].includes(delivery?.status)
+    return ["verified", "cancelled"].includes(delivery?.status)
   }
 
   function completedProjectionResult(operation, destination) {
@@ -8363,7 +8371,7 @@ export function createLocalSyncStore(options = {}) {
   }
 
   function projectionResultCompleted(result) {
-    return ["accepted", "skipped"].includes(result?.status)
+    return result?.status === "skipped" || (result?.status === "accepted" && result?.readback_verified === true)
   }
 
   async function syncSquareCatalogInventoryForOperation(operation, item) {
@@ -8401,6 +8409,9 @@ export function createLocalSyncStore(options = {}) {
         message: result.message || "Square catalog/inventory sync did not complete.",
         http_status: result.http_status ?? 0,
         errors: Array.isArray(result.errors) ? result.errors : [],
+        readback_verified: false,
+        verification: result.verification,
+        readback: result.readback,
         credentials_synced_to_client: false,
         raw_credentials_returned: false,
       }
@@ -8428,6 +8439,9 @@ export function createLocalSyncStore(options = {}) {
       square_catalog_variation_id: target.square_catalog_variation_id,
       square_location_id: target.square_location_id,
       square_quantity_on_hand: result.quantity_on_hand,
+      readback_verified: result.readback_verified === true,
+      verification: result.verification,
+      readback: result.readback,
       item_created: result.item_created === true,
       variation_reused: result.variation_reused === true,
       payment_capture_supported: false,
@@ -8699,6 +8713,8 @@ export function createLocalSyncStore(options = {}) {
           wordpress_code: pushResult.wordpress_code ?? "",
           http_status: pushResult.http_status ?? 200,
           readback_verified: pushResult.readback_verified === true,
+          wordpress_readback: pushResult.wordpress_readback,
+          wordpress_verification: pushResult.wordpress_verification,
         }
       : {
           status: "retry",
@@ -8719,7 +8735,7 @@ export function createLocalSyncStore(options = {}) {
       localItem.square_location_id = cleanExternalId(pushResult.inventory?.square_location_id) || localItem.square_location_id
     }
 
-    const projectionsAccepted = wordpressProjection.status === "accepted" && projectionResultCompleted(squareSync)
+    const projectionsAccepted = projectionResultCompleted(wordpressProjection) && projectionResultCompleted(squareSync)
     if (localItem) {
       localItem.external_sync_state = projectionsAccepted ? "synced" : "pending"
       if (projectionsAccepted) {
@@ -8785,6 +8801,8 @@ export function createLocalSyncStore(options = {}) {
           wordpress_code: pushResult.wordpress_code ?? "",
           http_status: pushResult.http_status ?? 200,
           readback_verified: pushResult.readback_verified === true,
+          wordpress_readback: pushResult.wordpress_readback,
+          wordpress_verification: pushResult.wordpress_verification,
         }
       : {
           status: "retry",
@@ -8800,7 +8818,7 @@ export function createLocalSyncStore(options = {}) {
       localItem.wordpress_public_id = cleanPublicId(pushResult.inventory?.public_id) || localItem.wordpress_public_id
     }
 
-    const projectionsAccepted = wordpressProjection.status === "accepted" && projectionResultCompleted(squareSync)
+    const projectionsAccepted = projectionResultCompleted(wordpressProjection) && projectionResultCompleted(squareSync)
     if (localItem) {
       localItem.external_sync_state = projectionsAccepted ? "synced" : "pending"
       if (projectionsAccepted) {
@@ -11811,7 +11829,7 @@ function recordQueueProjectionResult(database, result, now) {
 
   for (const delivery of outbox.deliveries) {
     if (
-      ["verified", "delivered_unverified", "cancelled", "dead_letter"].includes(delivery.status) ||
+      ["verified", "cancelled", "dead_letter"].includes(delivery.status) ||
       delivery.destination === "kiosk"
     ) {
       continue

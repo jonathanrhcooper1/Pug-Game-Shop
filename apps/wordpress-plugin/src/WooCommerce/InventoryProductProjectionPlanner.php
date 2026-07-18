@@ -536,7 +536,7 @@ final class InventoryProductProjectionPlanner {
 				);
 			}
 
-			++$options[ $option_key ]['stock_quantity'];
+			$options[ $option_key ]['stock_quantity'] += max( 0, (int) ( $row['quantity_on_hand'] ?? 1 ) );
 			$options[ $option_key ]['inventory_ids'][] = (int) ( $row['inventory_id'] ?? 0 );
 		}
 

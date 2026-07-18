@@ -24,6 +24,7 @@ import {
 } from "./wordpressInventoryPush.mjs"
 import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
 import { createWordPressReportsPull } from "./wordpressReportsPull.mjs"
+import { createWordPressScryDexWebhookRelay } from "./wordpressScryDexWebhookRelay.mjs"
 import { listenLocalSyncDiscoveryResponder } from "./localSyncDiscovery.mjs"
 import { createGradedPricingLookup } from "./gradedPricingProviders.mjs"
 import { createSquareInventoryCountsPuller } from "./squareInventoryCountsPuller.mjs"
@@ -120,6 +121,13 @@ const scryDexWebhookRelayToken = firstEnv(
   "PUG_SCRYDEX_WEBHOOK_RELAY_TOKEN",
   "LOCAL_SYNC_SCRYDEX_WEBHOOK_RELAY_TOKEN",
   "TCG_STORE_PLATFORM_LAN_SCRYDEX_WEBHOOK_TOKEN",
+)
+const scryDexWebhookPollDisabled = envFlag(
+  "PUG_SCRYDEX_WEBHOOK_POLL_DISABLED",
+  "LOCAL_SYNC_SCRYDEX_WEBHOOK_POLL_DISABLED",
+)
+const scryDexWebhookPollSeconds = boundedPollSeconds(
+  firstEnv("PUG_SCRYDEX_WEBHOOK_POLL_SECONDS", "LOCAL_SYNC_SCRYDEX_WEBHOOK_POLL_SECONDS") ?? "30",
 )
 const eventsUsername = firstEnv("PUG_WORDPRESS_EVENTS_USERNAME", "PUG_WORDPRESS_USERNAME")
 const eventsApplicationPassword = firstEnv("PUG_WORDPRESS_EVENTS_APPLICATION_PASSWORD", "PUG_WORDPRESS_APP_PASSWORD")
@@ -313,6 +321,14 @@ const wordpressReportsPull = createWordPressReportsPull({
   username: reportsUsername ?? catalogUsername,
   applicationPassword: reportsApplicationPassword ?? catalogApplicationPassword,
 })
+const wordpressScryDexWebhookRelay = createWordPressScryDexWebhookRelay({
+  websiteUrl,
+  restBasePath,
+  authHeader: catalogAuthHeader,
+  username: catalogUsername,
+  applicationPassword: catalogApplicationPassword,
+  timeoutMs: catalogTimeoutMs,
+})
 const squareTerminalConnector = createSquareTerminalConnector({
   accessToken: squareAccessToken,
   environment: squareEnvironment,
@@ -446,6 +462,18 @@ if (!scryDexDailySyncDisabled && (localScryDexCatalogIndexer || wordpressCatalog
   console.log("ScryDex daily catalog/price sync disabled by environment.")
 } else {
   console.log("ScryDex daily catalog/price sync not started; configure WordPress catalog index credentials.")
+}
+
+if (
+  !scryDexWebhookPollDisabled &&
+  wordpressScryDexWebhookRelay?.status().configured === true &&
+  scryDexWebhookRelayToken
+) {
+  startScryDexWebhookRelayPolling(server, wordpressScryDexWebhookRelay, scryDexWebhookRelayToken, scryDexWebhookPollSeconds)
+} else if (scryDexWebhookPollDisabled) {
+  console.log("ScryDex webhook relay polling disabled by environment.")
+} else {
+  console.log("ScryDex webhook relay polling not started; configure WordPress authentication and the LAN relay token.")
 }
 
 if (discoveryEnabled) {
@@ -766,6 +794,76 @@ function startScryDexDailyCatalogSync(server, options) {
     `ScryDex daily catalog/price sync enabled around local hour ${options.hour}:00 for ${options.games.join(", ")}.`,
   )
   void runIfDue()
+}
+
+function startScryDexWebhookRelayPolling(server, relay, relayToken, pollSeconds) {
+  const store = server.localSyncStore
+
+  if (!store || typeof store.triggerScryDexWebhookRefresh !== "function") {
+    console.warn("ScryDex webhook relay polling unavailable; local sync store was not attached to the HTTP server.")
+    return
+  }
+
+  let running = false
+  const run = async () => {
+    if (running) {
+      return
+    }
+
+    running = true
+    try {
+      const inbox = await relay.pull({ limit: 25 })
+      if (inbox.status !== "ok") {
+        console.warn(`ScryDex webhook relay pull blocked: ${inbox.code || inbox.status}`)
+        return
+      }
+
+      for (const event of inbox.events) {
+        const claim = await relay.transition(event.id, { status: "processing" })
+        if (claim.status !== "ok" || claim.transition?.processing_status !== "processing") {
+          console.warn(`ScryDex webhook ${event.id} could not be claimed; it will remain queued.`)
+          continue
+        }
+
+        let refresh
+        try {
+          refresh = await store.triggerScryDexWebhookRefresh(relayToken, event)
+        } catch (error) {
+          refresh = {
+            status: "blocked",
+            code: "scrydex_webhook_lan_refresh_exception",
+            message: error instanceof Error ? error.message : "Unknown LAN refresh error.",
+          }
+        }
+
+        const completed = refresh.status === "ok" && refresh.action !== "scrydex_catalog_webhook_refresh_in_progress"
+        const acknowledgement = await relay.transition(event.id, {
+          status: completed ? "processed" : "retry",
+          result_reference: refresh.job_id ?? refresh.result_reference ?? "",
+          error_code: completed ? "" : refresh.code ?? refresh.action ?? "scrydex_webhook_lan_refresh_blocked",
+          error_message: completed ? "" : refresh.message ?? "LAN refresh needs retry.",
+        })
+
+        if (acknowledgement.status !== "ok") {
+          console.warn(`ScryDex webhook ${event.id} acknowledgement failed; stale-claim recovery will retry it.`)
+        } else if (completed) {
+          console.log(`ScryDex webhook ${event.id} refreshed ${refresh.expansion_count ?? 0} expansion(s) on the LAN source of truth.`)
+        } else {
+          console.warn(`ScryDex webhook ${event.id} queued for retry: ${refresh.code || refresh.action || refresh.status}`)
+        }
+      }
+    } catch (error) {
+      console.warn(`ScryDex webhook relay polling failed: ${error instanceof Error ? error.message : "Unknown error."}`)
+    } finally {
+      running = false
+    }
+  }
+
+  const interval = setInterval(run, pollSeconds * 1000)
+  interval.unref?.()
+  server.once("close", () => clearInterval(interval))
+  console.log(`ScryDex webhook relay polling enabled every ${pollSeconds}s.`)
+  void run()
 }
 
 function localDateKey(date) {

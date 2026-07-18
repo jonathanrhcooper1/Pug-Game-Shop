@@ -12,6 +12,9 @@ const store = createLocalSyncStore({
     wordpressCallCount += 1
     return {
       status: "ok",
+      readback_verified: true,
+      wordpress_readback: { quantity_on_hand: item.quantity_on_hand },
+      wordpress_verification: { verified: true },
       code: "wordpress_inventory_item_updated",
       wordpress_code: "inventory_item_updated",
       http_status: 200,
@@ -37,6 +40,9 @@ const store = createLocalSyncStore({
 
       return {
         status: "ok",
+        readback_verified: true,
+        verification: { verified: true },
+        readback: { quantity_on_hand: item.quantity_on_hand },
         code: "square_catalog_inventory_synced",
         http_status: 200,
         square_catalog_item_id: "SQ-DELIVERY-ITEM",
