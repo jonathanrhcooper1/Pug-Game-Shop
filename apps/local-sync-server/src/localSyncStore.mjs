@@ -196,6 +196,7 @@ export function createLocalSyncStore(options = {}) {
   persistCurrentAccessSchema(database, users, now)
   const sessions = new Map()
   const inventoryItems = loadInventoryItems(database)
+  let inventoryBarcodeAliases = loadInventoryBarcodeAliases(database)
   const inventoryLocations = loadInventoryLocations(database, inventoryItems)
   const queue = loadQueue(database)
   const kioskOrders = loadKioskOrders(database)
@@ -1122,6 +1123,7 @@ export function createLocalSyncStore(options = {}) {
         item.variant,
         item.finish,
         item.location,
+        ...(inventoryBarcodeAliases.get(item.public_id) ?? []),
       ].some((value) => String(value).toLowerCase().includes(needle))
     })
 
@@ -4042,11 +4044,12 @@ export function createLocalSyncStore(options = {}) {
       rowCount === 1 ? barcodeBase : scannerSafeIndexedBarcode(barcodeBase, index, rowCount),
     )
     const duplicateBarcode = barcodes.find((barcode) =>
-      inventoryItems.some((item) => item.barcode.toLowerCase() === barcode.toLowerCase()),
+      inventoryItems.some((item) => item.barcode.toLowerCase() === barcode.toLowerCase())
+      || Boolean(inventoryBarcodeAliasOwner(database, barcode)),
     )
 
     if (duplicateBarcode) {
-      return blocked("duplicate_barcode", "A cached inventory item already uses that barcode.")
+      return blocked("duplicate_barcode", "An inventory item already uses or previously used that barcode.")
     }
 
     const items = barcodes.map((barcode) => ({
@@ -4186,7 +4189,9 @@ export function createLocalSyncStore(options = {}) {
     const item = inventoryItems.find((candidate) =>
       candidate.public_id === requestedPublicId ||
       cleanPublicId(candidate.wordpress_public_id) === requestedPublicId ||
-      (requestedPublicId && cleanBarcode(candidate.barcode) === requestedPublicId),
+      (requestedPublicId && cleanBarcode(candidate.barcode) === requestedPublicId) ||
+      (requestedPublicId && (inventoryBarcodeAliases.get(candidate.public_id) ?? [])
+        .some((barcode) => barcode.toLowerCase() === requestedPublicId.toLowerCase())),
     )
 
     if (!item) {
@@ -4194,6 +4199,7 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const nextBarcode = cleanBarcode(input.barcode ?? item.barcode)
+    const barcodeChanged = nextBarcode.toLowerCase() !== cleanBarcode(item.barcode).toLowerCase()
 
     if (
       Object.prototype.hasOwnProperty.call(input, "barcode") &&
@@ -4212,9 +4218,12 @@ export function createLocalSyncStore(options = {}) {
           cleanBarcode(candidate.barcode).toLowerCase() === nextBarcode.toLowerCase(),
         )
       : null
+    const barcodeAliasOwner = nextBarcode
+      ? inventoryBarcodeAliasOwner(database, nextBarcode)
+      : ""
 
-    if (duplicateBarcode) {
-      return blocked("duplicate_barcode", "Another cached inventory item already uses that barcode.")
+    if (duplicateBarcode || (barcodeAliasOwner && barcodeAliasOwner !== item.public_id)) {
+      return blocked("duplicate_barcode", "Another inventory item already uses or previously used that barcode.")
     }
 
     let nextStatus = localInventoryStatus(input.status) ?? item.status
@@ -4505,6 +4514,9 @@ export function createLocalSyncStore(options = {}) {
     })
 
     Object.assign(item, nextItem)
+    if (barcodeChanged) {
+      inventoryBarcodeAliases = loadInventoryBarcodeAliases(database)
+    }
     for (const change of consolidationChanges) {
       Object.assign(change.item, change.next)
     }
@@ -9872,6 +9884,18 @@ function migrateLocalSyncDatabase(database) {
       updated_at_utc TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS inventory_barcode_aliases (
+      barcode TEXT PRIMARY KEY COLLATE NOCASE,
+      inventory_public_id TEXT NOT NULL,
+      alias_type TEXT NOT NULL DEFAULT 'current' CHECK (alias_type IN ('current', 'historical')),
+      created_at_utc TEXT NOT NULL,
+      retired_at_utc TEXT NOT NULL DEFAULT '',
+      FOREIGN KEY (inventory_public_id) REFERENCES inventory_items(public_id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS inventory_barcode_aliases_inventory_idx
+      ON inventory_barcode_aliases (inventory_public_id, alias_type);
+
     CREATE TABLE IF NOT EXISTS operation_queue (
       operation_id TEXT PRIMARY KEY,
       operation_type TEXT NOT NULL,
@@ -10244,6 +10268,85 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "event_snapshots", "registration_deadline_utc", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "event_snapshots", "woocommerce_product_id", "INTEGER NOT NULL DEFAULT 0")
   database.exec(`
+    INSERT OR IGNORE INTO inventory_barcode_aliases (
+      barcode, inventory_public_id, alias_type, created_at_utc, retired_at_utc
+    )
+    SELECT barcode, MIN(public_id), 'current',
+      COALESCE(NULLIF(MIN(updated_at_utc), ''), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), ''
+    FROM inventory_items
+    WHERE TRIM(barcode) <> ''
+    GROUP BY LOWER(barcode)
+    HAVING COUNT(*) = 1;
+
+    CREATE TRIGGER IF NOT EXISTS inventory_items_barcode_unique_insert
+    BEFORE INSERT ON inventory_items
+    WHEN TRIM(NEW.barcode) <> '' AND (
+      EXISTS (
+        SELECT 1 FROM inventory_items
+        WHERE LOWER(barcode) = LOWER(NEW.barcode) AND public_id <> NEW.public_id
+      ) OR EXISTS (
+        SELECT 1 FROM inventory_barcode_aliases
+        WHERE LOWER(barcode) = LOWER(NEW.barcode) AND inventory_public_id <> NEW.public_id
+      )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'duplicate_or_retired_barcode');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS inventory_items_barcode_unique_update
+    BEFORE UPDATE OF barcode ON inventory_items
+    WHEN TRIM(NEW.barcode) <> '' AND LOWER(NEW.barcode) <> LOWER(OLD.barcode) AND (
+      EXISTS (
+        SELECT 1 FROM inventory_items
+        WHERE LOWER(barcode) = LOWER(NEW.barcode) AND public_id <> NEW.public_id
+      ) OR EXISTS (
+        SELECT 1 FROM inventory_barcode_aliases
+        WHERE LOWER(barcode) = LOWER(NEW.barcode) AND inventory_public_id <> NEW.public_id
+      )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'duplicate_or_retired_barcode');
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS inventory_items_barcode_alias_insert
+    AFTER INSERT ON inventory_items
+    WHEN TRIM(NEW.barcode) <> ''
+    BEGIN
+      INSERT INTO inventory_barcode_aliases (
+        barcode, inventory_public_id, alias_type, created_at_utc, retired_at_utc
+      ) VALUES (
+        NEW.barcode, NEW.public_id, 'current',
+        strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), ''
+      )
+      ON CONFLICT(barcode) DO UPDATE SET
+        inventory_public_id = NEW.public_id,
+        alias_type = 'current',
+        retired_at_utc = '';
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS inventory_items_barcode_alias_update
+    AFTER UPDATE OF barcode ON inventory_items
+    WHEN LOWER(NEW.barcode) <> LOWER(OLD.barcode)
+    BEGIN
+      UPDATE inventory_barcode_aliases
+      SET alias_type = 'historical',
+          retired_at_utc = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE LOWER(barcode) = LOWER(OLD.barcode)
+        AND inventory_public_id = OLD.public_id;
+
+      INSERT INTO inventory_barcode_aliases (
+        barcode, inventory_public_id, alias_type, created_at_utc, retired_at_utc
+      ) VALUES (
+        NEW.barcode, NEW.public_id, 'current',
+        strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), ''
+      )
+      ON CONFLICT(barcode) DO UPDATE SET
+        inventory_public_id = NEW.public_id,
+        alias_type = 'current',
+        retired_at_utc = '';
+    END;
+  `)
+  database.exec(`
     UPDATE operation_queue
     SET sync_status = 'local_only'
     WHERE operation_type = 'user_access_upsert' AND sync_status = 'pending'
@@ -10419,6 +10522,46 @@ function loadInventoryItems(database) {
       updated_by_user_name: cleanName(row.updated_by_user_name),
       source: row.source,
     }))
+}
+
+function loadInventoryBarcodeAliases(database) {
+  const aliases = new Map()
+  const rows = database
+    .prepare(`
+      SELECT barcode, inventory_public_id
+      FROM inventory_barcode_aliases
+      ORDER BY inventory_public_id, alias_type, barcode
+    `)
+    .all()
+
+  for (const row of rows) {
+    const publicId = cleanPublicId(row.inventory_public_id)
+    const barcode = cleanBarcode(row.barcode)
+
+    if (!publicId || !barcode) {
+      continue
+    }
+
+    const itemAliases = aliases.get(publicId) ?? []
+    itemAliases.push(barcode)
+    aliases.set(publicId, itemAliases)
+  }
+
+  return aliases
+}
+
+function inventoryBarcodeAliasOwner(database, barcode) {
+  const normalizedBarcode = cleanBarcode(barcode)
+
+  if (!normalizedBarcode) {
+    return ""
+  }
+
+  const row = database
+    .prepare("SELECT inventory_public_id FROM inventory_barcode_aliases WHERE barcode = ? COLLATE NOCASE")
+    .get(normalizedBarcode)
+
+  return cleanPublicId(row?.inventory_public_id)
 }
 
 function loadReferenceCards(database) {
