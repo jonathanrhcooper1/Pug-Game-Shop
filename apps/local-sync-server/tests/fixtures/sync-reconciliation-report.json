@@ -24,6 +24,28 @@
       "online_visibility": "visible",
       "square_catalog_variation_id": "SQ-RESERVED",
       "external_sync_state": "pending"
+    },
+    {
+      "public_id": "inv-repair",
+      "wordpress_public_id": "wp-repair",
+      "row_version": 7,
+      "game": "MTG",
+      "card_name": "Sanitized Repair Card",
+      "set_name": "Fixture Set",
+      "condition": "NM",
+      "barcode": "REPAIR-1",
+      "status": "available",
+      "quantity_on_hand": 3,
+      "price_minor_units": 1200,
+      "minimum_sale_price_minor_units": 900,
+      "currency": "USD",
+      "location": "Fixture Case",
+      "kiosk_visibility": "visible",
+      "online_visibility": "visible",
+      "pos_visibility": "visible",
+      "square_catalog_variation_id": "SQ-REPAIR",
+      "square_location_id": "LOC-FIXTURE",
+      "external_sync_state": "synced"
     }
   ],
   "inventory_reservations": [
@@ -133,6 +155,16 @@
       "square_catalog_variation_id": "SQ-RESERVED"
     },
     {
+      "public_id": "wp-repair",
+      "card_name": "Sanitized Repair Card",
+      "barcode": "REPAIR-1",
+      "status": "available",
+      "quantity_on_hand": 1,
+      "online_visibility": "visible",
+      "kiosk_visibility": "visible",
+      "square_catalog_variation_id": "SQ-REPAIR"
+    },
+    {
       "public_id": "wp-only",
       "card_name": "@SUM(1+1)",
       "barcode": "WP-ONLY",
@@ -158,6 +190,12 @@
     },
     {
       "catalog_object_id": "SQ-WP-ONLY",
+      "state": "IN_STOCK",
+      "quantity": "1",
+      "calculated_at": "2026-07-18T19:30:00.000Z"
+    },
+    {
+      "catalog_object_id": "SQ-REPAIR",
       "state": "IN_STOCK",
       "quantity": "1",
       "calculated_at": "2026-07-18T19:30:00.000Z"

@@ -1,11 +1,20 @@
 import { once } from "node:events"
-import { createWriteStream } from "node:fs"
-import { mkdir } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { createWriteStream, existsSync } from "node:fs"
+import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { DatabaseSync } from "node:sqlite"
+
+import {
+  appendProjectionEvent,
+  markOutboxDelivery,
+  withImmediateTransaction,
+} from "../src/authoritativeLedger.mjs"
 
 import {
   extractSquareVariationIds,
+  localSyncDatabasePath,
   loadOpsEnv,
   pullSquareInventoryCounts,
   pullWebsiteInventoryRows,
@@ -38,6 +47,8 @@ export const REPORT_COLUMNS = Object.freeze([
 ])
 
 const DEFAULT_OUTPUT_PATH = resolve(repoRoot, "PUG_SYNC_RECONCILIATION_REPORT.csv")
+const DEFAULT_AUDIT_OUTPUT_PATH = resolve(repoRoot, "PUG_SYNC_RECONCILIATION_AUDIT.json")
+const REPAIR_AUDIT_SCHEMA_VERSION = "1"
 const LOCAL_TABLES = [
   "inventory_items",
   "inventory_reservations",
@@ -129,11 +140,26 @@ export async function generateSyncReconciliationReport(options = {}, dependencie
     squareResult,
     generatedAtUtc: now().toISOString(),
   })
-  const writeResult = await writeCsvReport(outputPath, rows)
+  const reportRowsForRepair = []
+  const writeResult = await writeCsvReport(outputPath, rows, {
+    onRow: options.reconcileNow === true ? (row) => reportRowsForRepair.push(row) : null,
+  })
+  const repairResult = options.reconcileNow === true
+    ? await reconcileAuthoritativeProjections({
+        options,
+        reportRows: reportRowsForRepair,
+        inventoryRows: inventory.rows,
+        operationRows: tables.operation_queue.rows,
+        generatedAtUtc: now().toISOString(),
+        reportPath: outputPath,
+      }, dependencies)
+    : null
 
   return {
-    status: "ok",
-    code: "sync_reconciliation_report_written",
+    status: repairResult?.status === "blocked" ? "blocked" : "ok",
+    code: repairResult?.status === "blocked"
+      ? repairResult.code
+      : "sync_reconciliation_report_written",
     report_schema_version: REPORT_SCHEMA_VERSION,
     report_mode: reportMode,
     output_path: outputPath,
@@ -143,6 +169,7 @@ export async function generateSyncReconciliationReport(options = {}, dependencie
       website: publicConnectorStatus(websiteResult),
       square: publicConnectorStatus(squareResult),
     },
+    ...(repairResult ? { repair: repairResult } : {}),
     ...writeResult,
     credentials_printed: false,
     raw_credentials_returned: false,
@@ -264,6 +291,12 @@ export function parseSyncReconciliationArgs(argv = []) {
     schemaOnly: false,
     websitePageSize: 100,
     websiteMaxPages: 10000,
+    reconcileNow: false,
+    apply: false,
+    confirmAuthoritativeLocal: false,
+    reason: "",
+    auditOutputPath: DEFAULT_AUDIT_OUTPUT_PATH,
+    databasePath: "",
     help: false,
   }
 
@@ -271,6 +304,9 @@ export function parseSyncReconciliationArgs(argv = []) {
     const argument = String(argv[index] ?? "")
     if (argument === "--local-only") parsed.localOnly = true
     else if (argument === "--schema-only") parsed.schemaOnly = true
+    else if (argument === "--reconcile-now") parsed.reconcileNow = true
+    else if (argument === "--apply") parsed.apply = true
+    else if (argument === "--confirm-authoritative-local") parsed.confirmAuthoritativeLocal = true
     else if (argument === "--help" || argument === "-h") parsed.help = true
     else if (argument === "--output") parsed.outputPath = requiredArgument(argv[++index], "output")
     else if (argument.startsWith("--output=")) parsed.outputPath = requiredArgument(argument.slice(9), "output")
@@ -278,10 +314,301 @@ export function parseSyncReconciliationArgs(argv = []) {
     else if (argument.startsWith("--website-page-size=")) parsed.websitePageSize = requiredArgument(argument.slice(20), "website_page_size")
     else if (argument === "--website-max-pages") parsed.websiteMaxPages = requiredArgument(argv[++index], "website_max_pages")
     else if (argument.startsWith("--website-max-pages=")) parsed.websiteMaxPages = requiredArgument(argument.slice(20), "website_max_pages")
+    else if (argument === "--reason") parsed.reason = requiredArgument(argv[++index], "reason")
+    else if (argument.startsWith("--reason=")) parsed.reason = requiredArgument(argument.slice(9), "reason")
+    else if (argument === "--audit-output") parsed.auditOutputPath = requiredArgument(argv[++index], "audit_output")
+    else if (argument.startsWith("--audit-output=")) parsed.auditOutputPath = requiredArgument(argument.slice(15), "audit_output")
+    else if (argument === "--database") parsed.databasePath = requiredArgument(argv[++index], "database")
+    else if (argument.startsWith("--database=")) parsed.databasePath = requiredArgument(argument.slice(11), "database")
     else throw toolError("unknown_argument")
   }
 
+  if (parsed.apply && !parsed.reconcileNow) throw toolError("reconcile_now_required_for_apply")
+  if (parsed.schemaOnly && parsed.reconcileNow) throw toolError("schema_only_cannot_reconcile")
+
   return parsed
+}
+
+export function buildProjectionRepairPlan(input = {}) {
+  const inventoryById = new Map(validRows(input.inventoryRows).map((row) => [cleanId(row.public_id), row]))
+  const pendingItemIds = pendingInventoryOperationItemIds(validRows(input.operationRows))
+  const repairs = []
+  const skipped = []
+
+  for (const row of validRows(input.reportRows)) {
+    const itemId = cleanId(row.internal_item_id)
+    if (!itemId) {
+      if (String(row.mismatch_reason ?? "").split(";").includes("internal_item_missing")) {
+        skipped.push({ internal_item_id: "", reason: "remote_only_item_not_authoritative" })
+      }
+      continue
+    }
+
+    const item = inventoryById.get(itemId)
+    if (!item) {
+      skipped.push({ internal_item_id: itemId, reason: "local_inventory_item_missing" })
+      continue
+    }
+
+    const repairableReasons = projectionRepairReasons(row)
+    if (repairableReasons.length === 0) continue
+    if (pendingItemIds.has(itemId)) {
+      skipped.push({ internal_item_id: itemId, reason: "authoritative_projection_already_queued" })
+      continue
+    }
+
+    const localFingerprint = localProjectionFingerprint(item)
+    const operationFingerprint = sha256({
+      local_projection_fingerprint: localFingerprint,
+      mismatch_reason: cleanText(row.mismatch_reason),
+      website_projection: cleanText(row.website_projection),
+      square_expected_count: String(row.square_expected_count ?? ""),
+      square_count: String(row.square_count ?? ""),
+      last_verified_sync_at_utc: cleanTimestamp(row.last_verified_sync_at_utc),
+    })
+    const operationId = `reconcile-projection-${operationFingerprint.slice(0, 32)}`
+    const itemSnapshot = projectionItemSnapshot(item)
+    repairs.push({
+      operation_id: operationId,
+      idempotency_key: operationId,
+      internal_item_id: itemId,
+      local_projection_fingerprint: localFingerprint,
+      repair_reasons: repairableReasons,
+      destinations: ["wordpress", "square", "kiosk"],
+      payload: {
+        item: itemSnapshot,
+        inventory_public_id: cleanId(item.wordpress_public_id) || itemId,
+        local_inventory_public_id: itemId,
+        barcode: cleanText(item.barcode),
+        status: cleanStatus(item.status),
+        location: cleanText(item.location),
+        price_minor_units: nonNegativeInteger(item.price_minor_units),
+        sale_price_minor_units: nonNegativeInteger(item.price_minor_units),
+        minimum_sale_price_minor_units: nonNegativeInteger(item.minimum_sale_price_minor_units),
+        pricing_source: cleanText(item.pricing_source),
+        previous_quantity_on_hand: quantity(item.quantity_on_hand, item.status),
+        quantity_on_hand: quantity(item.quantity_on_hand, item.status),
+        quantity_delta: 0,
+        quantity_update_mode: "absolute",
+        online_visibility: cleanVisibility(item.online_visibility),
+        kiosk_visibility: cleanVisibility(item.kiosk_visibility),
+        pos_visibility: cleanVisibility(item.pos_visibility),
+        actor_id: "system-reconciliation",
+        actor_name: "Pug reconciliation tool",
+        reason: cleanText(input.reason) || "Authoritative local projection repair",
+        sync_intent: "authoritative_local_projection_repair",
+        wordpress_acceptance_required: true,
+        reconciliation: {
+          report_generated_at_utc: cleanTimestamp(input.generatedAtUtc),
+          local_projection_fingerprint: localFingerprint,
+          mismatch_reasons: repairableReasons,
+        },
+      },
+    })
+  }
+
+  return {
+    authoritative_source: "local_sqlite",
+    repairs,
+    skipped,
+    planned_count: repairs.length,
+    skipped_count: skipped.length,
+    remote_inventory_overwrite_planned: false,
+    local_inventory_overwrite_planned: false,
+  }
+}
+
+export async function reconcileAuthoritativeProjections(input = {}, dependencies = {}) {
+  const auditOutputPath = resolve(String(input.options?.auditOutputPath || DEFAULT_AUDIT_OUTPUT_PATH))
+  const plan = buildProjectionRepairPlan({
+    reportRows: input.reportRows,
+    inventoryRows: input.inventoryRows,
+    operationRows: input.operationRows,
+    generatedAtUtc: input.generatedAtUtc,
+    reason: input.options?.reason,
+  })
+  const applyRequested = input.options?.apply === true
+  let result
+
+  if (!applyRequested) {
+    result = {
+      status: "planned",
+      code: "authoritative_projection_repair_dry_run",
+      dry_run: true,
+      queued_count: 0,
+      already_queued_count: 0,
+      stale_local_count: 0,
+      actions: plan.repairs.map(publicPlannedRepair),
+    }
+  } else if (input.options?.confirmAuthoritativeLocal !== true) {
+    result = {
+      status: "blocked",
+      code: "confirm_authoritative_local_required",
+      dry_run: true,
+      queued_count: 0,
+      already_queued_count: 0,
+      stale_local_count: 0,
+      actions: plan.repairs.map(publicPlannedRepair),
+    }
+  } else if (!cleanText(input.options?.reason)) {
+    result = {
+      status: "blocked",
+      code: "reconciliation_reason_required",
+      dry_run: true,
+      queued_count: 0,
+      already_queued_count: 0,
+      stale_local_count: 0,
+      actions: plan.repairs.map(publicPlannedRepair),
+    }
+  } else {
+    const applyRepairs = dependencies.applyProjectionRepairs ?? applyProjectionRepairs
+    result = await applyRepairs(plan, {
+      databasePath: input.options?.databasePath,
+      now: dependencies.now,
+      confirmAuthoritativeLocal: input.options?.confirmAuthoritativeLocal,
+      reason: input.options?.reason,
+    })
+  }
+
+  const audit = {
+    audit_schema_version: REPAIR_AUDIT_SCHEMA_VERSION,
+    tool: "sync_reconciliation_report",
+    generated_at_utc: cleanTimestamp(input.generatedAtUtc) || new Date().toISOString(),
+    report_path: resolve(String(input.reportPath ?? DEFAULT_OUTPUT_PATH)),
+    authoritative_source: "local_sqlite",
+    requested_mode: applyRequested ? "apply" : "dry_run",
+    reason: cleanText(input.options?.reason),
+    plan: {
+      planned_count: plan.planned_count,
+      skipped_count: plan.skipped_count,
+      skipped: plan.skipped,
+    },
+    result,
+    safety: {
+      local_inventory_overwritten: false,
+      wordpress_treated_as_authoritative: false,
+      square_treated_as_authoritative: false,
+      direct_remote_write_performed: false,
+      credentials_recorded: false,
+    },
+  }
+  await writeAuditFile(auditOutputPath, audit)
+
+  return {
+    ...result,
+    audit_output_path: auditOutputPath,
+    planned_count: plan.planned_count,
+    skipped_count: plan.skipped_count,
+    credentials_printed: false,
+    raw_credentials_returned: false,
+  }
+}
+
+export function applyProjectionRepairs(plan, options = {}) {
+  const databasePath = resolve(String(options.databasePath || localSyncDatabasePath()))
+  if (options.confirmAuthoritativeLocal !== true) {
+    return repairBlocked("confirm_authoritative_local_required", databasePath, true)
+  }
+  if (!cleanText(options.reason)) {
+    return repairBlocked("reconciliation_reason_required", databasePath, true)
+  }
+  if (plan?.authoritative_source !== "local_sqlite") {
+    return repairBlocked("local_authoritative_plan_required", databasePath, true)
+  }
+  if (!existsSync(databasePath)) {
+    return repairBlocked("local_inventory_database_missing", databasePath)
+  }
+
+  const database = new DatabaseSync(databasePath)
+  const now = typeof options.now === "function" ? options.now : () => new Date()
+  const actions = []
+
+  try {
+    for (const tableName of ["inventory_items", "operation_queue", "sync_outbox_events", "sync_outbox_deliveries"]) {
+      if (!sqliteTableExists(database, tableName)) {
+        return repairBlocked(`required_table_missing:${tableName}`, databasePath)
+      }
+    }
+
+    withImmediateTransaction(database, () => {
+      for (const repair of validRows(plan?.repairs)) {
+        const current = database.prepare("SELECT * FROM inventory_items WHERE public_id = ?").get(repair.internal_item_id)
+        if (!current || localProjectionFingerprint(current) !== repair.local_projection_fingerprint) {
+          actions.push({
+            operation_id: repair.operation_id,
+            internal_item_id: repair.internal_item_id,
+            outcome: "skipped_stale_local_state",
+          })
+          continue
+        }
+
+        const queuedAtUtc = now().toISOString()
+        const insert = database.prepare(`
+          INSERT INTO operation_queue (
+            operation_id, operation_type, entity_id, payload_json, queued_at_utc, sync_status
+          ) VALUES (?, 'inventory_update', ?, ?, ?, 'pending')
+          ON CONFLICT(operation_id) DO NOTHING
+        `).run(
+          repair.operation_id,
+          repair.internal_item_id,
+          JSON.stringify(repair.payload),
+          queuedAtUtc,
+        )
+        const outbox = appendProjectionEvent(database, {
+          idempotency_key: repair.idempotency_key,
+          aggregate_type: "inventory",
+          aggregate_id: repair.internal_item_id,
+          event_type: "inventory_update",
+          destinations: repair.destinations,
+          payload: repair.payload,
+          created_at_utc: queuedAtUtc,
+        }, now)
+        const kioskDelivery = outbox.deliveries.find((delivery) => delivery.destination === "kiosk")
+        if (kioskDelivery && kioskDelivery.status !== "verified") {
+          markOutboxDelivery(database, {
+            event_id: outbox.event.event_id,
+            destination: "kiosk",
+            status: "verified",
+            increment_attempt: false,
+            readback: {
+              aggregate_id: repair.internal_item_id,
+              source: "authoritative_local_database",
+              reconciliation_operation_id: repair.operation_id,
+            },
+          }, now)
+        }
+        actions.push({
+          operation_id: repair.operation_id,
+          internal_item_id: repair.internal_item_id,
+          outbox_event_id: outbox.event.event_id,
+          outcome: Number(insert.changes) > 0 ? "queued" : "already_queued",
+          destinations: repair.destinations,
+        })
+      }
+    })
+  } catch (error) {
+    return {
+      ...repairBlocked("authoritative_projection_repair_failed", databasePath),
+      error_code: cleanCode(error?.code) || "sqlite_transaction_failed",
+    }
+  } finally {
+    database.close()
+  }
+
+  return {
+    status: "ok",
+    code: "authoritative_projection_repairs_queued",
+    dry_run: false,
+    database_path: databasePath,
+    queued_count: actions.filter((action) => action.outcome === "queued").length,
+    already_queued_count: actions.filter((action) => action.outcome === "already_queued").length,
+    stale_local_count: actions.filter((action) => action.outcome === "skipped_stale_local_state").length,
+    actions,
+    local_inventory_rows_modified: 0,
+    direct_remote_writes_performed: 0,
+    credentials_printed: false,
+    raw_credentials_returned: false,
+  }
 }
 
 export function sanitizeCsvFormula(value) {
@@ -294,7 +621,7 @@ export function csvCell(value) {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
-async function writeCsvReport(outputPath, rows) {
+async function writeCsvReport(outputPath, rows, options = {}) {
   await mkdir(dirname(outputPath), { recursive: true })
   const stream = createWriteStream(outputPath, { encoding: "utf8" })
   let rowsWritten = 0
@@ -303,6 +630,7 @@ async function writeCsvReport(outputPath, rows) {
   try {
     await writeChunk(stream, `${REPORT_COLUMNS.map(csvCell).join(",")}\n`)
     for (const row of rows) {
+      if (typeof options.onRow === "function") options.onRow(row)
       const line = REPORT_COLUMNS.map((column) => csvCell(row?.[column])).join(",")
       await writeChunk(stream, `${line}\n`)
       rowsWritten += 1
@@ -335,6 +663,145 @@ function safeReadLocalTable(reader, tableName) {
   } catch {
     return { status: "blocked", code: "local_table_read_failed", rows: [] }
   }
+}
+
+function projectionRepairReasons(row) {
+  const reasons = String(row?.mismatch_reason ?? "")
+    .split(";")
+    .map(cleanCode)
+    .filter(Boolean)
+
+  return uniqueValues(reasons.filter((reason) =>
+    reason === "website_projection_missing" ||
+    reason === "website_identity_duplicate" ||
+    reason.startsWith("website_quantity_mismatch") ||
+    reason.startsWith("website_status_mismatch") ||
+    reason.startsWith("website_kiosk_visibility_mismatch") ||
+    reason === "wordpress_projection_failed" ||
+    reason === "wordpress_projection_pending" ||
+    reason === "square_variation_missing" ||
+    reason === "square_count_missing" ||
+    reason === "square_count_mismatch" ||
+    reason === "square_projection_failed" ||
+    reason === "square_projection_pending"
+  ))
+}
+
+function pendingInventoryOperationItemIds(rows) {
+  const itemIds = new Set()
+  for (const row of rows) {
+    if (cleanStatus(row.operation_type) !== "inventory_update" || cleanStatus(row.sync_status) !== "pending") continue
+    const payload = parseJsonObject(row.payload_json)
+    const itemId = cleanId(payload.local_inventory_public_id ?? payload.inventory_public_id ?? row.entity_id)
+    if (itemId) itemIds.add(itemId)
+  }
+  return itemIds
+}
+
+function projectionItemSnapshot(item) {
+  return {
+    public_id: cleanId(item.public_id),
+    wordpress_public_id: cleanId(item.wordpress_public_id),
+    row_version: nonNegativeInteger(item.row_version),
+    provider_card_id: cleanId(item.provider_card_id),
+    reference_variant_id: nonNegativeInteger(item.reference_variant_id),
+    provider_variant_id: cleanId(item.provider_variant_id),
+    game: cleanText(item.game),
+    card_name: cleanText(item.card_name),
+    set_name: cleanText(item.set_name),
+    set_code: cleanText(item.set_code),
+    card_number: cleanText(item.card_number),
+    printed_number: cleanText(item.printed_number),
+    variant: cleanText(item.variant),
+    finish: cleanText(item.finish),
+    language: cleanText(item.language) || "EN",
+    raw_or_graded: cleanStatus(item.raw_or_graded),
+    grading_company: cleanText(item.grading_company),
+    grade: cleanText(item.grade),
+    cert_number: cleanText(item.cert_number),
+    condition: cleanText(item.condition),
+    barcode: cleanText(item.barcode),
+    price_minor_units: nonNegativeInteger(item.price_minor_units),
+    sale_price_minor_units: nonNegativeInteger(item.price_minor_units),
+    market_price_minor_units: nonNegativeInteger(item.market_price_minor_units),
+    auto_price_minor_units: nonNegativeInteger(item.auto_price_minor_units),
+    minimum_sale_price_minor_units: nonNegativeInteger(item.minimum_sale_price_minor_units),
+    pricing_source: cleanText(item.pricing_source),
+    price_observed_at_utc: cleanTimestamp(item.price_observed_at_utc),
+    quantity_on_hand: quantity(item.quantity_on_hand, item.status),
+    currency: cleanText(item.currency) || "USD",
+    location: cleanText(item.location),
+    status: cleanStatus(item.status),
+    image_url: cleanText(item.image_url),
+    back_image_url: cleanText(item.back_image_url),
+    online_visibility: cleanVisibility(item.online_visibility),
+    kiosk_visibility: cleanVisibility(item.kiosk_visibility),
+    pos_visibility: cleanVisibility(item.pos_visibility),
+    square_catalog_item_id: cleanId(item.square_catalog_item_id),
+    square_catalog_variation_id: cleanId(item.square_catalog_variation_id),
+    square_location_id: cleanId(item.square_location_id),
+    external_sync_state: cleanStatus(item.external_sync_state),
+    source: cleanText(item.source),
+  }
+}
+
+function localProjectionFingerprint(item) {
+  const snapshot = projectionItemSnapshot(item)
+  return sha256({
+    public_id: snapshot.public_id,
+    wordpress_public_id: snapshot.wordpress_public_id,
+    row_version: snapshot.row_version,
+    barcode: snapshot.barcode,
+    status: snapshot.status,
+    quantity_on_hand: snapshot.quantity_on_hand,
+    price_minor_units: snapshot.price_minor_units,
+    minimum_sale_price_minor_units: snapshot.minimum_sale_price_minor_units,
+    online_visibility: snapshot.online_visibility,
+    kiosk_visibility: snapshot.kiosk_visibility,
+    pos_visibility: snapshot.pos_visibility,
+    square_catalog_variation_id: snapshot.square_catalog_variation_id,
+    square_location_id: snapshot.square_location_id,
+  })
+}
+
+function sha256(value) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex")
+}
+
+function publicPlannedRepair(repair) {
+  return {
+    operation_id: repair.operation_id,
+    internal_item_id: repair.internal_item_id,
+    outcome: "planned",
+    destinations: repair.destinations,
+    repair_reasons: repair.repair_reasons,
+  }
+}
+
+function sqliteTableExists(database, tableName) {
+  return Boolean(database.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName))
+}
+
+function repairBlocked(code, databasePath, dryRun = false) {
+  return {
+    status: "blocked",
+    code,
+    dry_run: dryRun,
+    database_path: databasePath,
+    queued_count: 0,
+    already_queued_count: 0,
+    stale_local_count: 0,
+    actions: [],
+    local_inventory_rows_modified: 0,
+    direct_remote_writes_performed: 0,
+    credentials_printed: false,
+    raw_credentials_returned: false,
+  }
+}
+
+async function writeAuditFile(outputPath, audit) {
+  await mkdir(dirname(outputPath), { recursive: true })
+  await writeFile(outputPath, `${JSON.stringify(audit, null, 2)}\n`, { encoding: "utf8" })
 }
 
 async function safeConnectorRead(read, fallbackCode, collectionName) {
@@ -661,6 +1128,11 @@ function quantity(value, status = "") {
   return ["sold", "removed"].includes(cleanStatus(status)) ? 0 : 1
 }
 
+function nonNegativeInteger(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0
+}
+
 function nonNegativeNumber(value) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
@@ -685,6 +1157,11 @@ function cleanVisibility(value) {
 
 function cleanCode(value) {
   return String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9_.:-]/g, "_").slice(0, 160)
+}
+
+function cleanTimestamp(value) {
+  const timestamp = Date.parse(String(value ?? ""))
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ""
 }
 
 function parseJsonObject(value) {
@@ -728,6 +1205,12 @@ function usage() {
     "  --output <path>              Set the CSV output path.",
     "  --website-page-size <1-100>  Bound each website page.",
     "  --website-max-pages <n>      Bound website pagination.",
+    "  --reconcile-now              Plan projection repairs from local authoritative rows.",
+    "  --apply                      Queue repairs; dry-run remains the default.",
+    "  --confirm-authoritative-local  Confirm local SQLite is authoritative for apply.",
+    "  --reason <text>              Required operator reason for apply.",
+    "  --audit-output <path>        Set the JSON audit result path.",
+    "  --database <path>            Override the local SQLite path for apply.",
   ].join("\n")
 }
 
