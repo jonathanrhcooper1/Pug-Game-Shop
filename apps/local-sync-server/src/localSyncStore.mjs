@@ -72,6 +72,11 @@ const DEFAULT_WOOCOMMERCE_FULFILLMENT_INGESTION_STATUSES = Object.freeze([
   "completed",
   "on-hold",
 ])
+const DEFAULT_WOOCOMMERCE_LIFECYCLE_INGESTION_STATUSES = Object.freeze([
+  ...DEFAULT_WOOCOMMERCE_FULFILLMENT_INGESTION_STATUSES,
+  "cancelled",
+  "refunded",
+])
 const SEED_REFERENCE_CARD_IDS = Object.freeze([
   "scrydex-pokemon-base-004",
   "scrydex-pokemon-jungle-060",
@@ -8337,11 +8342,14 @@ export function createLocalSyncStore(options = {}) {
     let fulfillmentUpdatedCount = 0
     let fulfillmentIgnoredCount = 0
     const fulfillmentInventorySaleResults = []
+    const fulfillmentInventoryReturnResults = []
 
     if (shouldPullFulfillment) {
       fulfillmentPullResult = await wordpressFulfillmentPull({
         limit: input.fulfillment_limit ?? input.fulfillmentLimit ?? input.page_size ?? input.pageSize,
-        statuses: input.fulfillment_statuses ?? input.fulfillmentStatuses ?? [],
+        statuses: fulfillmentLifecyclePullStatuses(
+          input.fulfillment_statuses ?? input.fulfillmentStatuses,
+        ),
       })
 
       if (fulfillmentPullResult.status !== "ok") {
@@ -8369,10 +8377,12 @@ export function createLocalSyncStore(options = {}) {
 
         if (existingIndex >= 0) {
           fulfillmentInventorySaleResults.push(await applyWooCommerceSaleInventoryDelta(mergedOrder))
+          fulfillmentInventoryReturnResults.push(await applyWooCommerceTerminalInventoryDelta(mergedOrder))
           appliedFulfillmentOrders.push(publicFulfillmentOrder(mergedOrder))
           fulfillmentUpdatedCount += 1
         } else {
           fulfillmentInventorySaleResults.push(await applyWooCommerceSaleInventoryDelta(mergedOrder))
+          fulfillmentInventoryReturnResults.push(await applyWooCommerceTerminalInventoryDelta(mergedOrder))
           appliedFulfillmentOrders.push(publicFulfillmentOrder(mergedOrder))
           fulfillmentInsertedCount += 1
         }
@@ -8410,6 +8420,10 @@ export function createLocalSyncStore(options = {}) {
       fulfillment_inventory_sale_retry_count: fulfillmentInventorySaleResults.filter((item) => item.status === "retry").length,
       fulfillment_inventory_sale_skipped_count: fulfillmentInventorySaleResults.filter((item) => item.status === "skipped").length,
       fulfillment_inventory_sale_results: fulfillmentInventorySaleResults,
+      fulfillment_inventory_return_applied_count: fulfillmentInventoryReturnResults.filter((item) => item.status === "ok").length,
+      fulfillment_inventory_return_retry_count: fulfillmentInventoryReturnResults.filter((item) => item.status === "retry").length,
+      fulfillment_inventory_return_skipped_count: fulfillmentInventoryReturnResults.filter((item) => item.status === "skipped").length,
+      fulfillment_inventory_return_results: fulfillmentInventoryReturnResults,
       fulfillment_orders: appliedFulfillmentOrders,
       catalog_pulled_count: (catalogPullResult?.rows ?? []).length,
       catalog_applied_count: appliedReferenceCards.length,
@@ -8757,7 +8771,7 @@ export function createLocalSyncStore(options = {}) {
     for (const [lineIndex, lineItem] of fulfillmentItems.entries()) {
       let remainingQuantity = Math.max(1, boundedInt(lineItem.quantity, 1, 999, 1))
       const candidates = inventoryItems
-        .filter((item) => fulfillmentLineItemMatchesInventory(lineItem, item))
+        .filter((item) => fulfillmentLineItemMatchesInventory(lineItem, item, inventoryBarcodeAliases))
         .filter((item) => (projectedQuantities.get(item.public_id) ?? 0) > 0)
         .sort(squareInventorySaleCandidateSort)
 
@@ -8930,6 +8944,247 @@ export function createLocalSyncStore(options = {}) {
       wordpress_acceptance_required: false,
       credentials_synced_to_client: false,
       raw_credentials_returned: false,
+    }
+  }
+
+  async function applyWooCommerceTerminalInventoryDelta(order) {
+    const orderStatus = cleanOrderStatus(order?.order_status)
+    const orderId = positiveInt(order?.order_id)
+
+    if (!orderId || !["cancelled", "refunded"].includes(orderStatus)) {
+      return {
+        status: "skipped",
+        code: "woocommerce_terminal_inventory_delta_not_applicable",
+        order_id: orderId,
+      }
+    }
+
+    if (cleanIsoTimestamp(order.inventory_return_applied_at_utc)) {
+      return {
+        status: "skipped",
+        code: "woocommerce_terminal_inventory_delta_already_applied",
+        order_id: orderId,
+        inventory_return_applied_at_utc: cleanIsoTimestamp(order.inventory_return_applied_at_utc),
+      }
+    }
+
+    const saleLedgerRows = database.prepare(`
+      SELECT inventory_public_id, quantity_before, quantity_after, payload_json
+      FROM inventory_ledger_entries
+      WHERE mutation_type = 'woocommerce_sale'
+        AND reference_type = 'woocommerce_order'
+        AND reference_id = ?
+      ORDER BY created_at_utc, ledger_id
+    `).all(String(orderId))
+
+    if (saleLedgerRows.length === 0) {
+      return {
+        status: orderStatus === "cancelled" ? "skipped" : "retry",
+        code:
+          orderStatus === "cancelled"
+            ? "woocommerce_cancelled_before_local_sale"
+            : "woocommerce_refund_sale_ledger_missing",
+        message:
+          orderStatus === "cancelled"
+            ? "The paid order was cancelled before this LAN ledger applied a sale. No stock was changed."
+            : "The refunded order has no matching LAN sale ledger, so no inventory was created or released.",
+        order_id: orderId,
+        applied_quantity: 0,
+        source_of_truth: "local_sync_server",
+      }
+    }
+
+    const fulfillmentItems = cleanFulfillmentOrderItems(order.items)
+    const plannedChanges = []
+    const validationErrors = []
+
+    for (const ledgerRow of saleLedgerRows) {
+      const payload = parseJson(ledgerRow.payload_json, {})
+      const orderItemId = positiveInt(payload.order_item_id)
+      const returnedQuantity = Math.max(
+        0,
+        boundedInt(ledgerRow.quantity_before, 0, 999999, 0) -
+          boundedInt(ledgerRow.quantity_after, 0, 999999, 0),
+      )
+      const lineItem = fulfillmentItems.find((item) => positiveInt(item.order_item_id) === orderItemId)
+      const inventoryItem = inventoryItems.find(
+        (item) => item.public_id === cleanPublicId(ledgerRow.inventory_public_id),
+      )
+      const returnIdempotencyKey =
+        `woocommerce-return:${orderId}:${orderItemId}:${cleanPublicId(ledgerRow.inventory_public_id)}`
+
+      if (inventoryLedgerEntryByIdempotency(database, returnIdempotencyKey)) {
+        continue
+      }
+      if (!orderItemId || !lineItem || !inventoryItem) {
+        validationErrors.push({
+          code: "woocommerce_return_exact_identity_missing",
+          order_item_id: orderItemId,
+          inventory_public_id: cleanPublicId(ledgerRow.inventory_public_id),
+        })
+        continue
+      }
+      if (!fulfillmentLineItemMatchesInventory(lineItem, inventoryItem, inventoryBarcodeAliases)) {
+        validationErrors.push({
+          code: "woocommerce_return_exact_identity_mismatch",
+          order_item_id: orderItemId,
+          inventory_public_id: inventoryItem.public_id,
+        })
+        continue
+      }
+      if (
+        returnedQuantity !== 1 ||
+        inventoryQuantityOnHand(inventoryItem) !== 0 ||
+        localInventoryStatus(inventoryItem.status) !== "sold"
+      ) {
+        validationErrors.push({
+          code: "woocommerce_return_requires_manual_quantity_review",
+          order_item_id: orderItemId,
+          inventory_public_id: inventoryItem.public_id,
+          sold_quantity: returnedQuantity,
+          current_quantity_on_hand: inventoryQuantityOnHand(inventoryItem),
+          current_status: localInventoryStatus(inventoryItem.status),
+        })
+        continue
+      }
+
+      plannedChanges.push({
+        order_item_id: orderItemId,
+        returned_quantity: returnedQuantity,
+        return_idempotency_key: returnIdempotencyKey,
+        item: inventoryItem,
+        previous: { ...inventoryItem },
+        next: {
+          ...inventoryItem,
+          quantity_on_hand: returnedQuantity,
+          status: "return_review",
+          online_visibility: "hidden",
+          kiosk_visibility: "hidden",
+          pos_visibility: "hidden",
+          source: "queued",
+          external_sync_state: "pending",
+          updated_by_user_id: "woocommerce-return",
+          updated_by_user_name: `WooCommerce ${orderStatus} order ${order.order_number || orderId}`,
+          row_version: inventoryItem.row_version + 1,
+        },
+      })
+    }
+
+    if (validationErrors.length > 0) {
+      return {
+        status: "retry",
+        code: "woocommerce_terminal_inventory_requires_review",
+        message: "The terminal WooCommerce order was not applied because every serialized line could not be matched safely.",
+        order_id: orderId,
+        applied_quantity: 0,
+        validation_errors: validationErrors,
+        source_of_truth: "local_sync_server",
+      }
+    }
+
+    const generatedAtUtc = now().toISOString()
+    if (plannedChanges.length === 0) {
+      order.inventory_return_applied_at_utc = generatedAtUtc
+      order.updated_at_utc = generatedAtUtc
+      saveFulfillmentOrder(database, order)
+      return {
+        status: "skipped",
+        code: "woocommerce_terminal_inventory_delta_already_recorded",
+        order_id: orderId,
+        inventory_return_applied_at_utc: generatedAtUtc,
+      }
+    }
+
+    const operations = withImmediateTransaction(database, () => {
+      const pendingOperations = []
+      for (const change of plannedChanges) {
+        saveInventoryItem(database, change.next, now)
+        const operation = appendQueueOperation(database, queue, "inventory_update", change.next.public_id, {
+          inventory_public_id: cleanPublicId(change.next.wordpress_public_id) || change.next.public_id,
+          local_inventory_public_id: change.next.public_id,
+          barcode: change.next.barcode,
+          status: "return_review",
+          quantity_on_hand: change.returned_quantity,
+          previous_quantity_on_hand: 0,
+          quantity_delta: change.returned_quantity,
+          quantity_update_mode: "absolute",
+          online_visibility: "hidden",
+          kiosk_visibility: "hidden",
+          pos_visibility: "hidden",
+          sync_intent: "woocommerce_fulfillment_return_review",
+          source: "woocommerce_fulfillment_pull",
+          source_channel: "woocommerce",
+          woocommerce_order_id: orderId,
+          woocommerce_order_item_id: change.order_item_id,
+          returned_at_utc: generatedAtUtc,
+          reason: `Paid WooCommerce order ${orderStatus}; exact serialized item quarantined for review`,
+          wordpress_acceptance_required: false,
+        }, now, { deferMemoryPush: true })
+        appendInventoryLedgerEntry(database, {
+          idempotency_key: change.return_idempotency_key,
+          inventory_public_id: change.next.public_id,
+          mutation_type: "woocommerce_return_review",
+          source_channel: "woocommerce",
+          reference_type: "woocommerce_order",
+          reference_id: String(orderId),
+          quantity_before: 0,
+          quantity_after: change.returned_quantity,
+          status_before: "sold",
+          status_after: "return_review",
+          price_before_minor_units: change.previous.price_minor_units,
+          price_after_minor_units: change.next.price_minor_units,
+          actor_user_id: "woocommerce-return",
+          actor_user_name: `WooCommerce ${orderStatus} order ${order.order_number || orderId}`,
+          reason: "Returned serialized inventory must pass staff condition review before resale",
+          payload: {
+            operation_id: operation.operation_id,
+            order_item_id: change.order_item_id,
+            quantity: change.returned_quantity,
+            terminal_order_status: orderStatus,
+          },
+        }, now)
+        pendingOperations.push(operation)
+      }
+
+      order.inventory_return_applied_at_utc = generatedAtUtc
+      order.updated_at_utc = generatedAtUtc
+      saveFulfillmentOrder(database, order)
+      return pendingOperations
+    })
+
+    for (const change of plannedChanges) {
+      Object.assign(change.item, change.next)
+    }
+    queue.push(...operations)
+
+    const squareSyncResults = []
+    for (let index = 0; index < operations.length; index += 1) {
+      squareSyncResults.push(await syncSquareCatalogInventoryForOperation(operations[index], plannedChanges[index].next))
+    }
+    const retryCount = squareSyncResults.filter((item) => item.status === "retry").length
+
+    return {
+      status: retryCount > 0 ? "retry" : "ok",
+      code:
+        retryCount > 0
+          ? "woocommerce_terminal_inventory_quarantined_square_retry"
+          : "woocommerce_terminal_inventory_quarantined",
+      order_id: orderId,
+      order_status: orderStatus,
+      applied_quantity: plannedChanges.reduce((total, change) => total + change.returned_quantity, 0),
+      inventory_return_applied_at_utc: generatedAtUtc,
+      line_results: plannedChanges.map((change) => ({
+        order_item_id: change.order_item_id,
+        inventory_public_id: change.item.public_id,
+        barcode: change.item.barcode,
+        status: "return_review",
+        quantity_on_hand: change.returned_quantity,
+      })),
+      square_catalog_inventory_sync_results: squareSyncResults,
+      square_catalog_inventory_sync_retry_count: retryCount,
+      source_of_truth: "local_sync_server",
+      sellable_inventory_released: false,
+      staff_review_required: true,
     }
   }
 
@@ -10434,6 +10689,7 @@ function migrateLocalSyncDatabase(database) {
       items_json TEXT NOT NULL DEFAULT '[]',
       picked_item_ids_json TEXT NOT NULL DEFAULT '[]',
       inventory_sale_applied_at_utc TEXT NOT NULL DEFAULT '',
+      inventory_return_applied_at_utc TEXT NOT NULL DEFAULT '',
       source TEXT NOT NULL DEFAULT 'wordpress'
     );
 
@@ -10694,6 +10950,7 @@ function migrateLocalSyncDatabase(database) {
   ensureLocalSyncColumn(database, "fulfillment_orders", "source", "TEXT NOT NULL DEFAULT 'wordpress'")
   ensureLocalSyncColumn(database, "fulfillment_orders", "picked_item_ids_json", "TEXT NOT NULL DEFAULT '[]'")
   ensureLocalSyncColumn(database, "fulfillment_orders", "inventory_sale_applied_at_utc", "TEXT NOT NULL DEFAULT ''")
+  ensureLocalSyncColumn(database, "fulfillment_orders", "inventory_return_applied_at_utc", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "checkout_transactions", "customer_email", "TEXT NOT NULL DEFAULT ''")
   ensureLocalSyncColumn(database, "checkout_transactions", "guest_checkout", "INTEGER NOT NULL DEFAULT 0")
   ensureLocalSyncColumn(database, "checkout_transactions", "source_order_id", "TEXT NOT NULL DEFAULT ''")
@@ -11495,7 +11752,8 @@ function loadFulfillmentOrders(database) {
       SELECT order_id, order_number, customer_name, order_status, fulfillment_status,
         payment_status, shipping_method_id, shipping_method_title, local_pickup,
         item_count, total_minor_units, currency, paid_at_utc, created_at_utc,
-        updated_at_utc, items_json, picked_item_ids_json, inventory_sale_applied_at_utc, source
+        updated_at_utc, items_json, picked_item_ids_json, inventory_sale_applied_at_utc,
+        inventory_return_applied_at_utc, source
       FROM fulfillment_orders
       ORDER BY created_at_utc DESC, order_id DESC
     `)
@@ -11522,6 +11780,7 @@ function loadFulfillmentOrders(database) {
         cleanFulfillmentOrderItems(parseJson(row.items_json, [])),
       ),
       inventory_sale_applied_at_utc: cleanIsoTimestamp(row.inventory_sale_applied_at_utc),
+      inventory_return_applied_at_utc: cleanIsoTimestamp(row.inventory_return_applied_at_utc),
       source: cleanFulfillmentOrderSource(row.source),
     }))
     .filter((order) => order.order_id > 0)
@@ -12195,9 +12454,10 @@ function saveFulfillmentOrder(database, order) {
         order_id, order_number, customer_name, order_status, fulfillment_status,
         payment_status, shipping_method_id, shipping_method_title, local_pickup,
         item_count, total_minor_units, currency, paid_at_utc, created_at_utc,
-        updated_at_utc, items_json, picked_item_ids_json, inventory_sale_applied_at_utc, source
+        updated_at_utc, items_json, picked_item_ids_json, inventory_sale_applied_at_utc,
+        inventory_return_applied_at_utc, source
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(order_id) DO UPDATE SET
         order_number = excluded.order_number,
         customer_name = excluded.customer_name,
@@ -12216,6 +12476,7 @@ function saveFulfillmentOrder(database, order) {
         items_json = excluded.items_json,
         picked_item_ids_json = excluded.picked_item_ids_json,
         inventory_sale_applied_at_utc = excluded.inventory_sale_applied_at_utc,
+        inventory_return_applied_at_utc = excluded.inventory_return_applied_at_utc,
         source = excluded.source
     `)
     .run(
@@ -12237,6 +12498,7 @@ function saveFulfillmentOrder(database, order) {
       JSON.stringify(cleanFulfillmentOrderItems(order.items)),
       JSON.stringify(cleanPickedItemIds(order.picked_item_ids, order.items)),
       cleanIsoTimestamp(order.inventory_sale_applied_at_utc),
+      cleanIsoTimestamp(order.inventory_return_applied_at_utc),
       cleanFulfillmentOrderSource(order.source),
     )
 }
@@ -14631,6 +14893,7 @@ function localFulfillmentOrderFromWordPress(order, now = () => new Date()) {
     updated_at_utc: now().toISOString(),
     items,
     inventory_sale_applied_at_utc: cleanIsoTimestamp(order.inventory_sale_applied_at_utc),
+    inventory_return_applied_at_utc: cleanIsoTimestamp(order.inventory_return_applied_at_utc),
     source: "wordpress",
     picked_item_ids: cleanPickedItemIds(order.picked_item_ids, items),
   }
@@ -14661,6 +14924,9 @@ function mergeWordPressFulfillmentOrder(existingOrder, wordpressOrder, now = () 
     inventory_sale_applied_at_utc:
       cleanIsoTimestamp(existingOrder.inventory_sale_applied_at_utc) ||
       cleanIsoTimestamp(wordpressOrder.inventory_sale_applied_at_utc),
+    inventory_return_applied_at_utc:
+      cleanIsoTimestamp(existingOrder.inventory_return_applied_at_utc) ||
+      cleanIsoTimestamp(wordpressOrder.inventory_return_applied_at_utc),
     source: localSourceQueued ? "queued" : "wordpress",
     updated_at_utc: now().toISOString(),
   }
@@ -14693,6 +14959,7 @@ function publicFulfillmentOrder(order) {
     picked_item_count: cleanPickedItemIds(order.picked_item_ids, items).length,
     all_items_picked: items.length > 0 && cleanPickedItemIds(order.picked_item_ids, items).length === items.length,
     inventory_sale_applied_at_utc: cleanIsoTimestamp(order.inventory_sale_applied_at_utc) || "",
+    inventory_return_applied_at_utc: cleanIsoTimestamp(order.inventory_return_applied_at_utc) || "",
     source: cleanFulfillmentOrderSource(order.source),
     payment_required_before_fulfillment: true,
     inventory_mutation_performed_by_status: false,
@@ -15617,6 +15884,19 @@ function cleanFulfillmentOrderItems(items) {
     .filter((item) => item.inventory_id > 0 || item.reservation_id > 0 || item.card_name)
 }
 
+function fulfillmentLifecyclePullStatuses(value) {
+  const requested = Array.isArray(value)
+    ? value
+    : String(value ?? "")
+        .split(",")
+        .map((status) => status.trim())
+        .filter(Boolean)
+
+  return requested.length > 0
+    ? requested
+    : [...DEFAULT_WOOCOMMERCE_LIFECYCLE_INGESTION_STATUSES]
+}
+
 function woocommerceFulfillmentOrderShouldReduceInventory(order) {
   if (!order || order.local_pickup === false) {
     return false
@@ -15636,26 +15916,37 @@ function woocommerceFulfillmentOrderShouldReduceInventory(order) {
   )
 }
 
-function fulfillmentLineItemMatchesInventory(lineItem, item) {
+function fulfillmentLineItemMatchesInventory(lineItem, item, barcodeAliases = new Map()) {
   if (!lineItem || !item) {
     return false
   }
 
   const lineBarcode = cleanBarcode(lineItem.barcode)
-  if (lineBarcode && lineBarcode === cleanBarcode(item.barcode)) {
-    return true
+  if (lineBarcode) {
+    const knownBarcodes = [
+      cleanBarcode(item.barcode),
+      ...(barcodeAliases.get(item.public_id) ?? []).map(cleanBarcode),
+    ].filter(Boolean)
+
+    return knownBarcodes.some((barcode) => barcode.toLowerCase() === lineBarcode.toLowerCase())
   }
 
   const lineInventoryId = positiveInt(lineItem.inventory_id)
-  if (lineInventoryId && String(item.wordpress_public_id || "").includes(String(lineInventoryId))) {
-    return true
+  if (lineInventoryId) {
+    const exactExternalIds = [item.wordpress_public_id, item.public_id]
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean)
+
+    return exactExternalIds.some((value) => {
+      if (value === String(lineInventoryId)) {
+        return true
+      }
+      const trailingNumber = value.match(/(?:^|[-_:])(\d+)$/)?.[1]
+      return trailingNumber === String(lineInventoryId)
+    })
   }
 
-  const sameName = cleanScryDexQuery(lineItem.card_name) === cleanScryDexQuery(item.card_name)
-  const sameSet = !cleanScryDexQuery(lineItem.set_name) || cleanScryDexQuery(lineItem.set_name) === cleanScryDexQuery(item.set_name)
-  const sameCondition = !cleanCondition(lineItem.condition) || cleanCondition(lineItem.condition) === cleanCondition(item.condition)
-
-  return sameName && sameSet && sameCondition
+  return false
 }
 
 function cleanFulfillmentStatus(value) {

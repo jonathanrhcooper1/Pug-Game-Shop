@@ -3,7 +3,9 @@ import assert from "node:assert/strict"
 import { createLocalSyncStore } from "../src/localSyncStore.mjs"
 
 let orderedQuantity = 2
+let orderStatus = "processing"
 const squareCalls = []
+const fulfillmentPullStatuses = []
 
 const store = createLocalSyncStore({
   databasePath: ":memory:",
@@ -13,28 +15,35 @@ const store = createLocalSyncStore({
     items: [wordpressInventoryRow()],
     meta: { page: 1, page_size: 100, total: 1, has_more: false },
   }),
-  wordpressFulfillmentPull: async () => ({
-    status: "ok",
-    order_count: 1,
-    orders: [woocommerceOrder(orderedQuantity)],
-  }),
+  wordpressFulfillmentPull: async ({ statuses } = {}) => {
+    fulfillmentPullStatuses.push(statuses)
+    return {
+      status: "ok",
+      order_count: 1,
+      orders: [woocommerceOrder(orderedQuantity, orderStatus)],
+    }
+  },
   squareCatalogInventorySyncer: {
     status: () => ({ configured: true }),
     syncInventoryItem: async ({ operation, item }) => {
+      const projectedQuantity = item.status === "available" && item.kiosk_visibility === "visible"
+        ? item.quantity_on_hand
+        : 0
       squareCalls.push({
         operation_id: operation.operation_id,
-        quantity_on_hand: item.quantity_on_hand,
+        quantity_on_hand: projectedQuantity,
+        local_status: item.status,
       })
       return {
         status: "ok",
         readback_verified: true,
         verification: { verified: true },
-        readback: { quantity_on_hand: item.quantity_on_hand },
+        readback: { quantity_on_hand: projectedQuantity },
         code: "square_catalog_inventory_synced",
         square_catalog_item_id: "SQ-ATOMIC-ITEM",
         square_catalog_variation_id: "SQ-ATOMIC-VARIATION",
         square_location_id: "SQ-LOCATION",
-        quantity_on_hand: item.quantity_on_hand,
+        quantity_on_hand: projectedQuantity,
       }
     },
   },
@@ -62,6 +71,8 @@ try {
   assert.equal(insufficient.fulfillment_orders[0].inventory_sale_applied_at_utc, "")
   assert.equal(store.searchInventory({ query: "Atomic Woo Card" }).items[0].quantity_on_hand, 1)
   assert.equal(squareCalls.length, 0)
+  assert.equal(fulfillmentPullStatuses[0].includes("cancelled"), true)
+  assert.equal(fulfillmentPullStatuses[0].includes("refunded"), true)
 
   orderedQuantity = 1
   const applied = await store.pullWebsiteInventoryForSystem({ domains: ["fulfillment"] })
@@ -84,6 +95,37 @@ try {
   )
   assert.equal(store.searchInventory({ query: "Atomic Woo Card" }).items[0].quantity_on_hand, 0)
   assert.equal(squareCalls.length, 1)
+
+  orderStatus = "refunded"
+  const refunded = await store.pullWebsiteInventoryForSystem({ domains: ["fulfillment"] })
+  assert.equal(refunded.status, "ok")
+  assert.equal(refunded.fulfillment_inventory_return_applied_count, 1)
+  assert.equal(
+    refunded.fulfillment_inventory_return_results[0].code,
+    "woocommerce_terminal_inventory_quarantined",
+  )
+  assert.match(refunded.fulfillment_orders[0].inventory_return_applied_at_utc, /^\d{4}-\d{2}-\d{2}T/)
+  const returnedItem = store.searchInventory({ query: "Atomic Woo Card" }).items[0]
+  assert.equal(returnedItem.quantity_on_hand, 1)
+  assert.equal(returnedItem.status, "return_review")
+  assert.equal(returnedItem.online_visibility, "hidden")
+  assert.equal(returnedItem.kiosk_visibility, "hidden")
+  assert.equal(returnedItem.pos_visibility, "hidden")
+  assert.equal(squareCalls.length, 2)
+  assert.equal(squareCalls[1].quantity_on_hand, 0)
+  assert.equal(squareCalls[1].local_status, "return_review")
+
+  const repeatedRefund = await store.pullWebsiteInventoryForSystem({ domains: ["fulfillment"] })
+  assert.equal(repeatedRefund.status, "ok")
+  assert.equal(repeatedRefund.fulfillment_inventory_return_applied_count, 0)
+  assert.equal(repeatedRefund.fulfillment_inventory_return_skipped_count, 1)
+  assert.equal(
+    repeatedRefund.fulfillment_inventory_return_results[0].code,
+    "woocommerce_terminal_inventory_delta_already_applied",
+  )
+  assert.equal(store.searchInventory({ query: "Atomic Woo Card" }).items[0].quantity_on_hand, 1)
+  assert.equal(store.searchInventory({ query: "Atomic Woo Card" }).items[0].status, "return_review")
+  assert.equal(squareCalls.length, 2)
 } finally {
   store.close()
 }
@@ -114,12 +156,12 @@ function wordpressInventoryRow() {
   }
 }
 
-function woocommerceOrder(quantity) {
+function woocommerceOrder(quantity, status) {
   return {
     order_id: 99501,
     order_number: "99501",
     customer_name: "Atomic Customer",
-    order_status: "processing",
+    order_status: status,
     fulfillment_status: "awaiting_pull",
     payment_status: "paid",
     shipping_method_id: "local_pickup",
