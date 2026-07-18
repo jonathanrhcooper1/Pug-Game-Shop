@@ -1,0 +1,105 @@
+{
+  "fixture_notice": "Synthetic sanitized data; not copied from a live ScryDex response.",
+  "expansions": [
+    {
+      "id": "fixture-set-zeta",
+      "name": "Fixture Zeta"
+    },
+    {
+      "id": "fixture-set-alpha",
+      "name": "Fixture Alpha"
+    }
+  ],
+  "cards_by_expansion": {
+    "fixture-set-alpha": [
+      {
+        "id": "fixture-alpha-002",
+        "game": "pokemon",
+        "name": "=SUM(1,1)\nFormula-safe card",
+        "number": "2",
+        "expansion": {
+          "id": "fixture-set-alpha",
+          "name": "Fixture Alpha",
+          "code": "FXA"
+        },
+        "images": [
+          {
+            "type": "front",
+            "large": "https://images.example.test/fixture-alpha-002.png"
+          }
+        ],
+        "variants": [
+          {
+            "id": "fixture-alpha-002-normal",
+            "name": "normal",
+            "prices": [
+              {
+                "condition": "NM",
+                "type": "raw",
+                "market": "1.25",
+                "currency": "USD"
+              },
+              {
+                "type": "graded",
+                "company": "PSA",
+                "grade": "10",
+                "market": "20.00",
+                "currency": "USD"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fixture-alpha-001",
+        "game": "pokemon",
+        "name": "Fixture First Card",
+        "number": "1",
+        "expansion": {
+          "id": "fixture-set-alpha",
+          "name": "Fixture Alpha",
+          "code": "FXA"
+        },
+        "images": {
+          "large": "https://images.example.test/fixture-alpha-001.png"
+        },
+        "variants": [
+          {
+            "id": "fixture-alpha-001-reverse",
+            "name": "reverseHolofoil",
+            "graded_prices": {
+              "CGC": {
+                "9.5": {
+                  "marketValue": "14.50",
+                  "currency": "USD"
+                }
+              }
+            },
+            "prices": [
+              {
+                "condition": "LP",
+                "type": "raw",
+                "low": "0.75",
+                "market": "0.90",
+                "currency": "USD"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "fixture-set-zeta": [
+      {
+        "id": "fixture-zeta-001",
+        "game": "pokemon",
+        "name": "Fixture Missing Optional Data",
+        "number": "1",
+        "expansion": {
+          "id": "fixture-set-zeta",
+          "name": "Fixture Zeta",
+          "code": "FXZ"
+        }
+      }
+    ]
+  }
+}
