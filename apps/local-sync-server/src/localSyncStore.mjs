@@ -2766,8 +2766,15 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const requestedStatus = cleanExternalId(input.status ?? input.review_status)
+    const manualPriceOverride = input.manual_price_override === true || input.manualPriceOverride === true
     if (!["approved", "rejected", "cancelled"].includes(requestedStatus)) {
       return blocked("price_review_decision_required", "Use approved, rejected, or cancelled.")
+    }
+    if (manualPriceOverride && requestedStatus !== "approved") {
+      return blocked("manual_price_override_requires_approval", "A manual price override must approve an explicit price.")
+    }
+    if (manualPriceOverride && !cleanReason(input.notes)) {
+      return blocked("manual_price_override_reason_required", "Enter a reason for the manual price override.")
     }
 
     if (requestedStatus !== "approved") {
@@ -2822,7 +2829,7 @@ export function createLocalSyncStore(options = {}) {
       price_minor_units: candidatePriceMinorUnits,
       market_price_minor_units: reviewedMarketPriceMinorUnits,
       auto_price_minor_units: reviewedAutoPriceMinorUnits,
-      pricing_source: "manager_approved_price_review",
+      pricing_source: manualPriceOverride ? "manual_price_override" : "manager_approved_price_review",
       price_observed_at_utc: cleanIsoTimestamp(review.observed_at_utc) || item.price_observed_at_utc,
       source: "queued",
       external_sync_state: "pending",
@@ -2869,7 +2876,7 @@ export function createLocalSyncStore(options = {}) {
       appendInventoryLedgerEntry(database, {
         idempotency_key: operation.operation_id,
         inventory_public_id: next.public_id,
-        mutation_type: "price_review_approved",
+        mutation_type: manualPriceOverride ? "manual_price_override_set" : "price_review_approved",
         source_channel: "manager",
         reference_type: "price_review",
         reference_id: review.review_id,
@@ -2895,12 +2902,51 @@ export function createLocalSyncStore(options = {}) {
 
     return {
       status: "ok",
-      action: "price_review_approved",
+      action: manualPriceOverride ? "price_review_manual_price_set" : "price_review_approved",
       idempotent: false,
       review: decided,
       item: publicInventoryItem(item),
       active_price_changed: previous.price_minor_units !== next.price_minor_units,
       sync_result: syncResult,
+      credentials_synced_to_client: false,
+      raw_credentials_returned: false,
+    }
+  }
+
+  async function decidePriceReviews(token, input = {}) {
+    const session = requireManager(token)
+    if (session.status !== "ok") {
+      return session
+    }
+
+    const rawReviewIds = Array.isArray(input.review_ids) ? input.review_ids : input.reviewIds
+    const reviewIds = [...new Set((Array.isArray(rawReviewIds) ? rawReviewIds : [])
+      .map(cleanPublicId)
+      .filter(Boolean))].slice(0, 250)
+    const requestedStatus = cleanExternalId(input.status ?? input.review_status)
+    if (reviewIds.length === 0) {
+      return blocked("price_review_selection_required", "Select at least one pending price review.")
+    }
+    if (!["approved", "rejected"].includes(requestedStatus)) {
+      return blocked("bulk_price_review_decision_required", "Bulk review supports approved or rejected.")
+    }
+
+    const results = []
+    for (const reviewId of reviewIds) {
+      results.push(await decidePriceReview(token, reviewId, {
+        status: requestedStatus,
+        notes: cleanReason(input.notes) || `Bulk ${requestedStatus} from employee app Price Review`,
+      }))
+    }
+
+    const acceptedCount = results.filter((result) => result.status === "ok").length
+    return {
+      status: acceptedCount === results.length ? "ok" : acceptedCount > 0 ? "partial" : "blocked",
+      action: requestedStatus === "approved" ? "price_reviews_bulk_approved" : "price_reviews_bulk_rejected",
+      requested_count: reviewIds.length,
+      accepted_count: acceptedCount,
+      blocked_count: results.length - acceptedCount,
+      results,
       credentials_synced_to_client: false,
       raw_credentials_returned: false,
     }
@@ -9640,6 +9686,7 @@ export function createLocalSyncStore(options = {}) {
     updateKioskOrderCustomer,
     updateKioskOrderStatus,
     decidePriceReview,
+    decidePriceReviews,
     updateTradeInOrderStatus,
     updateUserAccess,
     updateUserProfile,

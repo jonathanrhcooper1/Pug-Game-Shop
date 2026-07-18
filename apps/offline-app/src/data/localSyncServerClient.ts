@@ -1285,11 +1285,19 @@ export type LocalSyncPriceReviewListResult = LocalSyncResult<{
 }>
 
 export type LocalSyncPriceReviewDecisionResult = LocalSyncResult<{
-  action: "price_review_approved" | "price_review_rejected" | "price_review_cancelled" | "price_review_already_decided"
+  action: "price_review_approved" | "price_review_manual_price_set" | "price_review_rejected" | "price_review_cancelled" | "price_review_already_decided"
   idempotent: boolean
   review: LocalSyncPriceReviewItem
   item?: LocalSyncInventoryItem
   active_price_changed?: boolean
+}>
+
+export type LocalSyncBulkPriceReviewDecisionResult = LocalSyncResult<{
+  action: "price_reviews_bulk_approved" | "price_reviews_bulk_rejected"
+  requested_count: number
+  accepted_count: number
+  blocked_count: number
+  results: LocalSyncPriceReviewDecisionResult[]
 }>
 
 export type LocalSyncStatusResult = LocalSyncResult<{
@@ -1805,8 +1813,13 @@ export type LocalSyncServerClient = {
       status: "approved" | "rejected" | "cancelled"
       candidatePriceMinorUnits?: number
       notes?: string
+      manualPriceOverride?: boolean
     },
   ) => Promise<LocalSyncPriceReviewDecisionResult>
+  decidePriceReviews: (
+    sessionToken: string,
+    input: { reviewIds: string[]; status: "approved" | "rejected"; notes?: string },
+  ) => Promise<LocalSyncBulkPriceReviewDecisionResult>
   identifyScryDexCardImage: (
     sessionToken: string,
     input: {
@@ -2354,8 +2367,19 @@ export function createLocalSyncServerClient(
           status: input.status,
           candidate_price_minor_units: input.candidatePriceMinorUnits,
           notes: input.notes ?? "",
+          manual_price_override: input.manualPriceOverride === true,
         },
       }) as Promise<LocalSyncPriceReviewDecisionResult>,
+    decidePriceReviews: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/pricing/reviews/bulk", {
+        method: "POST",
+        sessionToken,
+        body: {
+          review_ids: input.reviewIds,
+          status: input.status,
+          notes: input.notes ?? "",
+        },
+      }) as Promise<LocalSyncBulkPriceReviewDecisionResult>,
     identifyScryDexCardImage: (sessionToken, input) =>
       requestLocalSync(fetcher, baseUrl, "/scrydex/cards/identify-image", {
         method: "POST",

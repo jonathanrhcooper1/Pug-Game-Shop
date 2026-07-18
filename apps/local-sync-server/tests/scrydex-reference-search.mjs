@@ -566,6 +566,23 @@ try {
   assert.equal(variantPriceIntake.status, "ok")
   assert.equal(variantPriceIntake.item.provider_variant_id, "price-test-extended")
 
+  const bulkReviewIntake = await store.createInventoryIntake(auth.session.token, {
+    card_name: "Variant Price Test",
+    set_name: "Variant Set",
+    game: "pokemon",
+    condition: "Moderately Played",
+    provider_card_id: "price-test-001",
+    provider_variant_id: "price-test-extended",
+    variant: "extended art",
+    finish: "foil",
+    price_minor_units: 100,
+    minimum_sale_price_minor_units: 100,
+    online_visibility: "visible",
+    kiosk_visibility: "visible",
+    pos_visibility: "visible",
+  })
+  assert.equal(bulkReviewIntake.status, "ok")
+
   const variantReprice = await store.indexScryDexCatalogForSystem({
     games: ["pokemon"],
     skipLocalCatalogPull: true,
@@ -581,7 +598,9 @@ try {
   const priceReviews = store.listPriceReviews(auth.session.token, { status: "pending" })
   assert.equal(priceReviews.status, "ok")
   const variantPriceReview = priceReviews.reviews.find(
-    (review) => review.inventory_item?.provider_variant_id === "price-test-extended",
+    (review) =>
+      review.inventory_item?.provider_variant_id === "price-test-extended" &&
+      review.inventory_item?.condition === "LP",
   )
   assert.ok(variantPriceReview)
   assert.equal(variantPriceReview.current_price_minor_units, 100)
@@ -591,11 +610,31 @@ try {
   const approvedReprice = await store.decidePriceReview(
     auth.session.token,
     variantPriceReview.review_id,
-    { status: "approved", notes: "pricing engine contract approval" },
+    {
+      status: "approved",
+      manualPriceOverride: true,
+      notes: "manager manual price contract approval",
+    },
   )
   assert.equal(approvedReprice.status, "ok")
-  assert.equal(approvedReprice.action, "price_review_approved")
+  assert.equal(approvedReprice.action, "price_review_manual_price_set")
   assert.equal(approvedReprice.item.price_minor_units, 400)
+  assert.equal(approvedReprice.item.pricing_source, "manual_price_override")
+
+  const bulkReview = priceReviews.reviews.find(
+    (review) =>
+      review.inventory_item?.provider_variant_id === "price-test-extended" &&
+      review.inventory_item?.condition === "MP",
+  )
+  assert.ok(bulkReview)
+  const bulkApproved = await store.decidePriceReviews(auth.session.token, {
+    review_ids: [bulkReview.review_id],
+    status: "approved",
+    notes: "bulk pricing engine contract approval",
+  })
+  assert.equal(bulkApproved.status, "ok")
+  assert.equal(bulkApproved.action, "price_reviews_bulk_approved")
+  assert.equal(bulkApproved.accepted_count, 1)
 
   const repriced = store.searchInventory({ query: "Variant Price Test" })
   assert.equal(repriced.status, "ok")

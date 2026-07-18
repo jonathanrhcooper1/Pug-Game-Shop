@@ -880,7 +880,7 @@ h2 {
 
 .price-review-state {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
   gap: 4px 12px;
   align-items: center;
   padding: 12px;
@@ -898,8 +898,19 @@ h2 {
 }
 
 .price-review-state button {
-  grid-column: 2;
   grid-row: 1 / span 2;
+}
+
+.price-review-state button:nth-of-type(1) {
+  grid-column: 2;
+}
+
+.price-review-state button:nth-of-type(2) {
+  grid-column: 3;
+}
+
+.price-review-state button:nth-of-type(3) {
+  grid-column: 4;
 }
 
 .price-review-list {
@@ -908,15 +919,30 @@ h2 {
 }
 
 .price-review-row {
+  position: relative;
   display: grid;
   grid-template-columns: 92px minmax(190px, 0.9fr) minmax(310px, 1.25fr) minmax(210px, 0.85fr) minmax(180px, 0.65fr);
   gap: 14px;
   align-items: center;
-  padding: 14px;
+  padding: 14px 14px 14px 42px;
   background: #fff;
   border: 1px solid #d9e2d9;
   border-left: 4px solid #d3a928;
   border-radius: 7px;
+}
+
+.price-review-select {
+  position: absolute;
+  top: 16px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+}
+
+.price-review-select input {
+  width: 18px;
+  height: 18px;
+  accent-color: #2f7d4c;
 }
 
 .price-review-art {
@@ -1085,6 +1111,9 @@ h2 {
   }
 
   .price-review-state button,
+  .price-review-state button:nth-of-type(1),
+  .price-review-state button:nth-of-type(2),
+  .price-review-state button:nth-of-type(3),
   .price-review-state small {
     grid-column: 1;
     grid-row: auto;

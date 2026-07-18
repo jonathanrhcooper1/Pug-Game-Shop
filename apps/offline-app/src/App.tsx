@@ -3799,6 +3799,7 @@ export function App() {
   >("idle")
   const [scryDexLookupDetail, setScryDexLookupDetail] = useState("Ready")
   const [priceReviews, setPriceReviews] = useState<LocalSyncPriceReviewItem[]>([])
+  const [selectedPriceReviewIds, setSelectedPriceReviewIds] = useState<string[]>([])
   const [priceReviewStatus, setPriceReviewStatus] = useState<"idle" | "working" | "ready" | "blocked">("idle")
   const [priceReviewDetail, setPriceReviewDetail] = useState("Open this workspace to load pending price decisions.")
   const [priceReviewDrafts, setPriceReviewDrafts] = useState<Record<string, string>>({})
@@ -5904,6 +5905,9 @@ export function App() {
     }
 
     setPriceReviews(result.reviews)
+    setSelectedPriceReviewIds((selected) => selected.filter((reviewId) =>
+      result.reviews.some((review) => review.review_id === reviewId),
+    ))
     setPriceReviewDrafts((current) => Object.fromEntries(
       result.reviews.map((review) => [
         review.review_id,
@@ -5914,13 +5918,13 @@ export function App() {
     setPriceReviewDetail(`${countLabel(result.pending_count, "price change")} waiting for a manager decision.`)
   }
 
-  async function handlePriceReviewDecision(review: LocalSyncPriceReviewItem, status: "approved" | "rejected") {
+  async function handlePriceReviewDecision(review: LocalSyncPriceReviewItem, status: "approved" | "rejected" | "manual") {
     if (!localSyncSessionToken) {
       return
     }
 
     let candidatePriceMinorUnits: number | undefined
-    if (status === "approved") {
+    if (status === "approved" || status === "manual") {
       const parsed = Number(priceReviewDrafts[review.review_id])
       if (!Number.isFinite(parsed) || parsed < 0) {
         setActivityMessage({ title: "Price not approved", detail: "Enter a valid non-negative sale price." })
@@ -5929,11 +5933,23 @@ export function App() {
       candidatePriceMinorUnits = Math.round(parsed * 100)
     }
 
+    const manualReason = status === "manual"
+      ? window.prompt("Reason for keeping this as a manual price:", "Manager-set manual price")?.trim() ?? ""
+      : ""
+    if (status === "manual" && !manualReason) {
+      return
+    }
+
     setPriceReviewStatus("working")
     const result = await localSyncClient.decidePriceReview(localSyncSessionToken, review.review_id, {
-      status,
+      status: status === "manual" ? "approved" : status,
       candidatePriceMinorUnits,
-      notes: status === "approved" ? "Approved from employee app Price Review" : "Rejected from employee app Price Review",
+      notes: status === "manual"
+        ? manualReason
+        : status === "approved"
+          ? "Approved from employee app Price Review"
+          : "Rejected from employee app Price Review",
+      manualPriceOverride: status === "manual",
     })
 
     if (result.status !== "ok") {
@@ -5947,18 +5963,43 @@ export function App() {
     }
 
     setPriceReviews((reviews) => reviews.filter((candidate) => candidate.review_id !== review.review_id))
+    setSelectedPriceReviewIds((selected) => selected.filter((reviewId) => reviewId !== review.review_id))
     setPriceReviewStatus("ready")
     setPriceReviewDetail(
-      status === "approved"
+      status === "approved" || status === "manual"
         ? `${review.inventory_item?.card_name ?? "Card"} was approved and queued for verified website, Square, and kiosk delivery.`
         : `${review.inventory_item?.card_name ?? "Card"} kept its current active price.`,
     )
     setActivityMessage({
-      title: status === "approved" ? "Price approved" : "Price rejected",
-      detail: status === "approved"
+      title: status === "manual" ? "Manual price set" : status === "approved" ? "Price approved" : "Price rejected",
+      detail: status === "approved" || status === "manual"
         ? "The approved value is authoritative locally; external delivery remains pending until destination readback passes."
         : "The candidate was rejected and was not published.",
     })
+    void refreshLocalSyncStatus()
+  }
+
+  async function handleBulkPriceReviewDecision(status: "approved" | "rejected") {
+    if (!localSyncSessionToken || selectedPriceReviewIds.length === 0) {
+      return
+    }
+
+    setPriceReviewStatus("working")
+    const result = await localSyncClient.decidePriceReviews(localSyncSessionToken, {
+      reviewIds: selectedPriceReviewIds,
+      status,
+      notes: `Bulk ${status} by ${sessionRole}`,
+    })
+    if (result.status !== "ok") {
+      setPriceReviewStatus("blocked")
+      setPriceReviewDetail(result.message ?? "One or more selected price decisions could not be saved.")
+      return
+    }
+
+    setPriceReviews((reviews) => reviews.filter((review) => !selectedPriceReviewIds.includes(review.review_id)))
+    setSelectedPriceReviewIds([])
+    setPriceReviewStatus("ready")
+    setPriceReviewDetail(`${countLabel(result.accepted_count, "price change")} ${status}.`)
     void refreshLocalSyncStatus()
   }
 
@@ -13937,6 +13978,23 @@ export function App() {
                   <Icon name="sync" />
                   <span>Refresh</span>
                 </button>
+                <button
+                  className="secondary-command"
+                  type="button"
+                  disabled={priceReviewStatus === "working" || selectedPriceReviewIds.length === 0}
+                  onClick={() => void handleBulkPriceReviewDecision("rejected")}
+                >
+                  <Icon name="minus" />
+                  <span>Keep selected</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={priceReviewStatus === "working" || selectedPriceReviewIds.length === 0}
+                  onClick={() => void handleBulkPriceReviewDecision("approved")}
+                >
+                  <Icon name="check" />
+                  <span>Approve selected</span>
+                </button>
               </div>
             </header>
 
@@ -13959,6 +14017,16 @@ export function App() {
 
                 return (
                   <article className="price-review-row" key={review.review_id}>
+                    <label className="price-review-select">
+                      <input
+                        type="checkbox"
+                        checked={selectedPriceReviewIds.includes(review.review_id)}
+                        onChange={(event) => setSelectedPriceReviewIds((selected) => event.target.checked
+                          ? [...new Set([...selected, review.review_id])]
+                          : selected.filter((reviewId) => reviewId !== review.review_id))}
+                        aria-label={`Select ${item?.card_name ?? review.inventory_public_id}`}
+                      />
+                    </label>
                     <div className="price-review-art">
                       {item?.image_url ? <img src={item.image_url} alt="" /> : <Icon name="card" />}
                     </div>
@@ -14008,6 +14076,10 @@ export function App() {
                       <button type="button" onClick={() => void handlePriceReviewDecision(review, "approved")}>
                         <Icon name="check" />
                         <span>Approve</span>
+                      </button>
+                      <button className="secondary-command" type="button" onClick={() => void handlePriceReviewDecision(review, "manual")}>
+                        <Icon name="tag" />
+                        <span>Set manual</span>
                       </button>
                       <button className="secondary-command" type="button" onClick={() => void handlePriceReviewDecision(review, "rejected")}>
                         <Icon name="minus" />

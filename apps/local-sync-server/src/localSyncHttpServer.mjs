@@ -211,6 +211,10 @@ export function createLocalSyncHttpServer(options = {}) {
         }))
       }
 
+      if (request.method === "POST" && url.pathname === "/pricing/reviews/bulk") {
+        return sendStoreResult(response, await store.decidePriceReviews(token, await readJson(request)))
+      }
+
       const priceReviewMatch = url.pathname.match(/^\/pricing\/reviews\/([^/]+)$/)
       if (request.method === "PATCH" && priceReviewMatch) {
         return sendStoreResult(
