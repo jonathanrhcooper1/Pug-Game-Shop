@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "service_name": "PugLocalSyncServer",
+  "display_name": "Pug Local Sync Middleman Server",
+  "platform": "windows",
+  "host_role": "lan_middleman_server",
+  "entrypoint": "src/cli.mjs",
+  "default_http_port": 8787,
+  "default_discovery": {
+    "protocol": "pug-local-sync-discovery-v1",
+    "transport": "udp",
+    "port": 8788,
+    "manual_url_fallback": true
+  },
+  "local_database": "store-sync.sqlite",
+  "requires_one_website_url": true,
+  "runs_without_internet": true,
+  "syncs_when_online": true,
+  "stores_raw_wordpress_credentials_in_client": false,
+  "prints_credentials": false,
+  "install_notes": [
+    "Install on one always-on store computer on the same LAN as employee panels and kiosks.",
+    "Allow inbound TCP 8787 and UDP 8788 through Windows Firewall.",
+    "Set the WordPress website URL and application credentials on the middleman host only.",
+    "Employee and kiosk clients should auto-detect this host, with manual URL fallback."
+  ]
+}

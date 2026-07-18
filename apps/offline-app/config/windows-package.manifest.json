@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "framework": "tauri",
+  "platform": "windows",
+  "target": "x86_64-pc-windows-msvc",
+  "installer": "nsis",
+  "artifact_extensions": [".exe"],
+  "manual_production_release_required": true,
+  "code_signing_required_for_production": true,
+  "sync": {
+    "rest_namespace": "/wp-json/tcg-store/v1",
+    "pairing_route": "/offline/devices/register",
+    "pull_route": "/offline/pull",
+    "push_route": "/offline/push",
+    "conflict_resolution_route": "/offline/conflicts/{conflict_id}/resolve",
+    "local_sync_discovery": "udp:pug-local-sync-discovery-v1:8788",
+    "manual_middleman_url_fallback": true,
+    "direct_mysql_access": false
+  },
+  "branding": {
+    "source": "wordpress_branding_settings",
+    "configurable": true,
+    "required_tokens": [
+      "company_name",
+      "company_short_name",
+      "logo_url",
+      "support_url",
+      "receipt_footer",
+      "primary_color",
+      "accent_color",
+      "background_color",
+      "surface_color",
+      "text_color",
+      "success_color",
+      "warning_color",
+      "danger_color",
+      "staging_banner_color"
+    ]
+  }
+}

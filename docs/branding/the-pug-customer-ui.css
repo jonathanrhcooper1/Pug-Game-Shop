@@ -1,0 +1,282 @@
+/*
+ * The Pug customer UI foundation.
+ *
+ * This file is intentionally not enqueued yet. It is a safe starting point for
+ * a storefront theme, child theme, or reviewed plugin asset enqueue.
+ */
+
+:root {
+	--pug-midnight: #05080b;
+	--pug-vault: #0a2639;
+	--pug-sapphire: #103c5a;
+	--pug-cyan: #26d9f0;
+	--pug-ice: #b9f4ff;
+	--pug-gold: #f6c635;
+	--pug-amber: #c78110;
+	--pug-paper: #f5f9fc;
+	--pug-surface: #ffffff;
+	--pug-ink: #0b1116;
+	--pug-muted: #5b6872;
+	--pug-line: #d9e6ee;
+	--pug-shadow: 0 18px 45px rgba(5, 8, 11, 0.16);
+	--pug-radius: 8px;
+}
+
+body {
+	background: var(--tcg-background, var(--pug-paper));
+	color: var(--tcg-text, var(--pug-ink));
+}
+
+a {
+	color: var(--tcg-primary, var(--pug-sapphire));
+}
+
+a:hover,
+a:focus {
+	color: var(--pug-vault);
+}
+
+.site-header,
+.wp-site-blocks > header,
+.woocommerce-store-notice {
+	background: linear-gradient(135deg, var(--pug-midnight), var(--pug-vault) 58%, var(--pug-sapphire));
+	color: #fff;
+}
+
+.custom-logo,
+.site-logo img,
+.wp-block-site-logo img {
+	filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
+	max-height: 96px;
+	width: auto;
+}
+
+.wp-block-button__link,
+.button,
+button,
+input[type="button"],
+input[type="submit"],
+.woocommerce a.button,
+.woocommerce button.button,
+.woocommerce input.button,
+.woocommerce #respond input#submit {
+	background: linear-gradient(180deg, #ffe376, var(--tcg-accent, var(--pug-gold)) 62%, var(--pug-amber));
+	border: 1px solid rgba(120, 73, 3, 0.35);
+	border-radius: var(--pug-radius);
+	box-shadow: 0 8px 18px rgba(199, 129, 16, 0.22);
+	color: #111;
+	font-weight: 800;
+	letter-spacing: 0;
+	line-height: 1.1;
+	padding: 0.82rem 1.05rem;
+	text-decoration: none;
+}
+
+.wp-block-button__link:hover,
+.button:hover,
+button:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover,
+.woocommerce a.button:hover,
+.woocommerce button.button:hover,
+.woocommerce input.button:hover {
+	background: linear-gradient(180deg, #fff0a8, #ffd84a 62%, #d99312);
+	color: #05080b;
+	transform: translateY(-1px);
+}
+
+.wp-block-button__link:focus-visible,
+.button:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+	outline: 3px solid var(--pug-cyan);
+	outline-offset: 3px;
+}
+
+.woocommerce ul.products {
+	display: grid;
+	gap: 1.25rem;
+}
+
+.woocommerce ul.products li.product,
+.wc-block-grid__product,
+.tcg-card-tile,
+.tcg-event-card,
+.tcg-account-portal__section,
+.tcg-account-portal__order {
+	background: var(--tcg-surface, var(--pug-surface));
+	border: 1px solid var(--pug-line);
+	border-radius: var(--pug-radius);
+	box-shadow: 0 10px 26px rgba(10, 38, 57, 0.08);
+	overflow: hidden;
+}
+
+.woocommerce ul.products li.product:hover,
+.wc-block-grid__product:hover,
+.tcg-card-tile:hover,
+.tcg-event-card:hover {
+	border-color: rgba(38, 217, 240, 0.55);
+	box-shadow: var(--pug-shadow);
+}
+
+.woocommerce ul.products li.product img,
+.wc-block-grid__product-image img,
+.tcg-card-tile__image,
+.tcg-event-card__image {
+	aspect-ratio: 3 / 4;
+	background: linear-gradient(135deg, #edf7fb, #d6edf6);
+	object-fit: contain;
+	width: 100%;
+}
+
+.woocommerce ul.products li.product .woocommerce-loop-product__title,
+.wc-block-grid__product-title,
+.tcg-card-tile__title {
+	color: var(--pug-ink);
+	font-size: 1rem;
+	font-weight: 800;
+	line-height: 1.25;
+	margin: 0.75rem 0 0.35rem;
+}
+
+.woocommerce ul.products li.product .price,
+.woocommerce div.product p.price,
+.woocommerce div.product span.price,
+.wc-block-components-product-price,
+.tcg-card-tile__price,
+.tcg-account-portal__balance strong {
+	color: var(--pug-vault);
+	display: inline-flex;
+	font-size: 1.12rem;
+	font-weight: 900;
+	line-height: 1.1;
+}
+
+.woocommerce ul.products li.product .price::before,
+.tcg-card-tile__price::before,
+.tcg-account-portal__balance strong::before {
+	background: var(--pug-gold);
+	border-radius: 999px;
+	content: "";
+	display: inline-block;
+	height: 0.65em;
+	margin: 0.19em 0.42em 0 0;
+	width: 0.65em;
+}
+
+.tcg-card-tile__meta,
+.tcg-card-tile__status,
+.tcg-account-portal__line-details,
+.woocommerce-result-count,
+.woocommerce-product-details__short-description,
+.tcg-event-detail__description,
+.tcg-event-detail__bring {
+	color: var(--pug-muted);
+}
+
+.tcg-events {
+	display: grid;
+	gap: 1.25rem;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.tcg-event-card,
+.tcg-event-detail,
+.tcg-account-portal__section {
+	padding: 1.2rem;
+}
+
+.tcg-event-card h3,
+.tcg-event-detail h2,
+.tcg-account-portal h2,
+.woocommerce div.product .product_title {
+	color: var(--pug-vault);
+	font-weight: 900;
+	letter-spacing: 0;
+	line-height: 1.08;
+}
+
+.tcg-event-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	list-style: none;
+	margin: 0.75rem 0;
+	padding: 0;
+}
+
+.tcg-event-badges li,
+.tcg-status-chip,
+.tcg-game-chip {
+	background: rgba(38, 217, 240, 0.12);
+	border: 1px solid rgba(38, 217, 240, 0.42);
+	border-radius: 999px;
+	color: var(--pug-vault);
+	font-size: 0.78rem;
+	font-weight: 800;
+	line-height: 1;
+	padding: 0.45rem 0.65rem;
+}
+
+.tcg-account-portal {
+	display: grid;
+	gap: 1.25rem;
+}
+
+.tcg-account-portal__ledger,
+.woocommerce table.shop_table {
+	background: var(--pug-surface);
+	border: 1px solid var(--pug-line);
+	border-collapse: separate;
+	border-radius: var(--pug-radius);
+	overflow: hidden;
+}
+
+.tcg-account-portal__ledger th,
+.woocommerce table.shop_table th {
+	background: #eef7fb;
+	color: var(--pug-vault);
+	font-size: 0.78rem;
+	font-weight: 900;
+	text-transform: uppercase;
+}
+
+.tcg-account-portal__notice,
+.woocommerce-info,
+.woocommerce-message {
+	background: rgba(38, 217, 240, 0.1);
+	border-top: 3px solid var(--pug-cyan);
+	color: var(--pug-vault);
+}
+
+.woocommerce-error {
+	border-top-color: var(--tcg-danger, #b42318);
+}
+
+@media (min-width: 760px) {
+	.tcg-account-portal {
+		grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.5fr);
+	}
+}
+
+@media (max-width: 640px) {
+	.custom-logo,
+	.site-logo img,
+	.wp-block-site-logo img {
+		max-height: 72px;
+	}
+
+	.wp-block-button__link,
+	.button,
+	button,
+	input[type="button"],
+	input[type="submit"],
+	.woocommerce a.button,
+	.woocommerce button.button,
+	.woocommerce input.button {
+		width: 100%;
+	}
+}

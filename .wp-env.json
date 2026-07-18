@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/wp-env.json",
+  "core": null,
+  "phpVersion": "8.2",
+  "plugins": [
+    "./apps/wordpress-plugin",
+    "https://downloads.wordpress.org/plugin/woocommerce.zip",
+    "https://downloads.wordpress.org/plugin/query-monitor.zip",
+    "https://downloads.wordpress.org/plugin/wordpress-importer.zip"
+  ],
+  "themes": [
+    "./apps/storefront-theme-or-blocks/pug-arcade-commerce-v2",
+    "https://downloads.wordpress.org/theme/twentytwentyfive.zip"
+  ],
+  "mappings": {
+    "wp-content/mu-plugins/tcg-local-safety.php": "./scripts/wp-env/tcg-local-safety.php",
+    "wp-content/uploads/tcg-store-fixtures": "./fixtures"
+  },
+  "config": {
+    "WP_ENVIRONMENT_TYPE": "local",
+    "TCG_STORE_PLATFORM_ENVIRONMENT": "local",
+    "TCG_STORE_PLATFORM_STAGING_BANNER": true,
+    "TCG_STORE_PLATFORM_DISABLE_REAL_EMAILS": true,
+    "TCG_STORE_PLATFORM_DISABLE_REAL_PAYMENTS": true,
+    "TCG_STORE_PLATFORM_DISABLE_REAL_POS_WRITES": true,
+    "TCG_STORE_PLATFORM_USE_SANDBOX_KEYS_ONLY": true
+  },
+  "lifecycleScripts": {
+    "afterStart": "node scripts/wp-env/seed-dev-data.mjs"
+  }
+}
