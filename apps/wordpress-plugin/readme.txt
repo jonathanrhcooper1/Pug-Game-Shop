@@ -1,7 +1,7 @@
 === Pug Game Shop Card Manager ===
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 0.202.19
+Stable tag: 0.203.0
 License: Proprietary
 
 Serialized trading-card inventory and store operations for WooCommerce.
