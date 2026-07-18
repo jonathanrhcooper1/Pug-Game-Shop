@@ -15,6 +15,7 @@ final class FulfillmentOrderController {
 	private const STATUS_META = '_tcg_fulfillment_status';
 	private const READY_EMAIL_SENT_META = '_tcg_ready_for_pickup_email_sent_at';
 	private const READY_ORDER_STATUS = 'ready-pickup';
+	private const TERMINAL_RELAY_STATUSES = array( 'cancelled', 'refunded' );
 
 	public function register(): void {
 		add_action( 'init', array( $this, 'register_ready_pickup_order_status' ), 20 );
@@ -148,9 +149,11 @@ final class FulfillmentOrderController {
 			);
 		}
 
-		$limit  = $this->bounded_int( $request->get_param( 'limit' ), 1, 100, 50 );
-		$status = $this->order_statuses( $request->get_param( 'status' ) );
-		$orders = wc_get_orders(
+		$limit             = $this->bounded_int( $request->get_param( 'limit' ), 1, 100, 50 );
+		$status_param      = $request->get_param( 'status' );
+		$status            = $this->order_statuses( $status_param );
+		$explicit_statuses = is_string( $status_param ) && '' !== trim( $status_param ) ? $status : array();
+		$orders            = wc_get_orders(
 			array(
 				'limit'   => $limit,
 				'status'  => $status,
@@ -162,7 +165,7 @@ final class FulfillmentOrderController {
 
 		$payload = array();
 		foreach ( is_array( $orders ) ? $orders : array() as $order ) {
-			$row = $this->fulfillment_order_payload( $order );
+			$row = $this->fulfillment_order_payload( $order, $explicit_statuses );
 
 			if ( null !== $row ) {
 				$payload[] = $row;
@@ -367,12 +370,22 @@ final class FulfillmentOrderController {
 		return (bool) $sent;
 	}
 
-	private function fulfillment_order_payload( mixed $order ): ?array {
+	/**
+	 * @param list<string> $explicit_statuses Sanitized statuses explicitly requested by the reader.
+	 */
+	private function fulfillment_order_payload( mixed $order, array $explicit_statuses = array() ): ?array {
 		if ( ! is_object( $order ) || ! method_exists( $order, 'get_items' ) ) {
 			return null;
 		}
 
-		if ( ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) {
+		$order_status = method_exists( $order, 'get_status' ) ? (string) $order->get_status() : '';
+		$is_terminal  = in_array( $order_status, self::TERMINAL_RELAY_STATUSES, true );
+
+		if ( $is_terminal ) {
+			if ( ! in_array( $order_status, $explicit_statuses, true ) || ! $this->has_prior_payment_evidence( $order, $order_status ) ) {
+				return null;
+			}
+		} elseif ( ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) {
 			return null;
 		}
 
@@ -382,7 +395,7 @@ final class FulfillmentOrderController {
 		}
 
 		$items = $this->serialized_line_items( $order );
-		if ( array() === $items ) {
+		if ( array() === $items || ( $is_terminal && ! $this->has_exact_serialized_line_identities( $items ) ) ) {
 			return null;
 		}
 
@@ -394,7 +407,7 @@ final class FulfillmentOrderController {
 			'order_id'               => $order_id,
 			'order_number'           => method_exists( $order, 'get_order_number' ) ? (string) $order->get_order_number() : (string) $order_id,
 			'customer_name'          => $this->customer_name( $order ),
-			'order_status'           => method_exists( $order, 'get_status' ) ? (string) $order->get_status() : '',
+			'order_status'           => $order_status,
 			'fulfillment_status'     => $fulfillment_status,
 			'payment_status'         => 'paid',
 			'shipping_method_id'     => $pickup['method_id'],
@@ -442,6 +455,52 @@ final class FulfillmentOrderController {
 	}
 
 	/**
+	 * Terminal relay rows must be able to identify every authoritative reservation exactly.
+	 *
+	 * @param list<array<string, mixed>> $items Serialized fulfillment lines.
+	 */
+	private function has_exact_serialized_line_identities( array $items ): bool {
+		if ( array() === $items ) {
+			return false;
+		}
+
+		foreach ( $items as $item ) {
+			if (
+				(int) ( $item['inventory_id'] ?? 0 ) <= 0
+				|| (int) ( $item['reservation_id'] ?? 0 ) <= 0
+				|| '' === trim( (string) ( $item['barcode'] ?? '' ) )
+			) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private function has_prior_payment_evidence( mixed $order, string $order_status ): bool {
+		$date_paid = method_exists( $order, 'get_date_paid' ) ? $order->get_date_paid() : null;
+		if ( '' !== $this->date_to_utc( $date_paid ) ) {
+			return true;
+		}
+
+		if ( 'refunded' !== $order_status ) {
+			return false;
+		}
+
+		if ( method_exists( $order, 'get_total_refunded' ) && abs( (float) $order->get_total_refunded() ) > 0.0 ) {
+			return true;
+		}
+
+		if ( method_exists( $order, 'get_refunds' ) ) {
+			$refunds = $order->get_refunds();
+
+			return is_array( $refunds ) && array() !== $refunds;
+		}
+
+		return false;
+	}
+
+	/**
 	 * @return array{eligible: bool, code: string}
 	 */
 	private function fulfillment_eligibility( mixed $order ): array {
@@ -449,7 +508,9 @@ final class FulfillmentOrderController {
 			return FulfillmentOrderMutationPolicy::eligibility( false, false, 0 );
 		}
 
-		$paid             = method_exists( $order, 'is_paid' ) && (bool) $order->is_paid();
+		$order_status     = method_exists( $order, 'get_status' ) ? (string) $order->get_status() : '';
+		$is_terminal      = in_array( $order_status, self::TERMINAL_RELAY_STATUSES, true );
+		$paid             = ! $is_terminal && method_exists( $order, 'is_paid' ) && (bool) $order->is_paid();
 		$local_pickup     = $this->local_pickup_summary( $order )['is_local_pickup'];
 		$serialized_lines = $this->serialized_line_items( $order );
 
