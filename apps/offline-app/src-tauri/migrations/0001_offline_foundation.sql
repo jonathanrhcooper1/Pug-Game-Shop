@@ -1,5 +1,5 @@
 -- Offline app local schema foundation.
--- WordPress remains authoritative after sync acceptance.
+-- The LAN server ledger remains authoritative after sync acceptance.
 
 PRAGMA foreign_keys = ON;
 

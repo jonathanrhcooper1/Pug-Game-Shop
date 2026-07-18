@@ -3,15 +3,15 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.203.0
 Release date: 2026-06-17
-Last updated: 2026-06-17
+Last updated: 2026-07-18
 Document purpose: Guide for the employee app, kiosk mode, local server, offline queue, pairing, and reconnect behavior.
 Audience: Owner, manager, staff, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
 ## Topology
 
-The employee app and kiosk communicate with the LAN middleman server. The LAN server communicates with WordPress. WordPress remains the source of truth, while the local server caches data and safely queues operations during outages.
+The employee app and kiosk communicate with the LAN middleman server. Its SQLite inventory ledger is authoritative for physical quantity, reservations, approved price, trade intake, and delivery state. WordPress/WooCommerce remains authoritative for online carts, payments, and orders. The LAN server publishes verified projections to WordPress and Square, ingests their sales/refunds idempotently, and safely queues work during outages.
 
 ## Modes
 

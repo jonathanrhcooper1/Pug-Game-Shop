@@ -55,8 +55,9 @@ manual approval, code signing, and the hardware gate below.
 Version `0.35.0` adds the first local SQLite schema contract in
 `src-tauri/migrations/0001_offline_foundation.sql`. It defines local device
 identity, sync cursors, queued operations, sync logs, cached branding,
-inventory, customer credit, events, and conflict tables. The schema is local
-state only; WordPress remains authoritative once operations sync.
+inventory, customer credit, events, and conflict tables. A client-only install
+uses this schema as a read cache and durable operation queue; the LAN server's
+central inventory ledger remains authoritative once operations sync.
 
 The reconnect push planning checkpoint adds offline app workspace support for
 queued operation batches to be shaped into deferred

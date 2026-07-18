@@ -1361,6 +1361,65 @@ export type LocalSyncStatusResult = LocalSyncResult<{
   }
 }>
 
+export type LocalSyncOutboxDeliveryStatus =
+  | "pending"
+  | "processing"
+  | "retry"
+  | "delivered_unverified"
+  | "dead_letter"
+  | "verified"
+  | "cancelled"
+
+export type LocalSyncOutboxDelivery = {
+  delivery_id: string
+  event_id: string
+  operation_id: string
+  destination: "wordpress" | "square" | "kiosk"
+  status: LocalSyncOutboxDeliveryStatus
+  attempt_count: number
+  max_attempts: number
+  next_attempt_at_utc: string | null
+  last_attempt_at_utc: string | null
+  verified_at_utc: string | null
+  last_http_status: number
+  last_error_code: string
+  last_error_message: string
+  created_at_utc: string
+  updated_at_utc: string
+  aggregate_type: string
+  aggregate_id: string
+  event_type: string
+  event_version: number
+  event_status: string
+}
+
+export type LocalSyncOutboxDeliveryListResult = LocalSyncResult<{
+  action: "sync_outbox_deliveries_listed"
+  deliveries: LocalSyncOutboxDelivery[]
+  delivery_count: number
+  manager_user_id: string
+  errors_sanitized: true
+  payloads_returned: false
+  credentials_returned: false
+}>
+
+export type LocalSyncOutboxReplayResult = LocalSyncResult<{
+  action: "sync_outbox_delivery_replayed"
+  idempotent: boolean
+  aggregate_revalidated: true
+  delivery: LocalSyncOutboxDelivery
+  audit: {
+    replay_id: string
+    operation_id: string
+    destination: LocalSyncOutboxDelivery["destination"]
+    previous_status: LocalSyncOutboxDeliveryStatus
+    reason: string
+    requested_by_user_id: string
+    requested_by_user_name: string
+    requested_at_utc: string
+  }
+}>
+
 export type LocalSyncPullResult = LocalSyncResult<{
   pulled_count: number
   applied_count: number
@@ -2104,6 +2163,23 @@ export type LocalSyncServerClient = {
     },
   ) => Promise<LocalSyncEventCheckinResult>
   getSyncStatus: () => Promise<LocalSyncStatusResult>
+  listOutboxDeliveries: (
+    sessionToken: string,
+    input?: {
+      statuses?: LocalSyncOutboxDeliveryStatus[]
+      destination?: LocalSyncOutboxDelivery["destination"]
+      limit?: number
+    },
+  ) => Promise<LocalSyncOutboxDeliveryListResult>
+  replayOutboxDelivery: (
+    sessionToken: string,
+    input: {
+      operationId: string
+      destination: LocalSyncOutboxDelivery["destination"]
+      requestId: string
+      reason: string
+    },
+  ) => Promise<LocalSyncOutboxReplayResult>
   pullWebsiteInventory: (
     sessionToken: string,
     input?: {
@@ -2773,6 +2849,27 @@ export function createLocalSyncServerClient(
       }) as Promise<LocalSyncEventCheckinResult>,
     getSyncStatus: () =>
       requestLocalSync(fetcher, baseUrl, "/sync/status") as Promise<LocalSyncStatusResult>,
+    listOutboxDeliveries: (sessionToken, input = {}) => {
+      const query = new URLSearchParams()
+      if (input.statuses?.length) query.set("statuses", input.statuses.join(","))
+      if (input.destination) query.set("destination", input.destination)
+      if (input.limit) query.set("limit", String(input.limit))
+      const suffix = query.size > 0 ? `?${query.toString()}` : ""
+      return requestLocalSync(fetcher, baseUrl, `/sync/outbox/deliveries${suffix}`, {
+        sessionToken,
+      }) as Promise<LocalSyncOutboxDeliveryListResult>
+    },
+    replayOutboxDelivery: (sessionToken, input) =>
+      requestLocalSync(fetcher, baseUrl, "/sync/outbox/replay", {
+        method: "POST",
+        sessionToken,
+        body: {
+          operation_id: input.operationId,
+          destination: input.destination,
+          request_id: input.requestId,
+          reason: input.reason,
+        },
+      }) as Promise<LocalSyncOutboxReplayResult>,
     pullWebsiteInventory: (sessionToken, input = {}) =>
       requestLocalSync(fetcher, baseUrl, "/sync/pull", {
         method: "POST",

@@ -132,6 +132,7 @@ import {
   type LocalSyncKioskOrder,
   type LocalSyncKioskOrderStatus,
   type LocalSyncManagerReportResult,
+  type LocalSyncOutboxDelivery,
   type LocalSyncPullResult,
   type LocalSyncPriceReviewItem,
   type LocalSyncPushResult,
@@ -3906,6 +3907,17 @@ export function App() {
   const [localSyncSessionExpiresAtUtc, setLocalSyncSessionExpiresAtUtc] = useState("")
   const [localSyncStatus, setLocalSyncStatus] = useState<LocalSyncStatusResult | null>(null)
   const [localSyncLastCheckedAtUtc, setLocalSyncLastCheckedAtUtc] = useState("")
+  const [outboxDeliveries, setOutboxDeliveries] = useState<LocalSyncOutboxDelivery[]>([])
+  const [outboxDiagnosticStatus, setOutboxDiagnosticStatus] = useState<
+    "idle" | "working" | "ready" | "blocked"
+  >("idle")
+  const [outboxDiagnosticDetail, setOutboxDiagnosticDetail] = useState(
+    "Open delivery diagnostics to review pending connector work.",
+  )
+  const [outboxReplayReason, setOutboxReplayReason] = useState(
+    "Connector recovered after verified manager review",
+  )
+  const [outboxReplayTarget, setOutboxReplayTarget] = useState("")
   const [catalogRefreshInFlight, setCatalogRefreshInFlight] = useState(false)
   const [catalogRefreshSummary, setCatalogRefreshSummary] = useState("")
   const [squarePosPlan, setSquarePosPlan] =
@@ -4480,6 +4492,22 @@ export function App() {
           label: "Device-only queue",
           count: queuedOperations.length,
           tone: queuedOperations.length > 0 ? "warning" : "success",
+        },
+        {
+          label: "Connector deliveries waiting",
+          count: localSyncStatus.authoritative_schema?.outbox_pending_delivery_count ?? 0,
+          tone:
+            (localSyncStatus.authoritative_schema?.outbox_pending_delivery_count ?? 0) > 0
+              ? "warning"
+              : "success",
+        },
+        {
+          label: "Connector dead letters",
+          count: localSyncStatus.authoritative_schema?.outbox_dead_letter_count ?? 0,
+          tone:
+            (localSyncStatus.authoritative_schema?.outbox_dead_letter_count ?? 0) > 0
+              ? "warning"
+              : "success",
         },
       ]
     : workspace.queueItems
@@ -5509,7 +5537,7 @@ export function App() {
         setInventoryItems((items) => mergeLocalSyncInventoryItems(items, result.items))
         setLanInventorySearchStatus("ready")
         setLanInventorySearchDetail(
-          `${result.items.length} LAN cache result${result.items.length === 1 ? "" : "s"} from ${localSyncClient.serverUrl}; website remains the final authority after sync.`,
+          `${result.items.length} authoritative LAN inventory result${result.items.length === 1 ? "" : "s"} from ${localSyncClient.serverUrl}; website and Square are verified projections.`,
         )
       })
     }, 220)
@@ -8035,7 +8063,7 @@ export function App() {
         detail:
           saleResult.status === "unavailable"
             ? saleResult.message
-            : `${saleResult.message} WordPress remains the final inventory authority.`,
+            : `${saleResult.message} The LAN inventory ledger remains unchanged until the sale is accepted.`,
       })
       return
     }
@@ -8163,7 +8191,7 @@ export function App() {
         detail:
           intakeResult.status === "unavailable"
             ? intakeResult.message
-            : `${intakeResult.message} WordPress remains the final inventory authority.`,
+            : `${intakeResult.message} The LAN inventory ledger remains unchanged until intake is accepted.`,
       })
       return
     }
@@ -8560,6 +8588,81 @@ export function App() {
     setScryDexLookupDetail(
       `${result.cards.length} result${result.cards.length === 1 ? "" : "s"} from ${result.source}${forceLive ? " (live)" : ""}; use set filter to narrow printings.`,
     )
+  }
+
+  async function handleRefreshOutboxDeliveries() {
+    if (!localSyncSessionToken) {
+      setOutboxDiagnosticStatus("blocked")
+      setOutboxDiagnosticDetail("Unlock with a manager or owner PIN to review connector deliveries.")
+      return
+    }
+
+    setOutboxDiagnosticStatus("working")
+    setOutboxDiagnosticDetail("Loading pending, retrying, unverified, and dead-letter deliveries.")
+    const result = await localSyncClient.listOutboxDeliveries(localSyncSessionToken, {
+      statuses: ["pending", "processing", "retry", "delivered_unverified", "dead_letter"],
+      limit: 100,
+    })
+
+    if (handleBlockedLocalSyncSession(result, "Delivery diagnostics locked")) {
+      setOutboxDiagnosticStatus("blocked")
+      setOutboxDiagnosticDetail(
+        result.status === "ok" ? "The manager session must be refreshed." : result.message,
+      )
+      return
+    }
+    if (result.status !== "ok") {
+      setOutboxDiagnosticStatus("blocked")
+      setOutboxDiagnosticDetail(result.message)
+      return
+    }
+
+    setOutboxDeliveries(result.deliveries)
+    setOutboxDiagnosticStatus(result.deliveries.length > 0 ? "ready" : "idle")
+    setOutboxDiagnosticDetail(
+      result.deliveries.length > 0
+        ? `${result.deliveries.length} connector delivery record(s) need attention or verification.`
+        : "No pending, retrying, unverified, or dead-letter connector deliveries remain.",
+    )
+  }
+
+  async function handleReplayOutboxDelivery(delivery: LocalSyncOutboxDelivery) {
+    const reason = outboxReplayReason.trim()
+    if (!localSyncSessionToken || reason.length < 5) {
+      setOutboxDiagnosticStatus("blocked")
+      setOutboxDiagnosticDetail("Enter a manager replay reason of at least five characters.")
+      return
+    }
+
+    setOutboxReplayTarget(delivery.delivery_id)
+    setOutboxDiagnosticStatus("working")
+    const result = await localSyncClient.replayOutboxDelivery(localSyncSessionToken, {
+      operationId: delivery.operation_id,
+      destination: delivery.destination,
+      requestId: `manager-replay-${delivery.delivery_id}-${Date.now()}`,
+      reason,
+    })
+    setOutboxReplayTarget("")
+
+    if (handleBlockedLocalSyncSession(result, "Delivery replay locked")) {
+      setOutboxDiagnosticStatus("blocked")
+      setOutboxDiagnosticDetail(
+        result.status === "ok" ? "The manager session must be refreshed." : result.message,
+      )
+      return
+    }
+    if (result.status !== "ok") {
+      setOutboxDiagnosticStatus("blocked")
+      setOutboxDiagnosticDetail(result.message)
+      return
+    }
+
+    setOutboxDiagnosticStatus("ready")
+    setOutboxDiagnosticDetail(
+      `${delivery.destination} delivery was revalidated and returned to the queue. Run Sync Now to deliver it.`,
+    )
+    await handleRefreshOutboxDeliveries()
+    setLocalSyncStatus(await localSyncClient.getSyncStatus())
   }
 
   async function handleSelectedScryDexReprice() {
@@ -9869,7 +9972,7 @@ export function App() {
     setActiveSection("Kiosk")
     setActivityMessage({
       title: "Kiosk cart updated",
-      detail: `${item.cardName} is in the local kiosk pickup cart; website inventory remains authoritative when sync accepts the order.`,
+      detail: `${item.cardName} is in the local kiosk pickup cart; the LAN ledger owns the reservation and projects available stock to every channel.`,
     })
 
   }
@@ -17065,7 +17168,7 @@ export function App() {
                   </strong>
                 </div>
                 <div>
-                  <span className="micro-label">Website inventory authority</span>
+                  <span className="micro-label">LAN inventory authority</span>
                   <strong>
                     {localSyncStatus?.status === "ok" && localSyncStatus.wordpress_push_connected
                       ? "Connected"
@@ -17684,8 +17787,8 @@ export function App() {
                       : "LAN push waiting"}
                   </strong>
                   <small>
-                    Sync pulls latest website inventory, pushes accepted LAN queue rows, and keeps
-                    WordPress as the final inventory authority.
+                    Sync ingests WooCommerce orders and verified external changes, then publishes the
+                    authoritative LAN ledger projection to WordPress and Square.
                   </small>
                 </div>
                 <button
@@ -17712,6 +17815,74 @@ export function App() {
                   <strong>{item.count}</strong>
                 </div>
               ))}
+              <div className="lan-queue-detail-panel" aria-label="Connector delivery diagnostics">
+                <header>
+                  <div>
+                    <span className="micro-label">Connector delivery diagnostics</span>
+                    <strong>
+                      {localSyncStatus?.status === "ok"
+                        ? `${localSyncStatus.authoritative_schema?.outbox_pending_delivery_count ?? 0} waiting / ${
+                            localSyncStatus.authoritative_schema?.outbox_dead_letter_count ?? 0
+                          } dead letter`
+                        : "LAN status unavailable"}
+                    </strong>
+                  </div>
+                  <button
+                    className="secondary-command compact-command"
+                    type="button"
+                    disabled={!localSyncSessionToken || outboxDiagnosticStatus === "working"}
+                    onClick={() => void handleRefreshOutboxDeliveries()}
+                  >
+                    <Icon name="sync" />
+                    <span>{outboxDiagnosticStatus === "working" ? "Loading" : "Review Deliveries"}</span>
+                  </button>
+                </header>
+                <label>
+                  <span>Manager replay reason</span>
+                  <input
+                    value={outboxReplayReason}
+                    onChange={(event) => setOutboxReplayReason(event.target.value)}
+                    placeholder="Why is replay safe now?"
+                  />
+                </label>
+                <p className="panel-empty">{outboxDiagnosticDetail}</p>
+                {outboxDeliveries.length > 0 ? (
+                  <div className="lan-queue-detail-list">
+                    {outboxDeliveries.map((delivery) => (
+                      <article key={delivery.delivery_id}>
+                        <div>
+                          <span>{delivery.destination}</span>
+                          <strong>{formatQueueOperationType(delivery.event_type)}</strong>
+                          <small>
+                            {delivery.status}; attempt {delivery.attempt_count}/{delivery.max_attempts}; HTTP{" "}
+                            {delivery.last_http_status || "none"}
+                          </small>
+                          {delivery.last_error_message ? <small>{delivery.last_error_message}</small> : null}
+                        </div>
+                        <div>
+                          <strong>{delivery.aggregate_id}</strong>
+                          <small>{delivery.last_error_code || formatUtcLabel(delivery.updated_at_utc)}</small>
+                          {!["verified", "cancelled"].includes(delivery.status) ? (
+                            <button
+                              className="secondary-command compact-command"
+                              type="button"
+                              disabled={
+                                outboxReplayTarget !== "" || outboxReplayReason.trim().length < 5
+                              }
+                              onClick={() => void handleReplayOutboxDelivery(delivery)}
+                            >
+                              <Icon name="sync" />
+                              <span>
+                                {outboxReplayTarget === delivery.delivery_id ? "Revalidating" : "Replay"}
+                              </span>
+                            </button>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
               {localSyncStatus?.status === "ok" ? (
                 <div className="lan-queue-detail-panel" aria-label="LAN pending operation details">
                   <header>
@@ -18511,8 +18682,8 @@ export function App() {
                         {squarePosMappingSummary?.review_count ?? squarePosPlan.unresolved_count} review
                       </strong>
                       <small>
-                        Website inventory authority: {squarePosMappingSummary?.square_inventory_authority ?? "tcg_store_platform"};
-                        counts are for reconciliation only.
+                        Inventory authority: {squarePosMappingSummary?.square_inventory_authority ?? "tcg_store_platform"};
+                        verified Square sale decreases are applied automatically, while ambiguous overages and returns require review.
                       </small>
                     </div>
                     <span className="status-pill">{squarePosPlan.planner_status}</span>
@@ -18596,7 +18767,7 @@ export function App() {
                         ? `${squareCountSummary.matched_count} matched / ${squareCountSummary.mismatched_count} mismatch`
                         : "Ready for Square counts"}
                     </strong>
-                    <small>Provider inventory writes stay deferred; website inventory remains authoritative.</small>
+                    <small>Provider count differences are reconciled against the authoritative LAN inventory ledger.</small>
                   </div>
                   <button
                     className="secondary-command compact-command"

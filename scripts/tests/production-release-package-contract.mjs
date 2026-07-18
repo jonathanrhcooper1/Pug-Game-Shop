@@ -36,6 +36,8 @@ for (const marker of [
   "release-package",
   "pug-local-sync-discovery-v1",
   "manualMiddlemanUrlFallback",
+  'source_of_truth: "authoritative_lan_inventory_ledger"',
+  "The LAN server ledger is authoritative for inventory quantity",
   "http://SERVER-IP:8787",
   "local-sync.env.example",
   "Import-PugEnvFile",
@@ -49,6 +51,17 @@ for (const marker of [
 ]) {
   assert.ok(releaseScript.includes(marker), `Missing release package marker: ${marker}`)
 }
+
+assert.equal(
+  releaseScript.includes('source_of_truth: "wordpress"'),
+  false,
+  "Release manifests must not identify WordPress as the physical inventory authority.",
+)
+assert.equal(
+  releaseScript.includes("WordPress remains the source of truth"),
+  false,
+  "Release instructions must describe the authoritative LAN inventory ledger.",
+)
 
 for (const forbiddenHost of [
   ["j84", "285", "myftpupload", "com"].join("."),

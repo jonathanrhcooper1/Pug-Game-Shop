@@ -3,15 +3,15 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.203.0
 Release date: 2026-06-17
-Last updated: 2026-06-17
+Last updated: 2026-07-18
 Document purpose: Daily owner procedures for operating and supervising the platform.
 Audience: Store owner and general manager
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
 ## Owner Dashboard Overview
 
-The owner should treat the WordPress admin, WooCommerce reports, plugin reports, local app reports, sync logs, and payment/POS dashboards as one operational picture. The website is the source of truth; the app and kiosk provide fast in-store workflows and queue safely during outages.
+The owner should treat the WordPress admin, WooCommerce reports, plugin reports, local app reports, sync logs, and payment/POS dashboards as one operational picture. The LAN server ledger is the inventory source of truth; WordPress/WooCommerce owns online carts, payments, and orders, while Square owns the POS transaction record. The app and kiosk use the LAN server for current stock and queue safely during outages.
 
 ## Daily Opening Checklist
 

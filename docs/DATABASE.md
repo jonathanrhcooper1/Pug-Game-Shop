@@ -523,9 +523,9 @@ registration success are separate states.
 
 ## Offline App SQLite
 
-The Windows offline app uses local SQLite as a read model and operation queue.
-WordPress remains authoritative after sync acceptance; the app never connects
-directly to MySQL.
+The Windows client app uses local SQLite as a read model and operation queue.
+The LAN server's SQLite inventory ledger is authoritative after sync
+acceptance; clients never connect directly to WordPress MySQL.
 
 Version `0.35.0` adds the first local migration contract:
 

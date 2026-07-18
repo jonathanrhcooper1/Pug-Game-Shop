@@ -3,10 +3,13 @@
 The local sync server is the in-store LAN middleman for employee apps and kiosk
 clients.
 
-WordPress/WooCommerce remains the global source of truth. The local sync server
-holds the shared LAN cache, local reservation locks, and offline operation queue
-when the internet is unavailable. Employee and kiosk apps connect to this server
-instead of each keeping an isolated local authority.
+The local sync server's SQLite inventory ledger is authoritative for physical
+inventory quantity, reservations, approved selling price, price-review state,
+trade intake, and outbound delivery state. WordPress/WooCommerce remains
+authoritative for online carts, payments, and order records; Square remains the
+external POS record. Both receive verified projections from the LAN ledger, and
+their sales/refunds are ingested as idempotent ledger events. Employee and kiosk
+apps connect to this server instead of each keeping an isolated authority.
 
 ## Runtime
 

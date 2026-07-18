@@ -157,7 +157,8 @@ writeFileSync(
     "Connectivity:",
     "- Pug Store App auto-discovers the LAN server over UDP pug-local-sync-discovery-v1 on port 8788.",
     "- If auto-discovery is blocked, enter the LAN server URL manually, for example http://SERVER-IP:8787.",
-    "- WordPress remains the source of truth; the LAN server caches and queues while offline.",
+    "- The LAN server ledger is authoritative for inventory quantity, reservations, approved prices, and sync delivery state.",
+    "- WordPress/WooCommerce remains authoritative for online carts, payments, and order records; it receives verified inventory projections from the LAN server.",
     "",
     "SQLite:",
     "- The LAN server auto-creates or reuses store-sync.sqlite through Node built-in node:sqlite.",
@@ -219,7 +220,7 @@ function buildPugStoreAppManifest(installerPath) {
     decorations: false,
     command_prompt_window_required: false,
     launch_url_hint: "/",
-    sync_topology: "wordpress_woocommerce_plugin <-https-> local_middleman <-lan/offline-> app",
+    sync_topology: "wordpress_woocommerce_projection <-verified_https-> authoritative_lan_ledger <-lan/offline-> app",
     auto_discovery: {
       protocol: "pug-local-sync-discovery-v1",
       transport: "udp",
@@ -230,8 +231,12 @@ function buildPugStoreAppManifest(installerPath) {
       supported: true,
       example_url: "http://SERVER-IP:8787",
     },
-    source_of_truth: "wordpress",
-    offline_behavior: "local cache and durable queue until middleman/website reconnects",
+    source_of_truth: "authoritative_lan_inventory_ledger",
+    external_authorities: {
+      wordpress_woocommerce: "online carts, payments, and orders",
+      square: "POS catalog, counts, and sales observations",
+    },
+    offline_behavior: "device cache and durable queue until the authoritative LAN server reconnects",
   }
 }
 
@@ -254,7 +259,8 @@ function buildLanServerPlusAppManifest(installerPath) {
     sqlite_database_auto_created: true,
     sqlite_database_shipped: false,
     sqlite_separate_install_required: false,
-    sync_topology: "wordpress_woocommerce_plugin <-https-> lan_server <-lan/offline-> pug_store_app",
+    sync_topology: "wordpress_woocommerce_projection <-verified_https-> authoritative_lan_ledger <-lan/offline-> pug_store_app",
+    source_of_truth: "authoritative_lan_inventory_ledger",
     auto_discovery: {
       protocol: "pug-local-sync-discovery-v1",
       transport: "udp",
@@ -287,7 +293,8 @@ function buildKioskPageManifest(installerPath) {
     launch_url_hint: "?mode=kiosk",
     requires_lan_server: true,
     staff_screens_exposed: false,
-    sync_topology: "kiosk_page <-lan/offline-> lan_server <-https-> wordpress_woocommerce_plugin",
+    sync_topology: "kiosk_page <-lan/offline-> authoritative_lan_ledger ->verified_https-> wordpress_woocommerce_projection",
+    source_of_truth: "authoritative_lan_inventory_ledger",
     validation: [
       "Open the kiosk page on the kiosk station.",
       "Confirm inventory search loads.",

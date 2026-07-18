@@ -3,9 +3,9 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
+Version: 0.203.0
 Release date: 2026-06-17
-Last updated: 2026-06-17
+Last updated: 2026-07-18
 Document purpose: Primary client-facing handover guide for the complete trading-card store platform.
 Audience: Owner, manager, administrator, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
@@ -15,14 +15,14 @@ Created by JC Electronics
 
 Prepared for: The Pug
 Prepared by: JC Electronics
-Release version: 0.202.0
+Release version: 0.203.0
 Release date: 2026-06-17
 
 This guide summarizes the production system, owner responsibilities, support responsibilities, launch checks, and secure handoff process.
 
 ## Executive Summary
 
-The platform connects the public WordPress/WooCommerce website, custom trading-card inventory plugin, in-store employee app, customer kiosk, LAN middleman server, serialized inventory model, ScryDex reference data, customer credit ledger, buylist/trade-in intake, event registration, and reporting. WordPress remains the source of truth for website inventory, online orders, customer-facing pages, and custom business tables. The local app and kiosk are designed to keep the store operating during network interruptions by caching data locally and replaying queued actions when connectivity returns.
+The platform connects the public WordPress/WooCommerce website, custom trading-card inventory plugin, in-store employee app, customer kiosk, LAN middleman server, serialized inventory model, ScryDex reference data, customer credit ledger, buylist/trade-in intake, event registration, and reporting. The LAN server's SQLite ledger is authoritative for physical inventory quantity, reservations, approved selling price, price review, trades, and connector delivery state. WordPress/WooCommerce remains authoritative for online carts, payments, orders, and customer-facing content. The local app and kiosk keep operating through network interruptions by using the LAN cache and replaying idempotent queued actions when connectivity returns.
 
 ## Major Capabilities
 

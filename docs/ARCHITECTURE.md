@@ -414,8 +414,9 @@ integration tests pass.
 
 The first local SQLite schema contract covers device identity, sync cursors,
 the operation queue, sync logs, cached branding, cached inventory, cached
-customer credit, cached events, and sync conflicts. These tables are a local
-read model and queue only; WordPress remains authoritative after sync.
+customer credit, cached events, and sync conflicts. On client-only installs
+these tables are a read model and queue; the LAN server's central inventory
+ledger is authoritative and WordPress/Square are verified projections.
 The WordPress plugin now defines planned offline route contracts for pairing,
 pull, push, conflict listing, and conflict resolution. Pull/push contracts now
 carry registered-device required scopes and planned permission strategy

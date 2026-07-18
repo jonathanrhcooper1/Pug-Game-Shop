@@ -56,9 +56,10 @@ records, registrations, waitlists, and check-in remain plugin-owned.
 
 Status: Accepted
 
-WordPress is authoritative after reconnect. Offline operations are never
-silently overwritten or silently allowed to overwrite newer server state.
-Conflicts become durable manager-review records.
+The central LAN inventory ledger is authoritative before and after reconnect.
+Offline operations are never silently overwritten or silently allowed to
+overwrite a newer ledger revision. WordPress, Square, and kiosk values are
+verified projections; conflicts become durable manager-review records.
 
 ## ADR-009: Money And Currency
 
