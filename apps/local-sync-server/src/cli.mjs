@@ -621,14 +621,10 @@ function startSquareInventoryPolling(server, pollSeconds) {
     try {
       const result = await store.reconcileSquareProviderInventoryCountsForSystem({
         source: "background_poll",
-        apply_count_deltas: false,
+        apply_count_deltas: true,
       })
 
-      if (result.status === "ok" && result.apply_count_deltas === false && result.shortage_count > 0) {
-        console.log(
-          `Square inventory poll found ${result.shortage_count} count mismatch(es); local inventory was not changed.`,
-        )
-      } else if (result.status === "ok" && result.sold_count > 0) {
+      if (result.status === "ok" && result.sold_count > 0) {
         console.log(
           `Square inventory poll applied ${result.sold_count} local quantity adjustment(s); WordPress accepted ${result.wordpress_accepted_count}, retry ${result.wordpress_retry_count}.`,
         )

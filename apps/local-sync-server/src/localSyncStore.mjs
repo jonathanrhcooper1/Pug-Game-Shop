@@ -1523,9 +1523,8 @@ export function createLocalSyncStore(options = {}) {
     }
 
     const countsByVariation = squareInventoryQuantityByVariation(countsPayload, locationId)
-    const comparisons = []
-    const operations = []
-    const soldItems = []
+    const comparisonSpecs = []
+    const plannedChanges = []
     let shortageCount = 0
     let overageCount = 0
 
@@ -1558,48 +1557,30 @@ export function createLocalSyncStore(options = {}) {
           continue
         }
 
-        item.quantity_on_hand = previousQuantityOnHand - appliedSoldQuantity
-        item.status = item.quantity_on_hand > 0 ? "available" : "sold"
-        item.source = "queued"
-        item.external_sync_state = "pending"
-        item.updated_by_user_id = actorId
-        item.updated_by_user_name = actorName
-        item.row_version += 1
-        saveInventoryItem(database, item, now)
-        soldItems.push(item)
+        const nextQuantityOnHand = previousQuantityOnHand - appliedSoldQuantity
+        plannedChanges.push({
+          item,
+          previous: { ...item },
+          next: {
+            ...item,
+            quantity_on_hand: nextQuantityOnHand,
+            status: nextQuantityOnHand > 0 ? "available" : "sold",
+            source: "queued",
+            external_sync_state: "pending",
+            updated_by_user_id: actorId,
+            updated_by_user_name: actorName,
+            row_version: item.row_version + 1,
+          },
+          variationId,
+          previousQuantityOnHand,
+          appliedSoldQuantity,
+          actualQuantity,
+          expectedQuantity,
+        })
         remainingSoldQuantity -= appliedSoldQuantity
-
-        const operation = appendQueueOperation(database, queue, "inventory_update", item.public_id, {
-          inventory_public_id: cleanPublicId(item.wordpress_public_id) || item.public_id,
-          local_inventory_public_id: item.public_id,
-          barcode: item.barcode,
-          status: item.status,
-          location: item.location,
-          price_minor_units: item.price_minor_units,
-          sale_price_minor_units: item.price_minor_units,
-          minimum_sale_price_minor_units: item.minimum_sale_price_minor_units,
-          previous_quantity_on_hand: previousQuantityOnHand,
-          quantity_on_hand: item.quantity_on_hand,
-          quantity_delta: item.quantity_on_hand - previousQuantityOnHand,
-          quantity_update_mode: "absolute",
-          sale_total_minor_units: 0,
-          actor_id: actorId,
-          actor_name: actorName,
-          sold_at_utc: generatedAtUtc,
-          sync_intent: "square_inventory_count_reconciliation_quantity_update",
-          source,
-          square_catalog_variation_id: variationId,
-          square_location_id: locationId,
-          square_actual_quantity: actualQuantity,
-          local_expected_quantity_before: expectedQuantity,
-          square_quantity_sold: appliedSoldQuantity,
-          reason: "Square POS inventory count changed",
-          wordpress_acceptance_required: true,
-        }, now)
-        operations.push(operation)
       }
 
-      comparisons.push({
+      comparisonSpecs.push({
         square_catalog_variation_id: variationId,
         local_expected_quantity_before: expectedQuantity,
         square_actual_quantity: actualQuantity,
@@ -1613,7 +1594,78 @@ export function createLocalSyncStore(options = {}) {
                 ? "square_sale_delta_applied"
                 : "square_shortage_read_only"
               : "square_has_extra_quantity",
-        items: items.map((item) => ({
+        items,
+      })
+    }
+
+    const operations = plannedChanges.length > 0
+      ? withImmediateTransaction(database, () => plannedChanges.map((change) => {
+        saveInventoryItem(database, change.next, now)
+        const operation = appendQueueOperation(database, queue, "inventory_update", change.next.public_id, {
+          inventory_public_id: cleanPublicId(change.next.wordpress_public_id) || change.next.public_id,
+          local_inventory_public_id: change.next.public_id,
+          barcode: change.next.barcode,
+          status: change.next.status,
+          location: change.next.location,
+          price_minor_units: change.next.price_minor_units,
+          sale_price_minor_units: change.next.price_minor_units,
+          minimum_sale_price_minor_units: change.next.minimum_sale_price_minor_units,
+          previous_quantity_on_hand: change.previousQuantityOnHand,
+          quantity_on_hand: inventoryQuantityOnHand(change.next),
+          quantity_delta: -change.appliedSoldQuantity,
+          quantity_update_mode: "absolute",
+          sale_total_minor_units: 0,
+          actor_id: actorId,
+          actor_name: actorName,
+          sold_at_utc: generatedAtUtc,
+          sync_intent: "square_inventory_count_reconciliation_quantity_update",
+          source,
+          source_channel: "square",
+          square_catalog_variation_id: change.variationId,
+          square_location_id: locationId,
+          square_actual_quantity: change.actualQuantity,
+          local_expected_quantity_before: change.expectedQuantity,
+          square_quantity_sold: change.appliedSoldQuantity,
+          reason: "Square POS inventory count changed",
+          wordpress_acceptance_required: true,
+        }, now, { deferMemoryPush: true })
+        appendInventoryLedgerEntry(database, {
+          idempotency_key: operation.operation_id,
+          inventory_public_id: change.next.public_id,
+          mutation_type: "square_inventory_count_reconciliation",
+          source_channel: "square",
+          reference_type: "operation_queue",
+          reference_id: operation.operation_id,
+          quantity_before: change.previousQuantityOnHand,
+          quantity_after: inventoryQuantityOnHand(change.next),
+          status_before: change.previous.status,
+          status_after: change.next.status,
+          price_before_minor_units: change.previous.price_minor_units,
+          price_after_minor_units: change.next.price_minor_units,
+          actor_user_id: actorId,
+          actor_user_name: actorName,
+          reason: "Square POS inventory count changed",
+          payload: {
+            square_catalog_variation_id: change.variationId,
+            square_location_id: locationId,
+            square_actual_quantity: change.actualQuantity,
+            square_quantity_sold: change.appliedSoldQuantity,
+            source,
+          },
+        }, now)
+        return operation
+      }))
+      : []
+
+    for (const change of plannedChanges) {
+      Object.assign(change.item, change.next)
+    }
+    queue.push(...operations)
+
+    const soldItems = plannedChanges.map((change) => change.item)
+    const comparisons = comparisonSpecs.map((comparison) => ({
+      ...comparison,
+      items: comparison.items.map((item) => ({
           public_id: item.public_id,
           wordpress_public_id: item.wordpress_public_id,
           barcode: item.barcode,
@@ -1628,8 +1680,7 @@ export function createLocalSyncStore(options = {}) {
           diagnostic_origin: inventoryMismatchDiagnosticOrigin(item),
           diagnostic_resolution_hint: inventoryMismatchResolutionHint(item),
         })),
-      })
-    }
+    }))
 
     const autoSyncResults = []
 
@@ -1651,7 +1702,9 @@ export function createLocalSyncStore(options = {}) {
       apply_count_deltas: applyCountDeltas,
       checked_variation_count: variationIds.length,
       comparison_count: comparisons.length,
-      sold_count: applyCountDeltas ? soldItems.length : 0,
+      sold_count: applyCountDeltas
+        ? plannedChanges.reduce((total, change) => total + change.appliedSoldQuantity, 0)
+        : 0,
       would_apply_sold_count: applyCountDeltas ? 0 : shortageCount,
       shortage_count: shortageCount,
       overage_count: overageCount,
@@ -1672,7 +1725,7 @@ export function createLocalSyncStore(options = {}) {
       auto_sync_results: autoSyncResults,
       local_queue_depth: pendingQueueOperations(queue).length,
       source_of_truth: "local_sync_server",
-      square_counts_used_for: applyCountDeltas ? "manual_admin_delta_correction" : "read_only_mismatch_detection",
+      square_counts_used_for: applyCountDeltas ? "authoritative_pos_sale_reconciliation" : "read_only_mismatch_detection",
       square_payment_capture_supported: false,
       payment_capture_authority: "official_woocommerce_square_extension",
       credentials_synced_to_client: false,
@@ -8774,9 +8827,18 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
-    const squareSync = projectionDeliveryCompleted(operation.operation_id, "square")
-      ? completedProjectionResult(operation, "square")
-      : await syncSquareCatalogInventoryForOperation(operation, item)
+    const originatedFromSquare = operation.payload?.source_channel === "square"
+      || operation.payload?.sync_intent === "square_inventory_count_reconciliation_quantity_update"
+    const squareSync = originatedFromSquare
+      ? {
+          status: "accepted",
+          code: "square_source_projection_not_echoed",
+          destination: "square",
+          readback_verified: true,
+        }
+      : projectionDeliveryCompleted(operation.operation_id, "square")
+        ? completedProjectionResult(operation, "square")
+        : await syncSquareCatalogInventoryForOperation(operation, item)
     const pushResult = projectionDeliveryCompleted(operation.operation_id, "wordpress")
       ? completedProjectionResult(operation, "wordpress")
       : wordpressInventoryUpdatePush
@@ -11872,8 +11934,18 @@ function appendQueueOperation(database, queue, type, entityId, payload, now, opt
   return operation
 }
 
-function projectionDestinationsForQueueOperation(operationType) {
+function projectionDestinationsForQueueOperation(operationType, payload = {}) {
   if (["inventory_intake", "inventory_update", "square_pos_sale", "inventory_reservation"].includes(operationType)) {
+    if (
+      operationType === "inventory_update"
+      && (
+        payload?.source_channel === "square"
+        || payload?.sync_intent === "square_inventory_count_reconciliation_quantity_update"
+      )
+    ) {
+      return ["wordpress", "kiosk"]
+    }
+
     return ["wordpress", "square", "kiosk"]
   }
 
