@@ -113,6 +113,19 @@ try {
 }
 
 const legacyDatabase = new DatabaseSync(legacyDatabasePath)
+const reservationLedger = legacyDatabase.prepare(`
+  SELECT reserved_quantity_before, reserved_quantity_after,
+         available_quantity_before, available_quantity_after
+  FROM inventory_ledger_entries
+  WHERE mutation_type = 'inventory_reservation'
+  ORDER BY created_at_utc DESC LIMIT 1
+`).get()
+assert.deepEqual({ ...reservationLedger }, {
+  reserved_quantity_before: 0,
+  reserved_quantity_after: 1,
+  available_quantity_before: 1,
+  available_quantity_after: 0,
+})
 legacyDatabase.prepare("UPDATE kiosk_orders SET hold_expires_at_utc = ''").run()
 legacyDatabase.prepare("DELETE FROM operation_queue WHERE operation_type = 'inventory_reservation'").run()
 legacyDatabase.close()
@@ -154,6 +167,24 @@ try {
   assert.equal(releasedInventory.items[0].status, "available")
 } finally {
   await new Promise((resolve) => legacyServer.close(resolve))
+  const verificationDatabase = new DatabaseSync(legacyDatabasePath)
+  try {
+    const expiryLedger = verificationDatabase.prepare(`
+      SELECT reserved_quantity_before, reserved_quantity_after,
+             available_quantity_before, available_quantity_after
+      FROM inventory_ledger_entries
+      WHERE mutation_type = 'inventory_reservation_expired'
+      ORDER BY created_at_utc DESC LIMIT 1
+    `).get()
+    assert.deepEqual({ ...expiryLedger }, {
+      reserved_quantity_before: 1,
+      reserved_quantity_after: 0,
+      available_quantity_before: 0,
+      available_quantity_after: 1,
+    })
+  } finally {
+    verificationDatabase.close()
+  }
   try {
     rmSync(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   } catch (error) {

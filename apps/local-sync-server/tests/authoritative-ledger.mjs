@@ -34,9 +34,9 @@ function schemaObjectNames(targetDatabase) {
 try {
   const firstMigration = migrateAuthoritativeLedger(database, now)
   const repeatedMigration = migrateAuthoritativeLedger(database, now)
-  assert.equal(firstMigration.schema_version, 1)
-  assert.equal(repeatedMigration.schema_version, 1)
-  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 1)
+  assert.equal(firstMigration.schema_version, 2)
+  assert.equal(repeatedMigration.schema_version, 2)
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count, 2)
 
   const firstLedger = appendInventoryLedgerEntry(database, {
     idempotency_key: "intake:inventory-100:1",
@@ -62,6 +62,23 @@ try {
   assert.equal(firstLedger.created, true)
   assert.equal(duplicateLedger.created, false)
   assert.equal(duplicateLedger.entry.quantity_after, 1)
+  assert.equal(firstLedger.entry.available_quantity_before, 0)
+  assert.equal(firstLedger.entry.available_quantity_after, 1)
+
+  const reservationLedger = appendInventoryLedgerEntry(database, {
+    idempotency_key: "reservation:inventory-100:1",
+    inventory_public_id: "inventory-100",
+    mutation_type: "inventory_reservation",
+    source_channel: "kiosk",
+    quantity_before: 1,
+    quantity_after: 1,
+    status_before: "available",
+    status_after: "reserved",
+  }, now)
+  assert.equal(reservationLedger.entry.reserved_quantity_before, 0)
+  assert.equal(reservationLedger.entry.reserved_quantity_after, 1)
+  assert.equal(reservationLedger.entry.available_quantity_before, 1)
+  assert.equal(reservationLedger.entry.available_quantity_after, 0)
 
   assert.throws(() => withImmediateTransaction(database, () => {
     appendInventoryLedgerEntry(database, {
@@ -203,7 +220,7 @@ try {
   assert.equal(decision.review.review_status, "pending")
 
   const diagnostics = authoritativeLedgerDiagnostics(database)
-  assert.equal(diagnostics.inventory_ledger_entry_count, 1)
+  assert.equal(diagnostics.inventory_ledger_entry_count, 2)
   assert.equal(diagnostics.active_reservation_count, 1)
   assert.equal(diagnostics.outbox_event_count, 1)
   assert.equal(diagnostics.outbox_dead_letter_count, 1)
@@ -212,6 +229,66 @@ try {
   assert.equal(diagnostics.price_observation_count, 1)
   assert.equal(diagnostics.price_review_pending_count, 1)
 
+  const v1Database = new DatabaseSync(":memory:")
+  try {
+    v1Database.exec(`
+      CREATE TABLE schema_migrations (
+        migration_key TEXT PRIMARY KEY,
+        schema_version INTEGER NOT NULL,
+        applied_at_utc TEXT NOT NULL,
+        rollback_supported INTEGER NOT NULL DEFAULT 1
+      );
+      CREATE TABLE inventory_ledger_entries (
+        ledger_id TEXT PRIMARY KEY,
+        idempotency_key TEXT NOT NULL UNIQUE,
+        inventory_public_id TEXT NOT NULL,
+        mutation_type TEXT NOT NULL,
+        source_channel TEXT NOT NULL,
+        reference_type TEXT NOT NULL DEFAULT '',
+        reference_id TEXT NOT NULL DEFAULT '',
+        quantity_before INTEGER NOT NULL,
+        quantity_delta INTEGER NOT NULL,
+        quantity_after INTEGER NOT NULL,
+        status_before TEXT NOT NULL DEFAULT '',
+        status_after TEXT NOT NULL DEFAULT '',
+        price_before_minor_units INTEGER NOT NULL DEFAULT 0,
+        price_after_minor_units INTEGER NOT NULL DEFAULT 0,
+        actor_user_id TEXT NOT NULL DEFAULT '',
+        actor_user_name TEXT NOT NULL DEFAULT '',
+        reason TEXT NOT NULL DEFAULT '',
+        payload_json TEXT NOT NULL DEFAULT '{}',
+        created_at_utc TEXT NOT NULL
+      );
+      INSERT INTO schema_migrations VALUES (
+        '20260718_authoritative_inventory_sync_v1', 1, '2026-07-18T17:00:00.000Z', 1
+      );
+      INSERT INTO inventory_ledger_entries VALUES (
+        'legacy-ledger', 'legacy-reservation', 'inventory-legacy', 'inventory_reservation',
+        'kiosk', '', '', 2, 0, 2, 'available', 'reserved', 100, 100, '', '', '', '{}',
+        '2026-07-18T17:00:00.000Z'
+      );
+    `)
+    const migratedV1 = migrateAuthoritativeLedger(v1Database, now)
+    assert.equal(migratedV1.schema_version, 2)
+    const legacy = v1Database.prepare("SELECT * FROM inventory_ledger_entries WHERE ledger_id = 'legacy-ledger'").get()
+    assert.equal(legacy.reserved_quantity_before, 0)
+    assert.equal(legacy.reserved_quantity_after, 2)
+    assert.equal(legacy.available_quantity_before, 2)
+    assert.equal(legacy.available_quantity_after, 0)
+    assert.equal(
+      v1Database.prepare("SELECT rollback_supported FROM schema_migrations WHERE migration_key = ?")
+        .get("20260718_authoritative_inventory_sync_v2").rollback_supported,
+      0,
+    )
+    const v1CompatibleRead = v1Database.prepare(`
+      SELECT ledger_id, quantity_before, quantity_after, status_before, status_after
+      FROM inventory_ledger_entries WHERE ledger_id = 'legacy-ledger'
+    `).get()
+    assert.equal(v1CompatibleRead.quantity_after, 2)
+  } finally {
+    v1Database.close()
+  }
+
   const sqlMigrationDatabase = new DatabaseSync(":memory:")
   try {
     sqlMigrationDatabase.exec("PRAGMA foreign_keys = ON")
@@ -219,7 +296,15 @@ try {
       new URL("../../../migrations/20260718_authoritative_inventory_sync_up.sql", import.meta.url),
       "utf8",
     ))
-    assert.deepEqual(schemaObjectNames(sqlMigrationDatabase), schemaObjectNames(database))
+    const v2OnlySchemaObjects = new Set([
+      "table:sync_outbox_replay_audit",
+      "index:sync_outbox_replay_operation_idx",
+    ])
+    assert.deepEqual(
+      schemaObjectNames(sqlMigrationDatabase),
+      schemaObjectNames(database).filter((name) => !v2OnlySchemaObjects.has(name)),
+    )
+    assert.equal(schemaObjectNames(database).includes("table:sync_outbox_replay_audit"), true)
     assert.equal(
       sqlMigrationDatabase.prepare(
         "SELECT COUNT(*) AS count FROM schema_migrations WHERE migration_key = ?",

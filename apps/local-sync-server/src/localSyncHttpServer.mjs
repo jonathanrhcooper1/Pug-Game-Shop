@@ -577,6 +577,14 @@ export function createLocalSyncHttpServer(options = {}) {
         return sendStoreResult(response, store.syncStatus())
       }
 
+      if (request.method === "GET" && url.pathname === "/sync/outbox/deliveries") {
+        return sendStoreResult(response, store.listOutboxDeliveries(token, Object.fromEntries(url.searchParams)))
+      }
+
+      if (request.method === "POST" && url.pathname === "/sync/outbox/replay") {
+        return sendStoreResult(response, store.replayOutboxDelivery(token, await readJson(request)))
+      }
+
       if (request.method === "GET" && url.pathname === "/server/maintenance/status") {
         return sendStoreResult(response, store.getServerMaintenanceStatus(token))
       }

@@ -1,4 +1,4 @@
-export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 9
+export const LOCAL_SYNC_SERVER_CONTRACT_VERSION = 10
 export const LOCAL_SYNC_SETUP_STATUS_SCHEMA_VERSION = 3
 
 export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
@@ -72,6 +72,8 @@ export const LOCAL_SYNC_SERVER_ENDPOINTS = Object.freeze([
   { method: "POST", path: "/events/registrations", purpose: "Event registration queue" },
   { method: "POST", path: "/events/check-ins", purpose: "Event check-in queue" },
   { method: "GET", path: "/sync/status", purpose: "WordPress sync status and backlog counts" },
+  { method: "GET", path: "/sync/outbox/deliveries", purpose: "Manager-only pending, retry, and dead-letter delivery diagnostics" },
+  { method: "POST", path: "/sync/outbox/replay", purpose: "Audited manager replay of one revalidated operation destination" },
   { method: "GET", path: "/server/maintenance/status", purpose: "Manager LAN server and SQLite maintenance status" },
   { method: "POST", path: "/server/maintenance/sqlite/backup", purpose: "Manager-created SQLite backup before repair or patching" },
   { method: "POST", path: "/server/maintenance/sqlite/checkpoint", purpose: "Manager SQLite WAL checkpoint and optimize" },

@@ -13,16 +13,21 @@ import {
   appendInventoryLedgerEntry,
   appendProjectionEvent,
   authoritativeLedgerDiagnostics,
+  claimOutboxDelivery,
   inventoryLedgerEntryByIdempotency,
   decidePriceReviewItem,
   getPriceReviewItem,
   listPriceReviewItems,
+  listOutboxDeliveryRecords,
   markOutboxDelivery,
   migrateAuthoritativeLedger,
+  outboxDeliveryAttemptState,
   outboxEventByIdempotency,
   recordProcessedExternalEvent,
   recordPriceDecision,
   recordPriceObservation,
+  requeueOutboxDelivery,
+  transitionInventoryReservation,
   updateProcessedExternalEvent,
   upsertInventoryReservation,
   withImmediateTransaction,
@@ -1529,6 +1534,7 @@ export function createLocalSyncStore(options = {}) {
     const plannedChanges = []
     let shortageCount = 0
     let overageCount = 0
+    let actionableOverageCount = 0
 
     for (const [variationId, items] of activeGroups.entries()) {
       const actualQuantity = countsByVariation.has(variationId) ? countsByVariation.get(variationId) : 0
@@ -1543,6 +1549,44 @@ export function createLocalSyncStore(options = {}) {
 
       if (delta > 0) {
         overageCount += delta
+      }
+
+      const exactSoldReturnCandidate =
+        delta === 1 &&
+        items.length === 1 &&
+        localInventoryStatus(items[0].status) === "sold" &&
+        inventoryQuantityOnHand(items[0]) === 0
+
+      if (delta > 0 && !exactSoldReturnCandidate) {
+        actionableOverageCount += delta
+      }
+
+      if (applyCountDeltas && exactSoldReturnCandidate) {
+        const item = items[0]
+        plannedChanges.push({
+          item,
+          previous: { ...item },
+          next: {
+            ...item,
+            quantity_on_hand: 1,
+            status: "return_review",
+            online_visibility: "hidden",
+            kiosk_visibility: "hidden",
+            source: "queued",
+            external_sync_state: "pending",
+            updated_by_user_id: actorId,
+            updated_by_user_name: actorName,
+            row_version: item.row_version + 1,
+          },
+          variationId,
+          previousQuantityOnHand: 0,
+          appliedSoldQuantity: 0,
+          appliedReturnQuantity: 1,
+          mutationType: "square_inventory_return_review",
+          reason: "Square reported one returned serialized card; quarantined for return review",
+          actualQuantity,
+          expectedQuantity,
+        })
       }
 
       let remainingSoldQuantity = applyCountDeltas ? soldQuantity : 0
@@ -1576,6 +1620,9 @@ export function createLocalSyncStore(options = {}) {
           variationId,
           previousQuantityOnHand,
           appliedSoldQuantity,
+          appliedReturnQuantity: 0,
+          mutationType: "square_inventory_count_reconciliation",
+          reason: "Square POS inventory count changed",
           actualQuantity,
           expectedQuantity,
         })
@@ -1595,7 +1642,12 @@ export function createLocalSyncStore(options = {}) {
               ? applyCountDeltas
                 ? "square_sale_delta_applied"
                 : "square_shortage_read_only"
-              : "square_has_extra_quantity",
+              : exactSoldReturnCandidate
+                ? applyCountDeltas
+                  ? "square_return_quarantined_for_review"
+                  : "square_return_candidate_read_only"
+                : "square_has_actionable_extra_quantity",
+        exact_sold_return_candidate: exactSoldReturnCandidate,
         items,
       })
     }
@@ -1614,13 +1666,16 @@ export function createLocalSyncStore(options = {}) {
           minimum_sale_price_minor_units: change.next.minimum_sale_price_minor_units,
           previous_quantity_on_hand: change.previousQuantityOnHand,
           quantity_on_hand: inventoryQuantityOnHand(change.next),
-          quantity_delta: -change.appliedSoldQuantity,
+          quantity_delta: change.appliedReturnQuantity || -change.appliedSoldQuantity,
           quantity_update_mode: "absolute",
           sale_total_minor_units: 0,
           actor_id: actorId,
           actor_name: actorName,
-          sold_at_utc: generatedAtUtc,
-          sync_intent: "square_inventory_count_reconciliation_quantity_update",
+          sold_at_utc: change.appliedSoldQuantity > 0 ? generatedAtUtc : "",
+          returned_at_utc: change.appliedReturnQuantity > 0 ? generatedAtUtc : "",
+          sync_intent: change.appliedReturnQuantity > 0
+            ? "square_inventory_return_review_quantity_update"
+            : "square_inventory_count_reconciliation_quantity_update",
           source,
           source_channel: "square",
           square_catalog_variation_id: change.variationId,
@@ -1628,13 +1683,14 @@ export function createLocalSyncStore(options = {}) {
           square_actual_quantity: change.actualQuantity,
           local_expected_quantity_before: change.expectedQuantity,
           square_quantity_sold: change.appliedSoldQuantity,
-          reason: "Square POS inventory count changed",
+          square_quantity_returned: change.appliedReturnQuantity,
+          reason: change.reason,
           wordpress_acceptance_required: true,
         }, now, { deferMemoryPush: true })
         appendInventoryLedgerEntry(database, {
           idempotency_key: operation.operation_id,
           inventory_public_id: change.next.public_id,
-          mutation_type: "square_inventory_count_reconciliation",
+          mutation_type: change.mutationType,
           source_channel: "square",
           reference_type: "operation_queue",
           reference_id: operation.operation_id,
@@ -1646,12 +1702,13 @@ export function createLocalSyncStore(options = {}) {
           price_after_minor_units: change.next.price_minor_units,
           actor_user_id: actorId,
           actor_user_name: actorName,
-          reason: "Square POS inventory count changed",
+          reason: change.reason,
           payload: {
             square_catalog_variation_id: change.variationId,
             square_location_id: locationId,
             square_actual_quantity: change.actualQuantity,
             square_quantity_sold: change.appliedSoldQuantity,
+            square_quantity_returned: change.appliedReturnQuantity,
             source,
           },
         }, now)
@@ -1664,7 +1721,8 @@ export function createLocalSyncStore(options = {}) {
     }
     queue.push(...operations)
 
-    const soldItems = plannedChanges.map((change) => change.item)
+    const soldItems = plannedChanges.filter((change) => change.appliedSoldQuantity > 0).map((change) => change.item)
+    const returnedItems = plannedChanges.filter((change) => change.appliedReturnQuantity > 0).map((change) => change.item)
     const comparisons = comparisonSpecs.map((comparison) => ({
       ...comparison,
       items: comparison.items.map((item) => ({
@@ -1689,7 +1747,7 @@ export function createLocalSyncStore(options = {}) {
     if (wordpressInventoryUpdatePush || squareCatalogInventorySyncer) {
       for (const operation of operations) {
         const pushResult = await pushInventoryUpdateOperation(operation)
-        recordQueueProjectionResult(database, pushResult, now)
+        recordQueueProjectionResult(database, queue, pushResult, now)
         autoSyncResults.push(pushResult)
       }
     }
@@ -1710,8 +1768,13 @@ export function createLocalSyncStore(options = {}) {
       would_apply_sold_count: applyCountDeltas ? 0 : shortageCount,
       shortage_count: shortageCount,
       overage_count: overageCount,
+      actionable_overage_count: actionableOverageCount,
+      returned_to_review_count: applyCountDeltas
+        ? plannedChanges.reduce((total, change) => total + change.appliedReturnQuantity, 0)
+        : 0,
       comparisons,
       sold_items: soldItems.map(publicInventoryItem),
+      returned_items: returnedItems.map(publicInventoryItem),
       square_pull_performed: Boolean(pullResult),
       square_pull_count: Number(pullResult?.count_count ?? 0),
       square_pull_request_count: Number(pullResult?.request_count ?? 0),
@@ -1720,7 +1783,7 @@ export function createLocalSyncStore(options = {}) {
       square_pull_chunk_size: Number(pullResult?.chunk_size ?? 0),
       square_pull_cursor_exhausted: Boolean(pullResult?.cursor_exhausted ?? true),
       square_pull_max_page_guard_hit: Boolean(pullResult?.max_page_guard_hit),
-      wordpress_acceptance_required: applyCountDeltas && soldItems.length > 0,
+      wordpress_acceptance_required: applyCountDeltas && plannedChanges.length > 0,
       wordpress_auto_sync_performed: autoSyncResults.length > 0,
       wordpress_accepted_count: autoSyncResults.filter((item) => item.status === "accepted").length,
       wordpress_retry_count: autoSyncResults.filter((item) => item.status === "retry").length,
@@ -2747,7 +2810,7 @@ export function createLocalSyncStore(options = {}) {
         }
 
         const pushResult = await pushInventoryUpdateOperation(operation)
-        recordQueueProjectionResult(database, pushResult, now)
+        recordQueueProjectionResult(database, queue, pushResult, now)
         results.push(pushResult)
       } else if (consideredCount % 50 === 0) {
         await sleepMs(0)
@@ -2958,7 +3021,7 @@ export function createLocalSyncStore(options = {}) {
     let syncResult = null
     if (wordpressInventoryUpdatePush || squareCatalogInventorySyncer) {
       syncResult = await pushInventoryUpdateOperation(operation)
-      recordQueueProjectionResult(database, syncResult, now)
+      recordQueueProjectionResult(database, queue, syncResult, now)
     }
 
     return {
@@ -4156,7 +4219,7 @@ export function createLocalSyncStore(options = {}) {
     if (wordpressInventoryPush || squareCatalogInventorySyncer) {
       for (const operation of operations) {
         const result = await pushInventoryIntakeOperation(operation)
-        recordQueueProjectionResult(database, result, now)
+        recordQueueProjectionResult(database, queue, result, now)
         autoSyncResults.push(result)
       }
     }
@@ -4530,7 +4593,7 @@ export function createLocalSyncStore(options = {}) {
     if (wordpressInventoryUpdatePush || squareCatalogInventorySyncer) {
       for (const syncOperation of [...consolidatedOperations, operation]) {
         const result = await pushInventoryUpdateOperation(syncOperation)
-        recordQueueProjectionResult(database, result, now)
+        recordQueueProjectionResult(database, queue, result, now)
         autoSyncResults.push(result)
       }
     }
@@ -4693,7 +4756,7 @@ export function createLocalSyncStore(options = {}) {
     if (wordpressInventorySalePush || squareCatalogInventorySyncer) {
       for (const operation of operations) {
         const result = await pushSquareSaleOperation(operation)
-        recordQueueProjectionResult(database, result, now)
+        recordQueueProjectionResult(database, queue, result, now)
         autoSyncResults.push(result)
       }
     }
@@ -8413,19 +8476,17 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
-    const squareSync = projectionDeliveryCompleted(operation.operation_id, "square")
-      ? completedProjectionResult(operation, "square")
-      : await syncSquareCatalogInventoryForOperation(operation, item)
-    const pushResult = projectionDeliveryCompleted(operation.operation_id, "wordpress")
-      ? completedProjectionResult(operation, "wordpress")
-      : wordpressInventoryPush
+    const squareGate = beginProjectionDelivery(operation, "square")
+    const squareSync = squareGate ?? await syncSquareCatalogInventoryForOperation(operation, item)
+    const wordpressGate = beginProjectionDelivery(operation, "wordpress")
+    const pushResult = wordpressGate ?? (wordpressInventoryPush
         ? await wordpressInventoryPush({ operation, item })
         : {
             status: "blocked",
             code: "wordpress_inventory_push_unavailable",
             message: "WordPress inventory push is not configured on this LAN server.",
-          }
-    const wordpressProjection = pushResult.status === "ok" || pushResult.status === "accepted"
+          })
+    const wordpressProjection = wordpressGate ?? (pushResult.status === "ok" || pushResult.status === "accepted"
       ? {
           status: "accepted",
           code: pushResult.code ?? "wordpress_inventory_projection_accepted",
@@ -8442,7 +8503,7 @@ export function createLocalSyncStore(options = {}) {
           wordpress_code: pushResult.wordpress_code ?? "",
           http_status: pushResult.http_status ?? 0,
           errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
-        }
+        })
 
     if (wordpressProjection.status === "accepted") {
       const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
@@ -8473,15 +8534,17 @@ export function createLocalSyncStore(options = {}) {
       deleteQueueOperation(database, queue, operation.operation_id)
     }
 
+    const operationStatus = projectionOperationStatus(wordpressProjection, squareSync)
+    const pendingProjection = pendingProjectionResult(wordpressProjection, squareSync)
     return {
         operation_id: operation.operation_id,
         operation_type: operation.operation_type,
         entity_id: operation.entity_id,
-        status: projectionsAccepted ? "accepted" : "retry",
+        status: operationStatus,
         code: projectionsAccepted
           ? (pushResult.code ?? "inventory_intake_projections_accepted")
-          : (wordpressProjection.status === "retry" ? wordpressProjection.code : squareSync.code),
-        message: projectionsAccepted ? "" : (wordpressProjection.message ?? squareSync.message ?? "Inventory projection is pending."),
+          : (pendingProjection?.code ?? "inventory_intake_projection_pending"),
+        message: projectionsAccepted ? "" : (pendingProjection?.message ?? "Inventory projection is pending."),
         wordpress_code: pushResult.wordpress_code ?? "",
         http_status: pushResult.http_status ?? 0,
         errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
@@ -8492,11 +8555,62 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
-  function projectionDeliveryCompleted(operationId, destination) {
-    const outbox = outboxEventByIdempotency(database, operationId)
-    const delivery = outbox?.deliveries?.find((candidate) => candidate.destination === destination)
+  function beginProjectionDelivery(operation, destination) {
+    const state = outboxDeliveryAttemptState(database, {
+      operation_id: operation.operation_id,
+      destination,
+    }, now)
 
-    return ["verified", "cancelled"].includes(delivery?.status)
+    if (!state.exists) {
+      return null
+    }
+    if (state.terminal_success) {
+      return completedProjectionResult(operation, destination)
+    }
+    if (state.delivery?.status === "dead_letter") {
+      return {
+        operation_id: operation.operation_id,
+        operation_type: operation.operation_type,
+        entity_id: operation.entity_id,
+        destination,
+        status: "dead_letter",
+        code: `${destination}_projection_dead_letter`,
+        message: "This delivery needs an explicit manager replay before it can run again.",
+        delivery_status: "dead_letter",
+        delivery_attempted: false,
+        next_attempt_at_utc: null,
+      }
+    }
+    if (!state.eligible) {
+      return deferredProjectionResult(operation, destination, state.delivery)
+    }
+
+    const claim = claimOutboxDelivery(database, {
+      operation_id: operation.operation_id,
+      destination,
+      lease_seconds: 300,
+    }, now)
+
+    if (!claim.claimed) {
+      return deferredProjectionResult(operation, destination, claim.state?.delivery)
+    }
+
+    return null
+  }
+
+  function deferredProjectionResult(operation, destination, delivery) {
+    return {
+      operation_id: operation.operation_id,
+      operation_type: operation.operation_type,
+      entity_id: operation.entity_id,
+      destination,
+      status: "deferred",
+      code: `${destination}_projection_retry_not_due`,
+      message: "The delivery is waiting for its scheduled retry time.",
+      delivery_status: delivery?.status ?? "retry",
+      delivery_attempted: false,
+      next_attempt_at_utc: delivery?.next_attempt_at_utc ?? null,
+    }
   }
 
   function completedProjectionResult(operation, destination) {
@@ -8511,12 +8625,30 @@ export function createLocalSyncStore(options = {}) {
       code: `${destination}_projection_already_delivered`,
       delivery_status: delivery?.status ?? "delivered_unverified",
       readback_verified: delivery?.status === "verified",
+      delivery_attempted: false,
       idempotent: true,
     }
   }
 
   function projectionResultCompleted(result) {
     return result?.status === "skipped" || (result?.status === "accepted" && result?.readback_verified === true)
+  }
+
+  function projectionOperationStatus(...results) {
+    if (results.every(projectionResultCompleted)) {
+      return "accepted"
+    }
+    if (results.some((result) => result?.status === "dead_letter")) {
+      return "dead_letter"
+    }
+    if (results.some((result) => result?.status === "retry" || result?.status === "blocked")) {
+      return "retry"
+    }
+    return "deferred"
+  }
+
+  function pendingProjectionResult(...results) {
+    return results.find((result) => !projectionResultCompleted(result)) ?? null
   }
 
   async function syncSquareCatalogInventoryForOperation(operation, item) {
@@ -8847,20 +8979,18 @@ export function createLocalSyncStore(options = {}) {
           code: "square_source_projection_not_echoed",
           destination: "square",
           readback_verified: true,
+          delivery_attempted: false,
         }
-      : projectionDeliveryCompleted(operation.operation_id, "square")
-        ? completedProjectionResult(operation, "square")
-        : await syncSquareCatalogInventoryForOperation(operation, item)
-    const pushResult = projectionDeliveryCompleted(operation.operation_id, "wordpress")
-      ? completedProjectionResult(operation, "wordpress")
-      : wordpressInventoryUpdatePush
+      : beginProjectionDelivery(operation, "square") ?? await syncSquareCatalogInventoryForOperation(operation, item)
+    const wordpressGate = beginProjectionDelivery(operation, "wordpress")
+    const pushResult = wordpressGate ?? (wordpressInventoryUpdatePush
         ? await wordpressInventoryUpdatePush({ operation, item })
         : {
             status: "blocked",
             code: "wordpress_inventory_update_push_unavailable",
             message: "WordPress inventory update push is not configured on this LAN server.",
-          }
-    const wordpressProjection = pushResult.status === "ok" || pushResult.status === "accepted"
+          })
+    const wordpressProjection = wordpressGate ?? (pushResult.status === "ok" || pushResult.status === "accepted"
       ? {
           status: "accepted",
           code: pushResult.code ?? "wordpress_inventory_update_projection_accepted",
@@ -8877,7 +9007,7 @@ export function createLocalSyncStore(options = {}) {
           wordpress_code: pushResult.wordpress_code ?? "",
           http_status: pushResult.http_status ?? 0,
           errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
-        }
+        })
     const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
 
     if (localItem && wordpressProjection.status === "accepted") {
@@ -8902,15 +9032,17 @@ export function createLocalSyncStore(options = {}) {
       deleteQueueOperation(database, queue, operation.operation_id)
     }
 
+    const operationStatus = projectionOperationStatus(wordpressProjection, squareSync)
+    const pendingProjection = pendingProjectionResult(wordpressProjection, squareSync)
     return {
       operation_id: operation.operation_id,
       operation_type: operation.operation_type,
       entity_id: operation.entity_id,
-      status: projectionsAccepted ? "accepted" : "retry",
+      status: operationStatus,
       code: projectionsAccepted
         ? (pushResult.code ?? "inventory_update_projections_accepted")
-        : (wordpressProjection.status === "retry" ? wordpressProjection.code : squareSync.code),
-      message: projectionsAccepted ? "" : (wordpressProjection.message ?? squareSync.message ?? "Inventory projection is pending."),
+        : (pendingProjection?.code ?? "inventory_update_projection_pending"),
+      message: projectionsAccepted ? "" : (pendingProjection?.message ?? "Inventory projection is pending."),
       wordpress_code: pushResult.wordpress_code ?? "",
       http_status: pushResult.http_status ?? 0,
       errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
@@ -8936,19 +9068,17 @@ export function createLocalSyncStore(options = {}) {
       }
     }
 
-    const squareSync = projectionDeliveryCompleted(operation.operation_id, "square")
-      ? completedProjectionResult(operation, "square")
-      : await syncSquareCatalogInventoryForOperation(operation, item)
-    const pushResult = projectionDeliveryCompleted(operation.operation_id, "wordpress")
-      ? completedProjectionResult(operation, "wordpress")
-      : wordpressInventorySalePush
+    const squareSync = beginProjectionDelivery(operation, "square")
+      ?? await syncSquareCatalogInventoryForOperation(operation, item)
+    const wordpressGate = beginProjectionDelivery(operation, "wordpress")
+    const pushResult = wordpressGate ?? (wordpressInventorySalePush
         ? await wordpressInventorySalePush({ operation, item })
         : {
             status: "blocked",
             code: "wordpress_inventory_sale_push_unavailable",
             message: "WordPress inventory sale push is not configured on this LAN server.",
-          }
-    const wordpressProjection = pushResult.status === "ok" || pushResult.status === "accepted"
+          })
+    const wordpressProjection = wordpressGate ?? (pushResult.status === "ok" || pushResult.status === "accepted"
       ? {
           status: "accepted",
           code: pushResult.code ?? "wordpress_inventory_sale_projection_accepted",
@@ -8965,7 +9095,7 @@ export function createLocalSyncStore(options = {}) {
           wordpress_code: pushResult.wordpress_code ?? "",
           http_status: pushResult.http_status ?? 0,
           errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
-        }
+        })
     const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
 
     if (localItem && wordpressProjection.status === "accepted") {
@@ -8985,15 +9115,17 @@ export function createLocalSyncStore(options = {}) {
       deleteQueueOperation(database, queue, operation.operation_id)
     }
 
+    const operationStatus = projectionOperationStatus(wordpressProjection, squareSync)
+    const pendingProjection = pendingProjectionResult(wordpressProjection, squareSync)
     return {
       operation_id: operation.operation_id,
       operation_type: operation.operation_type,
       entity_id: operation.entity_id,
-      status: projectionsAccepted ? "accepted" : "retry",
+      status: operationStatus,
       code: projectionsAccepted
         ? (pushResult.code ?? "inventory_sale_projections_accepted")
-        : (wordpressProjection.status === "retry" ? wordpressProjection.code : squareSync.code),
-      message: projectionsAccepted ? "" : (wordpressProjection.message ?? squareSync.message ?? "Inventory projection is pending."),
+        : (pendingProjection?.code ?? "inventory_sale_projection_pending"),
+      message: projectionsAccepted ? "" : (pendingProjection?.message ?? "Inventory projection is pending."),
       wordpress_code: pushResult.wordpress_code ?? "",
       http_status: pushResult.http_status ?? 0,
       errors: Array.isArray(pushResult.errors) ? pushResult.errors : [],
@@ -9007,6 +9139,11 @@ export function createLocalSyncStore(options = {}) {
   }
 
   async function pushEventUpsertOperation(operation) {
+    const deliveryGate = beginProjectionDelivery(operation, "wordpress")
+    if (deliveryGate) {
+      return deliveryGate
+    }
+
     if (!wordpressEventUpsertPush) {
       return {
         operation_id: operation.operation_id,
@@ -9085,6 +9222,205 @@ export function createLocalSyncStore(options = {}) {
     }
   }
 
+  function listOutboxDeliveries(token, input = {}) {
+    const manager = requireManager(token)
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const allowedStatuses = new Set([
+      "pending",
+      "processing",
+      "retry",
+      "delivered_unverified",
+      "dead_letter",
+      "verified",
+      "cancelled",
+    ])
+    const requestedStatuses = String(input.statuses ?? input.status ?? "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+
+    if (requestedStatuses.some((status) => !allowedStatuses.has(status))) {
+      return blocked("outbox_status_invalid", "One or more requested outbox statuses are invalid.")
+    }
+
+    const deliveries = listOutboxDeliveryRecords(database, {
+      statuses: requestedStatuses.length > 0 ? requestedStatuses : undefined,
+      destination: input.destination,
+      limit: input.limit,
+    })
+
+    return {
+      status: "ok",
+      action: "sync_outbox_deliveries_listed",
+      deliveries,
+      delivery_count: deliveries.length,
+      manager_user_id: manager.user.id,
+      errors_sanitized: true,
+      payloads_returned: false,
+      credentials_returned: false,
+    }
+  }
+
+  function replayOutboxDelivery(token, input = {}) {
+    const manager = requireManager(token)
+    if (manager.status !== "ok") {
+      return manager
+    }
+
+    const operationId = cleanExternalId(input.operation_id ?? input.operationId)
+    const destination = cleanExternalId(input.destination).toLowerCase()
+    const requestId = cleanExternalId(input.request_id ?? input.requestId)
+    const reason = cleanName(input.reason)
+
+    if (!operationId || !["wordpress", "square", "kiosk"].includes(destination)) {
+      return blocked("outbox_replay_target_required", "A valid operation ID and destination are required.")
+    }
+    if (!requestId) {
+      return blocked("outbox_replay_request_id_required", "A stable replay request ID is required.")
+    }
+    if (reason.length < 5) {
+      return blocked("outbox_replay_reason_required", "A manager replay reason of at least five characters is required.")
+    }
+
+    const outbox = outboxEventByIdempotency(database, operationId)
+    if (!outbox) {
+      return blocked("outbox_operation_not_found", "No outbox operation matched that ID.")
+    }
+
+    const aggregateSnapshot = currentOutboxAggregateSnapshot(outbox.event)
+    if (!aggregateSnapshot) {
+      return blocked(
+        "outbox_aggregate_not_found",
+        "The current local aggregate no longer exists, so this delivery cannot be replayed safely.",
+      )
+    }
+
+    let restoredOperation = null
+    try {
+      const replay = withImmediateTransaction(database, () => {
+        const result = requeueOutboxDelivery(database, {
+          operation_id: operationId,
+          destination,
+          request_id: requestId,
+          reason,
+          aggregate_snapshot: aggregateSnapshot,
+          actor_user_id: manager.user.id,
+          actor_user_name: manager.user.name,
+        }, now)
+
+        if (!result.idempotent && !queue.some((operation) => operation.operation_id === operationId)) {
+          restoredOperation = {
+            operation_id: operationId,
+            operation_type: outbox.event.event_type,
+            entity_id: outbox.event.aggregate_id,
+            payload: outbox.event.payload ?? {},
+            queued_at_utc: now().toISOString(),
+            sync_status: "pending",
+          }
+          database.prepare(`
+            INSERT INTO operation_queue (
+              operation_id, operation_type, entity_id, payload_json, queued_at_utc, sync_status
+            ) VALUES (?, ?, ?, ?, ?, 'pending')
+            ON CONFLICT(operation_id) DO UPDATE SET sync_status = 'pending'
+          `).run(
+            restoredOperation.operation_id,
+            restoredOperation.operation_type,
+            restoredOperation.entity_id,
+            JSON.stringify(restoredOperation.payload),
+            restoredOperation.queued_at_utc,
+          )
+        }
+
+        return result
+      })
+
+      if (restoredOperation && !queue.some((operation) => operation.operation_id === operationId)) {
+        queue.push(restoredOperation)
+      }
+
+      return {
+        status: "ok",
+        action: "sync_outbox_delivery_requeued",
+        idempotent: replay.idempotent,
+        delivery: replay.delivery,
+        audit: replay.audit,
+        aggregate_revalidated: true,
+        operation_restored: Boolean(restoredOperation),
+        local_queue_depth: pendingQueueOperations(queue).length,
+        credentials_returned: false,
+      }
+    } catch (error) {
+      return blocked(
+        "outbox_replay_blocked",
+        error instanceof Error ? error.message : "The selected delivery could not be replayed.",
+      )
+    }
+  }
+
+  function currentOutboxAggregateSnapshot(event) {
+    const aggregateId = cleanPublicId(event?.aggregate_id) || cleanExternalId(event?.aggregate_id)
+
+    if (event?.aggregate_type === "inventory") {
+      const item = inventoryItems.find((candidate) => candidate.public_id === aggregateId)
+      return item
+        ? {
+            aggregate_type: "inventory",
+            aggregate_id: item.public_id,
+            row_version: item.row_version,
+            status: item.status,
+            quantity_on_hand: inventoryQuantityOnHand(item),
+            price_minor_units: minorUnits(item.price_minor_units),
+          }
+        : null
+    }
+
+    if (event?.aggregate_type === "event") {
+      const item = eventSnapshots.find((candidate) => candidate.event_id === aggregateId)
+      return item
+        ? { aggregate_type: "event", aggregate_id: item.event_id, row_version: item.row_version, status: item.registration_status }
+        : null
+    }
+
+    if (event?.aggregate_type === "customer") {
+      const item = customers.find((candidate) => candidate.customer_public_id === aggregateId)
+      return item
+        ? {
+            aggregate_type: "customer",
+            aggregate_id: item.customer_public_id,
+            row_version: item.row_version,
+            status: item.status,
+            credit_balance_minor_units: item.credit_balance_minor_units,
+          }
+        : null
+    }
+
+    if (event?.aggregate_type === "customer_credit") {
+      const item = creditLedgerEntries.find((candidate) => candidate.entry_id === aggregateId)
+      return item
+        ? { aggregate_type: "customer_credit", aggregate_id: item.entry_id, status: item.status }
+        : null
+    }
+
+    if (event?.aggregate_type === "order") {
+      const kioskOrder = kioskOrders.find((candidate) => candidate.order_id === aggregateId)
+      if (kioskOrder) {
+        return { aggregate_type: "order", aggregate_id: kioskOrder.order_id, status: kioskOrder.status }
+      }
+      const fulfillmentOrder = fulfillmentOrders.find((candidate) => String(candidate.order_id) === String(aggregateId))
+      return fulfillmentOrder
+        ? { aggregate_type: "order", aggregate_id: String(fulfillmentOrder.order_id), status: fulfillmentOrder.fulfillment_status }
+        : null
+    }
+
+    const operation = queue.find((candidate) => candidate.operation_id === event?.idempotency_key)
+    return operation
+      ? { aggregate_type: event.aggregate_type, aggregate_id: event.aggregate_id, status: operation.sync_status }
+      : null
+  }
+
   async function pushQueuedOperations(token) {
     const session = requireSession(token)
 
@@ -9144,6 +9480,12 @@ export function createLocalSyncStore(options = {}) {
     }
 
     for (const operation of fulfillmentStatusOperations) {
+      const deliveryGate = beginProjectionDelivery(operation, "wordpress")
+      if (deliveryGate) {
+        results.push(deliveryGate)
+        continue
+      }
+
       if (!wordpressFulfillmentStatusPush) {
         results.push({
           operation_id: operation.operation_id,
@@ -9213,6 +9555,12 @@ export function createLocalSyncStore(options = {}) {
     }
 
     for (const operation of eventRegistrationOperations) {
+      const deliveryGate = beginProjectionDelivery(operation, "wordpress")
+      if (deliveryGate) {
+        results.push(deliveryGate)
+        continue
+      }
+
       if (!wordpressEventRegistrationPush) {
         results.push({
           operation_id: operation.operation_id,
@@ -9264,6 +9612,12 @@ export function createLocalSyncStore(options = {}) {
     }
 
     for (const operation of eventCheckinOperations) {
+      const deliveryGate = beginProjectionDelivery(operation, "wordpress")
+      if (deliveryGate) {
+        results.push(deliveryGate)
+        continue
+      }
+
       if (!wordpressEventCheckinPush) {
         results.push({
           operation_id: operation.operation_id,
@@ -9315,6 +9669,12 @@ export function createLocalSyncStore(options = {}) {
     }
 
     for (const operation of kioskOperations) {
+      const deliveryGate = beginProjectionDelivery(operation, "wordpress")
+      if (deliveryGate) {
+        results.push(deliveryGate)
+        continue
+      }
+
       if (!wordpressKioskOrderPush) {
         results.push({
           operation_id: operation.operation_id,
@@ -9417,6 +9777,12 @@ export function createLocalSyncStore(options = {}) {
     }
 
     for (const operation of customerOperations) {
+      const deliveryGate = beginProjectionDelivery(operation, "wordpress")
+      if (deliveryGate) {
+        results.push(deliveryGate)
+        continue
+      }
+
       if (!wordpressCustomerUpsertPush) {
         results.push({
           operation_id: operation.operation_id,
@@ -9501,6 +9867,12 @@ export function createLocalSyncStore(options = {}) {
     }
 
     for (const operation of creditOperations) {
+      const deliveryGate = beginProjectionDelivery(operation, "wordpress")
+      if (deliveryGate) {
+        results.push(deliveryGate)
+        continue
+      }
+
       if (!wordpressCreditPush) {
         results.push({
           operation_id: operation.operation_id,
@@ -9586,15 +9958,35 @@ export function createLocalSyncStore(options = {}) {
     }
 
     for (const result of results) {
-      recordQueueProjectionResult(database, result, now)
+      recordQueueProjectionResult(database, queue, result, now)
+      const recordedOutbox = outboxEventByIdempotency(database, result.operation_id)
+      if (recordedOutbox?.deliveries?.some((delivery) => delivery.status === "dead_letter")) {
+        result.status = "dead_letter"
+        result.code = "projection_delivery_dead_letter"
+        result.message = "One or more projection destinations need an explicit manager replay."
+      }
+    }
+
+    for (const operation of [...pendingQueueOperations(queue)]) {
+      const outbox = outboxEventByIdempotency(database, operation.operation_id)
+      if (
+        outbox?.deliveries?.length > 0 &&
+        outbox.deliveries.every((delivery) => ["verified", "cancelled"].includes(delivery.status))
+      ) {
+        deleteQueueOperation(database, queue, operation.operation_id)
+      }
     }
 
     const acceptedCount = results.filter((result) => result.status === "accepted").length
     const retryCount = results.filter((result) => result.status === "retry").length
     const rejectedCount = results.filter((result) => result.status === "rejected").length
+    const deferredCount = results.filter((result) => result.status === "deferred").length
+    const deadLetterCount = results.filter((result) => result.status === "dead_letter").length
     const supportedOperationCount =
       inventoryOperations.length +
+      inventoryUpdateOperations.length +
       squareSaleOperations.length +
+      fulfillmentStatusOperations.length +
       eventRegistrationOperations.length +
       eventCheckinOperations.length +
       eventUpsertOperations.length +
@@ -9609,6 +10001,8 @@ export function createLocalSyncStore(options = {}) {
       accepted_count: acceptedCount,
       retry_count: retryCount,
       rejected_count: rejectedCount,
+      deferred_count: deferredCount,
+      dead_letter_count: deadLetterCount,
       unsupported_operation_count: pendingOperations.length - supportedOperationCount,
       results,
       expired_hold_count: expiryCleanup.expired_order_count,
@@ -9643,13 +10037,61 @@ export function createLocalSyncStore(options = {}) {
       expiredReservationIds.add(reservationId)
 
       const item = inventoryItems.find((candidate) => candidate.public_id === inventoryPublicId)
-      if (item && item.status === "reserved") {
-        item.status = "available"
-        item.source = cleanPublicId(item.wordpress_public_id) ? "accepted" : "cached"
-        item.updated_by_user_id = "hold-expiry"
-        item.updated_by_user_name = "Hold Expiry"
-        item.row_version += 1
-        saveInventoryItem(database, item, now)
+      const previousItem = item && item.status === "reserved" ? { ...item } : null
+      const nextItem = previousItem
+        ? {
+            ...item,
+            status: "available",
+            source: cleanPublicId(item.wordpress_public_id) ? "accepted" : "cached",
+            updated_by_user_id: "hold-expiry",
+            updated_by_user_name: "Hold Expiry",
+            row_version: item.row_version + 1,
+          }
+        : null
+
+      withImmediateTransaction(database, () => {
+        transitionInventoryReservation(database, {
+          reservation_id: reservationId,
+          status: "expired",
+          reason: "Local inventory hold expired",
+        }, now)
+        if (nextItem) {
+          saveInventoryItem(database, nextItem, now)
+          appendInventoryLedgerEntry(database, {
+            idempotency_key: `reservation-expiry:${reservationId}`,
+            inventory_public_id: nextItem.public_id,
+            mutation_type: "inventory_reservation_expired",
+            source_channel: cleanName(operation.payload?.source) || "local_hold",
+            reference_type: "inventory_reservation",
+            reference_id: reservationId,
+            quantity_before: inventoryQuantityOnHand(previousItem),
+            quantity_after: inventoryQuantityOnHand(nextItem),
+            status_before: "reserved",
+            status_after: "available",
+            price_before_minor_units: previousItem.price_minor_units,
+            price_after_minor_units: nextItem.price_minor_units,
+            actor_user_id: "hold-expiry",
+            actor_user_name: "Hold Expiry",
+            reason: "Local inventory hold expired",
+          }, now)
+        }
+        const outbox = outboxEventByIdempotency(database, operation.operation_id)
+        for (const delivery of outbox?.deliveries ?? []) {
+          if (!["verified", "cancelled", "dead_letter"].includes(delivery.status)) {
+            markOutboxDelivery(database, {
+              event_id: outbox.event.event_id,
+              destination: delivery.destination,
+              status: "cancelled",
+              increment_attempt: false,
+              error_code: "reservation_expired",
+              error_message: "The local inventory hold expired before projection completed.",
+            }, now)
+          }
+        }
+      })
+
+      if (nextItem) {
+        Object.assign(item, nextItem)
         releasedInventoryIds.add(item.public_id)
       }
 
@@ -9675,12 +10117,36 @@ export function createLocalSyncStore(options = {}) {
       for (const item of cleanKioskOrderItems(order.items)) {
         const localItem = inventoryItems.find((candidate) => candidate.public_id === item.public_id)
         if (localItem && localItem.status === "reserved") {
-          localItem.status = "available"
-          localItem.source = cleanPublicId(localItem.wordpress_public_id) ? "accepted" : "cached"
-          localItem.updated_by_user_id = "hold-expiry"
-          localItem.updated_by_user_name = "Hold Expiry"
-          localItem.row_version += 1
-          saveInventoryItem(database, localItem, now)
+          const previousItem = { ...localItem }
+          const nextItem = {
+            ...localItem,
+            status: "available",
+            source: cleanPublicId(localItem.wordpress_public_id) ? "accepted" : "cached",
+            updated_by_user_id: "hold-expiry",
+            updated_by_user_name: "Hold Expiry",
+            row_version: localItem.row_version + 1,
+          }
+          withImmediateTransaction(database, () => {
+            saveInventoryItem(database, nextItem, now)
+            appendInventoryLedgerEntry(database, {
+              idempotency_key: `kiosk-hold-expiry:${order.order_id}:${localItem.public_id}`,
+              inventory_public_id: localItem.public_id,
+              mutation_type: "inventory_reservation_expired",
+              source_channel: "kiosk",
+              reference_type: "kiosk_order",
+              reference_id: order.order_id,
+              quantity_before: inventoryQuantityOnHand(previousItem),
+              quantity_after: inventoryQuantityOnHand(nextItem),
+              status_before: "reserved",
+              status_after: "available",
+              price_before_minor_units: previousItem.price_minor_units,
+              price_after_minor_units: nextItem.price_minor_units,
+              actor_user_id: "hold-expiry",
+              actor_user_name: "Hold Expiry",
+              reason: "Kiosk order hold expired",
+            }, now)
+          })
+          Object.assign(localItem, nextItem)
           releasedInventoryIds.add(localItem.public_id)
         }
       }
@@ -9754,6 +10220,7 @@ export function createLocalSyncStore(options = {}) {
     listEvents,
     listInventoryLocations,
     listKioskOrders,
+    listOutboxDeliveries,
     listPriceReviews,
     listTradeInOrders,
     getManagerReport,
@@ -9791,6 +10258,7 @@ export function createLocalSyncStore(options = {}) {
     syncStatus,
     listFulfillmentOrders,
     pushQueuedOperations,
+    replayOutboxDelivery,
     updateSetupConfig,
     updateFulfillmentOrderPicks,
     updateFulfillmentOrderStatus,
@@ -9904,6 +10372,28 @@ function migrateLocalSyncDatabase(database) {
       queued_at_utc TEXT NOT NULL,
       sync_status TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS sync_outbox_replay_audit (
+      replay_id TEXT PRIMARY KEY,
+      replay_request_key TEXT NOT NULL UNIQUE,
+      delivery_id TEXT NOT NULL,
+      event_id TEXT NOT NULL,
+      operation_id TEXT NOT NULL,
+      destination TEXT NOT NULL,
+      previous_status TEXT NOT NULL,
+      previous_attempt_count INTEGER NOT NULL DEFAULT 0,
+      previous_next_attempt_at_utc TEXT NOT NULL DEFAULT '',
+      previous_error_code TEXT NOT NULL DEFAULT '',
+      previous_error_message TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL,
+      aggregate_snapshot_json TEXT NOT NULL DEFAULT '{}',
+      requested_by_user_id TEXT NOT NULL,
+      requested_by_user_name TEXT NOT NULL,
+      requested_at_utc TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS sync_outbox_replay_operation_idx
+      ON sync_outbox_replay_audit (operation_id, destination, requested_at_utc DESC);
 
     CREATE TABLE IF NOT EXISTS kiosk_orders (
       order_id TEXT PRIMARY KEY,
@@ -12122,9 +12612,9 @@ function queueOperationAggregateType(operationType) {
   return "operation"
 }
 
-function recordQueueProjectionResult(database, result, now) {
+function recordQueueProjectionResult(database, queue, result, now) {
   const outbox = outboxEventByIdempotency(database, result?.operation_id)
-  if (!outbox) {
+  if (!outbox || result?.delivery_attempted === false) {
     return
   }
 
@@ -12140,6 +12630,9 @@ function recordQueueProjectionResult(database, result, now) {
       const squareResult = result.square_catalog_inventory_sync ?? (
         String(result.code ?? "").startsWith("square_") ? result : null
       )
+      if (squareResult?.delivery_attempted === false) {
+        continue
+      }
       const readbackVerified = squareResult?.readback_verified === true || squareResult?.verification?.verified === true
 
       if (squareResult?.status === "accepted") {
@@ -12177,6 +12670,9 @@ function recordQueueProjectionResult(database, result, now) {
 
     if (delivery.destination === "wordpress") {
       const wordpressProjection = result.wordpress_inventory_projection ?? result.wordpress_projection ?? result
+      if (wordpressProjection?.delivery_attempted === false) {
+        continue
+      }
       const wordpressAccepted = wordpressProjection.status === "accepted" || Boolean(
         wordpressProjection.wordpress_inventory ||
         wordpressProjection.wordpress_credit ||
@@ -12202,6 +12698,34 @@ function recordQueueProjectionResult(database, result, now) {
         readback: wordpressProjection.wordpress_readback ?? wordpressProjection.wordpress_verification,
       }, now)
     }
+  }
+
+  const refreshedOutbox = outboxEventByIdempotency(database, result.operation_id)
+  if (
+    refreshedOutbox?.deliveries?.some((delivery) => !["verified", "cancelled"].includes(delivery.status)) &&
+    !queue.some((operation) => operation.operation_id === result.operation_id)
+  ) {
+    const restoredOperation = {
+      operation_id: refreshedOutbox.event.idempotency_key,
+      operation_type: refreshedOutbox.event.event_type,
+      entity_id: refreshedOutbox.event.aggregate_id,
+      payload: refreshedOutbox.event.payload ?? {},
+      queued_at_utc: refreshedOutbox.event.created_at_utc,
+      sync_status: "pending",
+    }
+    database.prepare(`
+      INSERT INTO operation_queue (
+        operation_id, operation_type, entity_id, payload_json, queued_at_utc, sync_status
+      ) VALUES (?, ?, ?, ?, ?, 'pending')
+      ON CONFLICT(operation_id) DO UPDATE SET sync_status = 'pending'
+    `).run(
+      restoredOperation.operation_id,
+      restoredOperation.operation_type,
+      restoredOperation.entity_id,
+      JSON.stringify(restoredOperation.payload),
+      restoredOperation.queued_at_utc,
+    )
+    queue.push(restoredOperation)
   }
 }
 
@@ -13386,7 +13910,7 @@ function squareInventoryReconciliationGroups(inventoryItems) {
       continue
     }
 
-    if (status !== "available") {
+    if (!["available", "sold", "return_review"].includes(status)) {
       continue
     }
 

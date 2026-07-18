@@ -1403,7 +1403,8 @@ try {
   assert.equal(pushedEventRegistration.status, "ok")
   assert.equal(pushedEventRegistration.operation_count, 5)
   assert.equal(pushedEventRegistration.accepted_count, 3)
-  assert.equal(pushedEventRegistration.retry_count, 1)
+  assert.equal(pushedEventRegistration.retry_count, 0)
+  assert.equal(pushedEventRegistration.deferred_count, 1)
   assert.equal(pushedEventRegistration.unsupported_operation_count, 1)
   assert.equal(pushedEventRegistration.wordpress_inventory_push_connected, true)
   assert.equal(pushedEventRegistration.wordpress_event_registration_push_connected, true)
@@ -1411,7 +1412,7 @@ try {
   assert.equal(pushedEventRegistration.wordpress_kiosk_order_push_connected, true)
   assert.equal(wordpressEventRegistrationPushCalls, 1)
   assert.equal(wordpressEventCheckinPushCalls, 1)
-  assert.equal(wordpressInventoryPushCalls, 4)
+  assert.equal(wordpressInventoryPushCalls, 3)
   assert.equal(wordpressKioskOrderPushCalls, 1)
   assert.ok(
     pushedEventRegistration.results.some(
@@ -1427,8 +1428,8 @@ try {
     pushedEventRegistration.results.some(
       (result) =>
         result.operation_type === "inventory_intake" &&
-        result.status === "retry" &&
-        result.code === "wordpress_inventory_push_fixture_unavailable",
+        result.status === "deferred" &&
+        result.code === "wordpress_projection_retry_not_due",
     ),
   )
   assert.ok(
@@ -1475,9 +1476,10 @@ try {
     token: managerToken,
   })
   assert.equal(pushedSquareSale.status, "ok")
-  assert.equal(pushedSquareSale.operation_count, 1)
+  assert.equal(pushedSquareSale.operation_count, 3)
   assert.equal(pushedSquareSale.accepted_count, 0)
-  assert.equal(pushedSquareSale.retry_count, 1)
+  assert.equal(pushedSquareSale.retry_count, 0)
+  assert.equal(pushedSquareSale.deferred_count, 3)
   assert.equal(pushedSquareSale.unsupported_operation_count, 1)
   assert.equal(pushedSquareSale.wordpress_inventory_sale_push_connected, true)
   assert.equal(wordpressInventorySalePushCalls, 1)
@@ -1485,8 +1487,8 @@ try {
     pushedSquareSale.results.some(
       (result) =>
         result.operation_type === "inventory_intake" &&
-        result.status === "retry" &&
-        result.code === "wordpress_inventory_push_fixture_unavailable",
+        result.status === "deferred" &&
+        result.code === "wordpress_projection_retry_not_due",
     ),
   )
 
@@ -1594,9 +1596,10 @@ try {
     token: managerToken,
   })
   assert.equal(pushedCustomerAndCredit.status, "ok")
-  assert.equal(pushedCustomerAndCredit.operation_count, 4)
+  assert.equal(pushedCustomerAndCredit.operation_count, 6)
   assert.equal(pushedCustomerAndCredit.accepted_count, 3)
-  assert.equal(pushedCustomerAndCredit.retry_count, 1)
+  assert.equal(pushedCustomerAndCredit.retry_count, 0)
+  assert.equal(pushedCustomerAndCredit.deferred_count, 3)
   assert.equal(pushedCustomerAndCredit.wordpress_customer_push_connected, true)
   assert.equal(pushedCustomerAndCredit.wordpress_credit_push_connected, true)
   assert.equal(wordpressCustomerUpsertPushCalls, 1)
@@ -1605,8 +1608,8 @@ try {
     pushedCustomerAndCredit.results.some(
       (result) =>
         result.operation_type === "inventory_intake" &&
-        result.status === "retry" &&
-        result.code === "wordpress_inventory_push_fixture_unavailable",
+        result.status === "deferred" &&
+        result.code === "wordpress_projection_retry_not_due",
     ),
   )
   assert.ok(

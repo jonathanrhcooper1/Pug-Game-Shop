@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto"
 
-export const AUTHORITATIVE_SCHEMA_VERSION = 1
-export const AUTHORITATIVE_SCHEMA_MIGRATION = "20260718_authoritative_inventory_sync_v1"
+export const AUTHORITATIVE_SCHEMA_VERSION = 2
+export const AUTHORITATIVE_SCHEMA_MIGRATION = "20260718_authoritative_inventory_sync_v2"
+export const AUTHORITATIVE_SCHEMA_V1_MIGRATION = "20260718_authoritative_inventory_sync_v1"
 
 const OUTBOX_DESTINATIONS = new Set(["wordpress", "square", "kiosk"])
 const DELIVERY_STATUSES = new Set([
@@ -37,6 +38,10 @@ export function migrateAuthoritativeLedger(database, now = () => new Date()) {
         quantity_before INTEGER NOT NULL,
         quantity_delta INTEGER NOT NULL,
         quantity_after INTEGER NOT NULL,
+        reserved_quantity_before INTEGER NOT NULL DEFAULT 0,
+        reserved_quantity_after INTEGER NOT NULL DEFAULT 0,
+        available_quantity_before INTEGER NOT NULL DEFAULT 0,
+        available_quantity_after INTEGER NOT NULL DEFAULT 0,
         status_before TEXT NOT NULL DEFAULT '',
         status_after TEXT NOT NULL DEFAULT '',
         price_before_minor_units INTEGER NOT NULL DEFAULT 0,
@@ -115,6 +120,27 @@ export function migrateAuthoritativeLedger(database, now = () => new Date()) {
       CREATE INDEX IF NOT EXISTS sync_outbox_deliveries_destination_idx
         ON sync_outbox_deliveries (destination, status, created_at_utc);
 
+      CREATE TABLE IF NOT EXISTS sync_outbox_replay_audit (
+        replay_id TEXT PRIMARY KEY,
+        replay_request_key TEXT NOT NULL UNIQUE,
+        delivery_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        operation_id TEXT NOT NULL,
+        destination TEXT NOT NULL,
+        previous_status TEXT NOT NULL,
+        previous_attempt_count INTEGER NOT NULL DEFAULT 0,
+        previous_next_attempt_at_utc TEXT NOT NULL DEFAULT '',
+        previous_error_code TEXT NOT NULL DEFAULT '',
+        previous_error_message TEXT NOT NULL DEFAULT '',
+        reason TEXT NOT NULL,
+        aggregate_snapshot_json TEXT NOT NULL DEFAULT '{}',
+        requested_by_user_id TEXT NOT NULL,
+        requested_by_user_name TEXT NOT NULL,
+        requested_at_utc TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS sync_outbox_replay_operation_idx
+        ON sync_outbox_replay_audit (operation_id, destination, requested_at_utc DESC);
+
       CREATE TABLE IF NOT EXISTS processed_external_events (
         provider TEXT NOT NULL,
         external_event_id TEXT NOT NULL,
@@ -189,10 +215,36 @@ export function migrateAuthoritativeLedger(database, now = () => new Date()) {
         ON price_review_items (review_status, created_at_utc);
     `)
 
+    const v2AlreadyApplied = Boolean(
+      database.prepare("SELECT 1 AS present FROM schema_migrations WHERE migration_key = ?")
+        .get(AUTHORITATIVE_SCHEMA_MIGRATION),
+    )
+
+    ensureAuthoritativeColumn(database, "inventory_ledger_entries", "reserved_quantity_before", "INTEGER NOT NULL DEFAULT 0")
+    ensureAuthoritativeColumn(database, "inventory_ledger_entries", "reserved_quantity_after", "INTEGER NOT NULL DEFAULT 0")
+    ensureAuthoritativeColumn(database, "inventory_ledger_entries", "available_quantity_before", "INTEGER NOT NULL DEFAULT 0")
+    ensureAuthoritativeColumn(database, "inventory_ledger_entries", "available_quantity_after", "INTEGER NOT NULL DEFAULT 0")
+
+    if (!v2AlreadyApplied) {
+      database.exec(`
+        UPDATE inventory_ledger_entries
+        SET reserved_quantity_before = CASE WHEN status_before = 'reserved' THEN quantity_before ELSE 0 END,
+            reserved_quantity_after = CASE WHEN status_after = 'reserved' THEN quantity_after ELSE 0 END,
+            available_quantity_before = CASE WHEN status_before = 'reserved' THEN 0 ELSE quantity_before END,
+            available_quantity_after = CASE WHEN status_after = 'reserved' THEN 0 ELSE quantity_after END
+      `)
+    }
+
     database.prepare(`
       INSERT INTO schema_migrations (
         migration_key, schema_version, applied_at_utc, rollback_supported
       ) VALUES (?, ?, ?, 1)
+      ON CONFLICT(migration_key) DO NOTHING
+    `).run(AUTHORITATIVE_SCHEMA_V1_MIGRATION, 1, appliedAtUtc)
+    database.prepare(`
+      INSERT INTO schema_migrations (
+        migration_key, schema_version, applied_at_utc, rollback_supported
+      ) VALUES (?, ?, ?, 0)
       ON CONFLICT(migration_key) DO NOTHING
     `).run(AUTHORITATIVE_SCHEMA_MIGRATION, AUTHORITATIVE_SCHEMA_VERSION, appliedAtUtc)
   })
@@ -217,6 +269,13 @@ export function withImmediateTransaction(database, action) {
   }
 }
 
+function ensureAuthoritativeColumn(database, tableName, columnName, definition) {
+  const columns = database.prepare(`PRAGMA table_info(${tableName})`).all()
+  if (!columns.some((column) => column.name === columnName)) {
+    database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`)
+  }
+}
+
 export function appendInventoryLedgerEntry(database, input, now = () => new Date()) {
   const idempotencyKey = cleanRequired(input.idempotency_key ?? input.idempotencyKey, "idempotency_key")
   const existing = database.prepare(
@@ -230,6 +289,26 @@ export function appendInventoryLedgerEntry(database, input, now = () => new Date
   const quantityBefore = nonNegativeInt(input.quantity_before ?? input.quantityBefore)
   const quantityAfter = nonNegativeInt(input.quantity_after ?? input.quantityAfter)
   const quantityDelta = integer(input.quantity_delta ?? input.quantityDelta, quantityAfter - quantityBefore)
+  const statusBefore = cleanText(input.status_before ?? input.statusBefore)
+  const statusAfter = cleanText(input.status_after ?? input.statusAfter)
+  const reservedQuantityBefore = Math.min(
+    quantityBefore,
+    input.reserved_quantity_before !== undefined || input.reservedQuantityBefore !== undefined
+      ? nonNegativeInt(input.reserved_quantity_before ?? input.reservedQuantityBefore)
+      : statusBefore === "reserved" ? quantityBefore : 0,
+  )
+  const reservedQuantityAfter = Math.min(
+    quantityAfter,
+    input.reserved_quantity_after !== undefined || input.reservedQuantityAfter !== undefined
+      ? nonNegativeInt(input.reserved_quantity_after ?? input.reservedQuantityAfter)
+      : statusAfter === "reserved" ? quantityAfter : 0,
+  )
+  const availableQuantityBefore = input.available_quantity_before !== undefined || input.availableQuantityBefore !== undefined
+    ? Math.min(quantityBefore, nonNegativeInt(input.available_quantity_before ?? input.availableQuantityBefore))
+    : Math.max(0, quantityBefore - reservedQuantityBefore)
+  const availableQuantityAfter = input.available_quantity_after !== undefined || input.availableQuantityAfter !== undefined
+    ? Math.min(quantityAfter, nonNegativeInt(input.available_quantity_after ?? input.availableQuantityAfter))
+    : Math.max(0, quantityAfter - reservedQuantityAfter)
   const createdAtUtc = cleanTimestamp(input.created_at_utc ?? input.createdAtUtc) || now().toISOString()
   const ledgerId = cleanText(input.ledger_id ?? input.ledgerId) || `inv-ledger-${randomUUID()}`
   const values = {
@@ -243,8 +322,12 @@ export function appendInventoryLedgerEntry(database, input, now = () => new Date
     quantity_before: quantityBefore,
     quantity_delta: quantityDelta,
     quantity_after: quantityAfter,
-    status_before: cleanText(input.status_before ?? input.statusBefore),
-    status_after: cleanText(input.status_after ?? input.statusAfter),
+    reserved_quantity_before: reservedQuantityBefore,
+    reserved_quantity_after: reservedQuantityAfter,
+    available_quantity_before: availableQuantityBefore,
+    available_quantity_after: availableQuantityAfter,
+    status_before: statusBefore,
+    status_after: statusAfter,
     price_before_minor_units: nonNegativeInt(input.price_before_minor_units ?? input.priceBeforeMinorUnits),
     price_after_minor_units: nonNegativeInt(input.price_after_minor_units ?? input.priceAfterMinorUnits),
     actor_user_id: cleanText(input.actor_user_id ?? input.actorUserId),
@@ -258,11 +341,13 @@ export function appendInventoryLedgerEntry(database, input, now = () => new Date
     INSERT INTO inventory_ledger_entries (
       ledger_id, idempotency_key, inventory_public_id, mutation_type, source_channel,
       reference_type, reference_id, quantity_before, quantity_delta, quantity_after,
+      reserved_quantity_before, reserved_quantity_after, available_quantity_before, available_quantity_after,
       status_before, status_after, price_before_minor_units, price_after_minor_units,
       actor_user_id, actor_user_name, reason, payload_json, created_at_utc
     ) VALUES (
       @ledger_id, @idempotency_key, @inventory_public_id, @mutation_type, @source_channel,
       @reference_type, @reference_id, @quantity_before, @quantity_delta, @quantity_after,
+      @reserved_quantity_before, @reserved_quantity_after, @available_quantity_before, @available_quantity_after,
       @status_before, @status_after, @price_before_minor_units, @price_after_minor_units,
       @actor_user_id, @actor_user_name, @reason, @payload_json, @created_at_utc
     )
@@ -364,7 +449,7 @@ export function markOutboxDelivery(database, input, now = () => new Date()) {
   const maxAttempts = positiveInt(delivery.max_attempts, 12)
   const terminalStatus = status === "retry" && attemptCount >= maxAttempts ? "dead_letter" : status
   const backoffSeconds = Math.min(3600, Math.max(5, 5 * 2 ** Math.min(attemptCount, 9)))
-  const nextAttemptAtUtc = terminalStatus === "retry"
+  const nextAttemptAtUtc = ["retry", "delivered_unverified"].includes(terminalStatus)
     ? new Date(now().getTime() + backoffSeconds * 1000).toISOString()
     : null
 
@@ -391,6 +476,234 @@ export function markOutboxDelivery(database, input, now = () => new Date()) {
 
   refreshOutboxEventStatus(database, eventId, updatedAtUtc)
   return outboxDeliveriesForEvent(database, eventId).find((row) => row.destination === destination)
+}
+
+export function outboxDeliveryAttemptState(database, input, now = () => new Date()) {
+  const idempotencyKey = cleanRequired(
+    input.idempotency_key ?? input.idempotencyKey ?? input.operation_id ?? input.operationId,
+    "idempotency_key",
+  )
+  const destination = cleanDestination(input.destination)
+  const row = database.prepare(`
+    SELECT delivery.*, event.idempotency_key, event.aggregate_type, event.aggregate_id,
+           event.event_type, event.event_version
+    FROM sync_outbox_events AS event
+    INNER JOIN sync_outbox_deliveries AS delivery ON delivery.event_id = event.event_id
+    WHERE event.idempotency_key = ? AND delivery.destination = ?
+  `).get(idempotencyKey, destination)
+
+  if (!row) {
+    return {
+      exists: false,
+      eligible: true,
+      terminal: false,
+      terminal_success: false,
+      reason: "legacy_operation_without_outbox_delivery",
+      destination,
+    }
+  }
+
+  const currentTime = now().getTime()
+  const nextAttemptTime = Date.parse(cleanText(row.next_attempt_at_utc))
+  const terminalSuccess = ["verified", "cancelled"].includes(row.status)
+  const terminal = terminalSuccess || row.status === "dead_letter"
+  const due = !Number.isFinite(nextAttemptTime) || nextAttemptTime <= currentTime
+  const eligible = !terminal && due && [
+    "pending",
+    "processing",
+    "retry",
+    "delivered_unverified",
+  ].includes(row.status)
+
+  return {
+    exists: true,
+    eligible,
+    terminal,
+    terminal_success: terminalSuccess,
+    reason: terminal
+      ? `terminal_${row.status}`
+      : due
+        ? `due_${row.status}`
+        : "retry_not_due",
+    destination,
+    delivery: publicOutboxDelivery(row),
+  }
+}
+
+export function claimOutboxDelivery(database, input, now = () => new Date()) {
+  const state = outboxDeliveryAttemptState(database, input, now)
+
+  if (!state.exists || !state.eligible) {
+    return { claimed: !state.exists, state }
+  }
+
+  const claimedAtUtc = now().toISOString()
+  const leaseSeconds = Math.min(3600, Math.max(30, positiveInt(input.lease_seconds ?? input.leaseSeconds, 300)))
+  const leaseExpiresAtUtc = new Date(now().getTime() + leaseSeconds * 1000).toISOString()
+  const result = database.prepare(`
+    UPDATE sync_outbox_deliveries
+    SET status = 'processing', next_attempt_at_utc = ?, updated_at_utc = ?
+    WHERE delivery_id = ?
+      AND status IN ('pending', 'processing', 'retry', 'delivered_unverified')
+      AND (next_attempt_at_utc IS NULL OR next_attempt_at_utc <= ?)
+  `).run(
+    leaseExpiresAtUtc,
+    claimedAtUtc,
+    state.delivery.delivery_id,
+    claimedAtUtc,
+  )
+
+  if (Number(result.changes ?? 0) !== 1) {
+    return {
+      claimed: false,
+      state: outboxDeliveryAttemptState(database, input, now),
+    }
+  }
+
+  refreshOutboxEventStatus(database, state.delivery.event_id, claimedAtUtc)
+  return {
+    claimed: true,
+    state: outboxDeliveryAttemptState(database, input, now),
+  }
+}
+
+export function listOutboxDeliveryRecords(database, input = {}) {
+  const requestedStatuses = Array.isArray(input.statuses)
+    ? input.statuses.map(cleanDeliveryStatus).filter(Boolean)
+    : ["pending", "processing", "retry", "delivered_unverified", "dead_letter"]
+  const statuses = [...new Set(requestedStatuses)]
+  const destination = cleanDestination(input.destination)
+  const limit = Math.min(500, Math.max(1, positiveInt(input.limit, 100)))
+  const clauses = []
+  const parameters = []
+
+  if (statuses.length > 0) {
+    clauses.push(`delivery.status IN (${statuses.map(() => "?").join(", ")})`)
+    parameters.push(...statuses)
+  }
+  if (destination) {
+    clauses.push("delivery.destination = ?")
+    parameters.push(destination)
+  }
+
+  parameters.push(limit)
+  return database.prepare(`
+    SELECT delivery.delivery_id, delivery.event_id, delivery.destination, delivery.status,
+           delivery.attempt_count, delivery.max_attempts, delivery.next_attempt_at_utc,
+           delivery.last_attempt_at_utc, delivery.verified_at_utc, delivery.last_http_status,
+           delivery.last_error_code, delivery.last_error_message, delivery.created_at_utc,
+           delivery.updated_at_utc, event.idempotency_key AS operation_id,
+           event.aggregate_type, event.aggregate_id, event.event_type, event.event_version,
+           event.status AS event_status
+    FROM sync_outbox_deliveries AS delivery
+    INNER JOIN sync_outbox_events AS event ON event.event_id = delivery.event_id
+    ${clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : ""}
+    ORDER BY
+      CASE delivery.status
+        WHEN 'dead_letter' THEN 0
+        WHEN 'retry' THEN 1
+        WHEN 'delivered_unverified' THEN 2
+        WHEN 'processing' THEN 3
+        ELSE 4
+      END,
+      COALESCE(delivery.next_attempt_at_utc, delivery.created_at_utc) ASC
+    LIMIT ?
+  `).all(...parameters).map((row) => ({
+    ...row,
+    last_error_code: sanitizeOutboxErrorCode(row.last_error_code),
+    last_error_message: sanitizeOutboxErrorMessage(row.last_error_message),
+  }))
+}
+
+export function requeueOutboxDelivery(database, input, now = () => new Date()) {
+  const operationId = cleanRequired(
+    input.operation_id ?? input.operationId ?? input.idempotency_key ?? input.idempotencyKey,
+    "operation_id",
+  )
+  const destination = cleanDestination(input.destination)
+  const requestId = cleanRequired(input.request_id ?? input.requestId, "request_id")
+  const reason = cleanRequired(input.reason, "reason")
+  const actorUserId = cleanRequired(input.actor_user_id ?? input.actorUserId, "actor_user_id")
+  const actorUserName = cleanRequired(input.actor_user_name ?? input.actorUserName, "actor_user_name")
+  const aggregateSnapshot = input.aggregate_snapshot ?? input.aggregateSnapshot ?? {}
+  const replayRequestKey = `${operationId}:${destination}:${requestId}`
+
+  return withImmediateTransaction(database, () => {
+    const existingAudit = database.prepare(
+      "SELECT * FROM sync_outbox_replay_audit WHERE replay_request_key = ?",
+    ).get(replayRequestKey)
+
+    if (existingAudit) {
+      const state = outboxDeliveryAttemptState(database, { operation_id: operationId, destination }, now)
+      return {
+        status: "ok",
+        idempotent: true,
+        audit: publicOutboxReplayAudit(existingAudit),
+        delivery: state.delivery ?? null,
+      }
+    }
+
+    const state = outboxDeliveryAttemptState(database, { operation_id: operationId, destination }, now)
+    if (!state.exists) {
+      throw new Error(`Outbox delivery ${operationId}/${destination} was not found.`)
+    }
+    if (["verified", "cancelled"].includes(state.delivery.status)) {
+      throw new Error(`A ${state.delivery.status} delivery cannot be replayed.`)
+    }
+
+    const requestedAtUtc = now().toISOString()
+    const replayId = cleanText(input.replay_id ?? input.replayId) || `outbox-replay-${randomUUID()}`
+    const audit = {
+      replay_id: replayId,
+      replay_request_key: replayRequestKey,
+      delivery_id: state.delivery.delivery_id,
+      event_id: state.delivery.event_id,
+      operation_id: operationId,
+      destination,
+      previous_status: state.delivery.status,
+      previous_attempt_count: nonNegativeInt(state.delivery.attempt_count),
+      previous_next_attempt_at_utc: cleanText(state.delivery.next_attempt_at_utc),
+      previous_error_code: sanitizeOutboxErrorCode(state.delivery.last_error_code),
+      previous_error_message: sanitizeOutboxErrorMessage(state.delivery.last_error_message),
+      reason: sanitizeOutboxErrorMessage(reason),
+      aggregate_snapshot_json: safeJson(aggregateSnapshot),
+      requested_by_user_id: actorUserId,
+      requested_by_user_name: actorUserName,
+      requested_at_utc: requestedAtUtc,
+    }
+
+    database.prepare(`
+      INSERT INTO sync_outbox_replay_audit (
+        replay_id, replay_request_key, delivery_id, event_id, operation_id, destination,
+        previous_status, previous_attempt_count, previous_next_attempt_at_utc,
+        previous_error_code, previous_error_message, reason, aggregate_snapshot_json,
+        requested_by_user_id, requested_by_user_name, requested_at_utc
+      ) VALUES (
+        @replay_id, @replay_request_key, @delivery_id, @event_id, @operation_id, @destination,
+        @previous_status, @previous_attempt_count, @previous_next_attempt_at_utc,
+        @previous_error_code, @previous_error_message, @reason, @aggregate_snapshot_json,
+        @requested_by_user_id, @requested_by_user_name, @requested_at_utc
+      )
+    `).run(audit)
+
+    database.prepare(`
+      UPDATE sync_outbox_deliveries
+      SET status = 'pending', attempt_count = 0, next_attempt_at_utc = ?,
+          last_attempt_at_utc = NULL, verified_at_utc = NULL, last_http_status = 0,
+          last_error_code = '', last_error_message = '', response_json = '{}',
+          readback_json = '{}', updated_at_utc = ?
+      WHERE delivery_id = ?
+    `).run(requestedAtUtc, requestedAtUtc, state.delivery.delivery_id)
+    refreshOutboxEventStatus(database, state.delivery.event_id, requestedAtUtc)
+
+    const updatedState = outboxDeliveryAttemptState(database, { operation_id: operationId, destination }, now)
+    return {
+      status: "ok",
+      idempotent: false,
+      audit: publicOutboxReplayAudit(audit),
+      delivery: updatedState.delivery,
+    }
+  })
 }
 
 export function outboxEventByIdempotency(database, idempotencyKey) {
@@ -774,6 +1087,7 @@ export function authoritativeLedgerDiagnostics(database) {
     ),
     outbox_dead_letter_count: scalar("SELECT COUNT(*) AS count FROM sync_outbox_deliveries WHERE status = 'dead_letter'"),
     outbox_verified_delivery_count: scalar("SELECT COUNT(*) AS count FROM sync_outbox_deliveries WHERE status = 'verified'"),
+    outbox_replay_audit_count: scalar("SELECT COUNT(*) AS count FROM sync_outbox_replay_audit"),
     processed_external_event_count: scalar("SELECT COUNT(*) AS count FROM processed_external_events"),
     price_observation_count: scalar("SELECT COUNT(*) AS count FROM price_observations"),
     price_review_pending_count: scalar(
@@ -827,6 +1141,14 @@ function publicOutboxDelivery(row) {
     readback: parseJson(row.readback_json),
     response_json: undefined,
     readback_json: undefined,
+  }
+}
+
+function publicOutboxReplayAudit(row) {
+  return {
+    ...row,
+    aggregate_snapshot: parseJson(row.aggregate_snapshot_json),
+    aggregate_snapshot_json: undefined,
   }
 }
 
@@ -893,6 +1215,21 @@ function cleanRequired(value, field) {
 
 function cleanText(value) {
   return String(value ?? "").trim()
+}
+
+function sanitizeOutboxErrorCode(value) {
+  return cleanText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9_.:-]+/g, "_")
+    .slice(0, 160)
+}
+
+function sanitizeOutboxErrorMessage(value) {
+  return cleanText(value)
+    .replace(/\bauthorization\s*[:=]?\s*bearer\s+[^\s,;]+/gi, "Authorization [redacted]")
+    .replace(/\b(bearer|token|secret|password|api[_ -]?key|authorization)\s*[:=]?\s*[^\s,;]+/gi, "$1 [redacted]")
+    .replace(/\b(?:sq0[a-z]+|whsec)_[A-Za-z0-9_-]+\b/g, "[redacted]")
+    .slice(0, 500)
 }
 
 function cleanTimestamp(value) {
