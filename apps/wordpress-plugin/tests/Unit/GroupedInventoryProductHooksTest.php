@@ -35,6 +35,7 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		$this->assert_same( 'expire_stale_reservations', $map['action tcg_store_expire_reservations'] );
 		$this->assert_same( 'attach_exact_inventory_order_line_metadata', $map['action woocommerce_checkout_create_order_line_item'] );
 		$this->assert_same( 'convert_paid_order_reservations', $map['action woocommerce_payment_complete'] );
+		$this->assert_same( 'move_refunded_inventory_to_return_review', $map['action woocommerce_order_refunded'] );
 		$this->assert_same( 'release_removed_cart_item_reservation', $map['action woocommerce_cart_item_removed'] );
 		$this->assert_same( 'reconcile_product_stock_to_inventory', $map['action woocommerce_product_set_stock'] );
 		$this->assert_same( 'reconcile_product_stock_to_inventory', $map['action woocommerce_variation_set_stock'] );
@@ -75,6 +76,8 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'price_snapshot_minor_units',
 				'SerializedOrderLineMetadataPlanner',
 				'convert_to_sale',
+				'SerializedOrderRefundHandler',
+				'move_refunded_inventory_to_return_review',
 				'cart_removed',
 				'release_expired_cart_reservations',
 				'expire_stale_reservations',

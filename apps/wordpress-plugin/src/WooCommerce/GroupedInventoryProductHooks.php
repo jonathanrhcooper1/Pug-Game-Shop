@@ -38,6 +38,7 @@ final class GroupedInventoryProductHooks {
 		add_action( 'woocommerce_payment_complete', array( $this, 'convert_paid_order_reservations' ), 10 );
 		add_action( 'woocommerce_order_status_failed', array( $this, 'release_order_reservations' ), 10 );
 		add_action( 'woocommerce_order_status_cancelled', array( $this, 'release_order_reservations' ), 10 );
+		add_action( 'woocommerce_order_refunded', array( $this, 'move_refunded_inventory_to_return_review' ), 10, 2 );
 		add_action( 'woocommerce_cart_item_removed', array( $this, 'release_removed_cart_item_reservation' ), 10, 2 );
 		add_action( 'woocommerce_product_set_stock', array( $this, 'reconcile_product_stock_to_inventory' ), 20, 1 );
 		add_action( 'woocommerce_variation_set_stock', array( $this, 'reconcile_product_stock_to_inventory' ), 20, 1 );
@@ -65,6 +66,7 @@ final class GroupedInventoryProductHooks {
 			array( 'type' => 'action', 'hook' => self::EXPIRY_CRON_HOOK, 'callback' => 'expire_stale_reservations' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_checkout_create_order_line_item', 'callback' => 'attach_exact_inventory_order_line_metadata' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_payment_complete', 'callback' => 'convert_paid_order_reservations' ),
+			array( 'type' => 'action', 'hook' => 'woocommerce_order_refunded', 'callback' => 'move_refunded_inventory_to_return_review' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_cart_item_removed', 'callback' => 'release_removed_cart_item_reservation' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_product_set_stock', 'callback' => 'reconcile_product_stock_to_inventory' ),
 			array( 'type' => 'action', 'hook' => 'woocommerce_variation_set_stock', 'callback' => 'reconcile_product_stock_to_inventory' ),
@@ -459,6 +461,10 @@ final class GroupedInventoryProductHooks {
 
 	public function release_order_reservations( mixed $order_id ): void {
 		$this->transition_order_reservations( (int) $order_id, 'release_reservation' );
+	}
+
+	public function move_refunded_inventory_to_return_review( mixed $order_id, mixed $refund_id ): void {
+		( new SerializedOrderRefundHandler() )->handle( (int) $order_id, (int) $refund_id );
 	}
 
 	public function reconcile_product_stock_to_inventory( mixed $product_or_id = null, mixed $stock_status = null, mixed $product_from_hook = null ): void {
