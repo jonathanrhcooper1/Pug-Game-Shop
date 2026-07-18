@@ -57,6 +57,7 @@
     "inventory:prepare-pug-grading-singles": "node scripts/prepare-pug-grading-singles-import.mjs",
     "inventory:import-square-catalog-local": "node scripts/import-square-catalog-local-inventory.mjs",
     "scrydex:live-smoke": "node scripts/scrydex-live-smoke.mjs",
+    "scrydex:validate": "npm --prefix apps/local-sync-server run ops:validate-scrydex",
     "test": "npm run test:local && npm run test:sync-engine && npm run test:pos-payments && npm run test:api-client && npm run test:offline-app && npm run test:packaging && npm run test:required-matrix",
     "test:local": "cd apps/wordpress-plugin && php tests/run.php && php tests/bootstrap-smoke.php && php tests/lint.php",
     "test:sync-engine": "node packages/sync-engine/tests/offline-conflict-policy.mjs && npm --prefix apps/local-sync-server run test",
