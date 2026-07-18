@@ -30,6 +30,7 @@ for (const requiredMarker of [
   ".env.local-sync",
   "production_local_sync_square_sale_smoke_dry_run",
   "production_local_sync_square_sale_smoke",
+  "PUGS${id.slice(-9)}",
   "createsVisibleInventory: true",
   "autoPublishesWooCommerceProduct: true",
   "finalizesSquareSale: true",

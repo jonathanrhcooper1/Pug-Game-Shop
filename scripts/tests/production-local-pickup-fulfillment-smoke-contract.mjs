@@ -30,6 +30,7 @@ for (const requiredMarker of [
   ".env.local-sync",
   "production_local_pickup_fulfillment_smoke_dry_run",
   "production_local_pickup_fulfillment_smoke",
+  "PUGP${compactId.slice(-9)}",
   "createsTemporaryPaidWooCommerceOrder: true",
   "usesWooCommerceLocalPickup: true",
   "usesSerializedCardLineMetadata: true",

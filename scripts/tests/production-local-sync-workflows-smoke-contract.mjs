@@ -30,6 +30,8 @@ for (const requiredMarker of [
   ".env.local-sync",
   "production_local_sync_workflows_smoke_dry_run",
   "production_local_sync_workflows_smoke",
+  "PUG${id.slice(-9)}A",
+  "PUG${id.slice(-9)}B",
   "createsTemporaryWordPressEvent: true",
   "createsHiddenInventory: true",
   "createsTemporaryCustomerCredit: true",

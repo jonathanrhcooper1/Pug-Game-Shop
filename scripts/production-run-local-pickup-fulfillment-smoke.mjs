@@ -664,6 +664,7 @@ function execWithStdin(connection, command, stdin) {
 
 function buildSmokePayload() {
   const id = `CODEX-PICKUP-${timestampForRemoteName(new Date())}`
+  const compactId = id.replace(/[^0-9A-Z]/g, "")
 
   return {
     id,
@@ -672,7 +673,7 @@ function buildSmokePayload() {
     email: `codex-pickup-${id.toLowerCase()}@example.invalid`,
     cardName: "Codex Paid Pickup Smoke Card",
     setName: "Production Fulfillment Smoke",
-    barcode: `${id}-CARD`,
+    barcode: `PUGP${compactId.slice(-9)}`,
     total: "1.23",
     inventoryId: 999000001,
     reservationId: 999000002,

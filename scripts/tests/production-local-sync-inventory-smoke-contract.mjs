@@ -30,7 +30,7 @@ for (const requiredMarker of [
   ".env.local-sync",
   "production_local_sync_inventory_smoke_dry_run",
   "production_local_sync_inventory_smoke",
-  "CODEX-LSYNC-",
+  "PUGI${id.slice(-9)}",
   "/inventory/intake",
   "/sync/push",
   "/inventory/search",

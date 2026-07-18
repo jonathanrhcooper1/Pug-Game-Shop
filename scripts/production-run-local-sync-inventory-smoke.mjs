@@ -268,7 +268,7 @@ if (smokeResult) {
 
 function buildSmokePayload() {
   const id = timestampForRemoteName(new Date()).replace(/[^0-9A-Z]/g, "")
-  const barcode = `CODEX-LSYNC-${id}`.slice(0, 64)
+  const barcode = `PUGI${id.slice(-9)}`
 
   return {
     id,
@@ -609,7 +609,7 @@ if (!$wpdb instanceof wpdb) {
 }
 $barcode = strtoupper(trim((string) ($payload['barcode'] ?? '')));
 $product_ids = array_values(array_unique(array_filter(array_map('absint', (array) ($payload['product_ids'] ?? array())))));
-if ('' === $barcode || !preg_match('/^CODEX-LSYNC-[A-Z0-9]{8,64}$/', $barcode)) {
+if ('' === $barcode || !preg_match('/^PUG[A-Z0-9]{10}$/', $barcode)) {
 	echo wp_json_encode(array('status' => 'error', 'message' => 'barcode_invalid'));
 	exit(1);
 }

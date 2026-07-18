@@ -408,8 +408,8 @@ function buildSmokePayload() {
     eventTitle: `Codex Local Sync Smoke ${id}`,
     eventAttendeeLabel: `Codex Event Smoke ${id}`,
     customerEmail: `codex-lsync-${id.toLowerCase()}@example.invalid`,
-    barcode: `CODEX-LSYNC-WF-${id}`.slice(0, 64),
-    kioskBarcode: `CODEX-LSYNC-KIOSK-${id}`.slice(0, 64),
+    barcode: `PUG${id.slice(-9)}A`,
+    kioskBarcode: `PUG${id.slice(-9)}B`,
     cardName: "Codex Hidden Workflow Smoke",
     kioskCardName: "Codex Kiosk Workflow Smoke",
   }
@@ -755,8 +755,8 @@ if (
 	!preg_match('/^codex-lsync-[a-z0-9]{8,64}$/', $slug) ||
 	'' === $title ||
 	!is_email($email) ||
-	!preg_match('/^CODEX-LSYNC-WF-[A-Z0-9]{8,64}$/', $barcode) ||
-	!preg_match('/^CODEX-LSYNC-KIOSK-[A-Z0-9]{8,64}$/', $kiosk_barcode)
+	!preg_match('/^PUG[A-Z0-9]{10}$/', $barcode) ||
+	!preg_match('/^PUG[A-Z0-9]{10}$/', $kiosk_barcode)
 ) {
 	echo wp_json_encode(array('status' => 'error', 'message' => 'smoke_payload_invalid'));
 	exit(1);
