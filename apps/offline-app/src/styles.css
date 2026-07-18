@@ -814,6 +814,7 @@ h2 {
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 250, 240, 0.1);
   border-radius: 8px;
+  scroll-margin-top: 12px;
 }
 
 .active-workspace-pill strong {
@@ -3940,6 +3941,27 @@ h2 {
   gap: 8px;
 }
 
+.order-notification-toggle {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  color: #24332b;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(15, 22, 19, 0.14);
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.order-notification-toggle input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #168a55;
+}
+
 .order-notification-file {
   position: relative;
   display: inline-flex;
@@ -4162,6 +4184,34 @@ h2 {
   text-align: right;
 }
 
+.fulfillment-source-badge {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  min-height: 23px;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 0 8px;
+  color: #173b4c;
+  background: rgba(73, 220, 244, 0.14);
+  border: 1px solid rgba(19, 141, 171, 0.28);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.fulfillment-source-badge.woo-synced {
+  color: #17663d;
+  background: rgba(121, 215, 143, 0.16);
+  border-color: rgba(64, 144, 88, 0.3);
+}
+
+.fulfillment-source-badge.woo-queued {
+  color: #6e4a00;
+  background: rgba(255, 208, 68, 0.22);
+  border-color: rgba(216, 155, 24, 0.34);
+}
+
 .trade-in-panel .fulfillment-source-heading {
   align-items: end;
 }
@@ -4229,6 +4279,40 @@ h2 {
 .kiosk-ticket-status.completed {
   background: rgba(121, 215, 143, 0.24);
   border-color: rgba(72, 142, 91, 0.28);
+}
+
+.kiosk-ticket-status.expired {
+  color: #7b332b;
+  background: rgba(240, 126, 103, 0.12);
+  border-color: rgba(240, 126, 103, 0.3);
+}
+
+.fulfillment-history-search {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(220px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.fulfillment-history-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 10px;
+  color: #172016;
+  background: #ffffff;
+  border: 1px solid rgba(18, 59, 89, 0.18);
+  border-radius: 7px;
+}
+
+.completed-fulfillment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.completed-fulfillment-list article.is-expired {
+  background: rgba(255, 248, 246, 0.96);
+  border-color: rgba(240, 126, 103, 0.28);
 }
 
 .kiosk-ticket-detail,
@@ -9482,6 +9566,7 @@ dd {
   .kiosk-storefront-hero,
   .fulfillment-pick-screen > header,
   .fulfillment-pick-screen > footer,
+  .fulfillment-history-search,
   .kiosk-filter-bar,
   .fulfillment-pick-list > label {
     grid-template-columns: 1fr;

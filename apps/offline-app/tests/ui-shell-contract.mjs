@@ -35,8 +35,12 @@ for (const requiredText of [
   "LAN sync",
   "store-sync.sqlite",
   "Order Fulfillment",
-  "Completed pickup history",
-  "Search completed",
+  "Past orders",
+  "Search past orders",
+  "Woo synced",
+  "Woo sync queued",
+  "Hold expired; pickup not completed",
+  "Pickup completed",
   "Pick refs",
   "Find cards in stock",
   "Customer kiosk pickup order",
@@ -466,6 +470,10 @@ for (const className of [
   "fulfillment-pick-art",
   "fulfillment-pick-copy",
   "fulfillment-pick-location",
+  "fulfillment-source-badge",
+  "fulfillment-history-search",
+  "completed-fulfillment-list",
+  "order-notification-toggle",
   "kiosk-hero",
   "kiosk-search-panel",
   "kiosk-customer-fields",
@@ -900,6 +908,83 @@ for (const hiddenInventorySaleText of [
     `Inventory page should not render hidden Square sale UI text: ${hiddenInventorySaleText}`,
   )
 }
+
+assert.ok(
+  /disabled=\{\s*!\(activeKioskFulfillmentTicket \?\? activeWebsiteFulfillmentTicket\)\?\.allItemsPicked \|\|\s*activeFulfillmentTicketIsReady\s*\}/.test(
+    appSource,
+  ),
+  "Active kiosk orders must become ready from pick completion without a payment UI gate",
+)
+assert.match(
+  appSource,
+  /!ticket\.allItemsPicked \|\|\s+ticket\.status === "ready" \|\|\s+ticket\.status === "completed"/,
+  "Kiosk queue ready action must depend on pick completion and fulfillment state",
+)
+assert.equal(
+  appSource.includes('ticket.paymentStatus !== "paid" ||\n                                ticket.status === "ready"'),
+  false,
+  "Kiosk queue ready action must not require payment",
+)
+assert.ok(
+  appSource.includes('nextStatus === "ready" && updatedTicket.paymentStatus !== "paid"'),
+  "Ready-before-payment confirmation must preserve truthful payment messaging",
+)
+
+for (const audioPolicyMarker of [
+  "audio_enabled: false",
+  'fulfillmentNotificationSettings.source !== "employee_app_default"',
+  "fulfillmentNotificationSettingsRef.current.audio_enabled",
+  "employeeOrderSoundSettingsRef.current.enabled",
+  "stationSettings.soundDataUrl.trim() || lanSettings.notification_sound_url.trim()",
+  "Order sounds disabled by store settings",
+]) {
+  assert.ok(appSource.includes(audioPolicyMarker), `Missing fulfillment audio policy marker: ${audioPolicyMarker}`)
+}
+
+for (const liveFulfillmentMarker of [
+  "const fulfillmentBadgeCount = activeKioskOrderTickets.length + activeWebsitePickupTickets.length",
+  'item.label === "Kiosk" && fulfillmentBadgeCount > 0',
+  "actionable fulfillment orders",
+]) {
+  assert.ok(appSource.includes(liveFulfillmentMarker), `Missing live fulfillment badge marker: ${liveFulfillmentMarker}`)
+}
+
+for (const historySemanticsMarker of [
+  'ticket.status === "completed"',
+  'ticket.status === "expired"',
+  "completedPickupOrderCount",
+  "expiredKioskOrderTickets.length",
+  'websitePickupSourceLabel(ticket.source)',
+]) {
+  assert.ok(appSource.includes(historySemanticsMarker), `Missing fulfillment history marker: ${historySemanticsMarker}`)
+}
+assert.equal(
+  appSource.includes(
+    'const completedKioskOrderTickets = kioskOrderTickets.filter((ticket) => ["completed", "expired"].includes(ticket.status))',
+  ),
+  false,
+  "Expired kiosk holds must not be counted as completed pickups",
+)
+
+for (const activeWorkspaceScrollMarker of [
+  "const activeWorkspaceRef = useRef<HTMLElement>(null)",
+  "const pendingWorkspaceScrollRef = useRef<string | null>(null)",
+  "pendingWorkspaceScrollRef.current = label",
+  "ref={activeWorkspaceRef}",
+  "sectionTarget(activeSection).current?.scrollIntoView",
+]) {
+  assert.ok(appSource.includes(activeWorkspaceScrollMarker), `Missing active workspace scroll marker: ${activeWorkspaceScrollMarker}`)
+}
+assert.match(
+  appSource,
+  /function sectionTarget\(_label: string\) \{\s+return activeWorkspaceRef\s+\}/,
+  "Every nav workspace must resolve to the stable active-workspace anchor",
+)
+assert.equal(
+  /function sectionTarget\([\s\S]*?return inventoryPanelRef[\s\S]*?\n  \}/.test(appSource),
+  false,
+  "Mobile nav must not fall back to the inventory panel for unrelated workspaces",
+)
 
 for (const forbidden of [
   ["sk", "live", ""].join("_"),

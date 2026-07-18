@@ -236,7 +236,7 @@ const REPORT_OPTIONS: Array<{ key: LocalSyncReportKey; label: string; focus: str
   { key: "audit", label: "Audit", focus: "Overrides, ledger corrections, staff actions" },
 ]
 const DEFAULT_FULFILLMENT_NOTIFICATION_SETTINGS: LocalSyncFulfillmentNotificationSettings = {
-  audio_enabled: true,
+  audio_enabled: false,
   notification_sound_url: "",
   employee_only: true,
   ready_pickup_email_enabled: true,
@@ -3088,6 +3088,10 @@ async function printLabelOnThisPcDymo(job: OfflineLabelPrintJob): Promise<Browse
   }
 }
 
+function websitePickupSourceLabel(source: WebsitePickupTicket["source"]) {
+  return source === "wordpress" ? "Woo synced" : "Woo sync queued"
+}
+
 async function requestBrowserDymoService(
   action: "GetPrinters" | "PrintLabel",
   fields: Record<string, string> | null = null,
@@ -3590,6 +3594,8 @@ export function App() {
   const offlineSyncAdapter = useMemo(() => createTauriOfflineSyncAdapter(), [])
   const localSyncDiscoveryAdapter = useMemo(() => createTauriLocalSyncDiscoveryAdapter(), [])
   const secureStoreAdapter = useMemo(() => createTauriSecureStoreAdapter(), [])
+  const activeWorkspaceRef = useRef<HTMLElement>(null)
+  const pendingWorkspaceScrollRef = useRef<string | null>(null)
   const inventoryPanelRef = useRef<HTMLElement>(null)
   const workflowPanelRef = useRef<HTMLElement>(null)
   const statusPanelRef = useRef<HTMLElement>(null)
@@ -3956,6 +3962,14 @@ export function App() {
   const [employeeOrderSoundSettings, setEmployeeOrderSoundSettings] = useState(
     loadEmployeeOrderSoundSettings,
   )
+  const kioskOrderTicketsRef = useRef(kioskOrderTickets)
+  const websitePickupTicketsRef = useRef(websitePickupTickets)
+  const fulfillmentNotificationSettingsRef = useRef(fulfillmentNotificationSettings)
+  const employeeOrderSoundSettingsRef = useRef(employeeOrderSoundSettings)
+  kioskOrderTicketsRef.current = kioskOrderTickets
+  websitePickupTicketsRef.current = websitePickupTickets
+  fulfillmentNotificationSettingsRef.current = fulfillmentNotificationSettings
+  employeeOrderSoundSettingsRef.current = employeeOrderSoundSettings
   const [orderNotificationSoundEnabled, setOrderNotificationSoundEnabled] = useState(false)
   const [orderNotificationIssue, setOrderNotificationIssue] = useState("")
   const [fulfillmentHistorySearch, setFulfillmentHistorySearch] = useState("")
@@ -4328,6 +4342,9 @@ export function App() {
     activeFulfillmentTicket?.source === "website"
       ? websitePickupTickets.find((ticket) => ticket.orderId === activeFulfillmentTicket.orderId) ?? null
       : null
+  const activeFulfillmentTicketIsReady =
+    activeKioskFulfillmentTicket?.status === "ready" ||
+    activeWebsiteFulfillmentTicket?.status === "ready_for_pickup"
   const kioskCustomerName = [kioskFirstName, kioskLastName]
     .map((value) => value.trim())
     .filter(Boolean)
@@ -4547,15 +4564,32 @@ export function App() {
           : "Catalog source pending"
   const activeKioskOrderTickets = kioskOrderTickets.filter((ticket) => !["completed", "expired"].includes(ticket.status))
   const activeWebsitePickupTickets = websitePickupTickets.filter((ticket) => ticket.status !== "completed")
-  const completedKioskOrderTickets = kioskOrderTickets.filter((ticket) => ["completed", "expired"].includes(ticket.status))
+  const completedKioskOrderTickets = kioskOrderTickets.filter((ticket) => ticket.status === "completed")
+  const expiredKioskOrderTickets = kioskOrderTickets.filter((ticket) => ticket.status === "expired")
+  const pastKioskOrderTickets = kioskOrderTickets.filter((ticket) => ["completed", "expired"].includes(ticket.status))
   const completedWebsitePickupTickets = websitePickupTickets.filter((ticket) => ticket.status === "completed")
+  const fulfillmentBadgeCount = activeKioskOrderTickets.length + activeWebsitePickupTickets.length
+  const completedPickupOrderCount = completedKioskOrderTickets.length + completedWebsitePickupTickets.length
   const fulfillmentHistoryNeedle = fulfillmentHistorySearch.trim().toLowerCase()
-  const searchableCompletedKioskOrderTickets = completedKioskOrderTickets.filter((ticket) =>
+  const searchablePastKioskOrderTickets = pastKioskOrderTickets.filter((ticket) =>
     fulfillmentTicketSearchText(ticket).includes(fulfillmentHistoryNeedle),
   )
   const searchableCompletedWebsitePickupTickets = completedWebsitePickupTickets.filter((ticket) =>
     fulfillmentTicketSearchText(ticket).includes(fulfillmentHistoryNeedle),
   )
+  const fulfillmentNotificationSettingsLoaded =
+    fulfillmentNotificationSettings.source !== "employee_app_default"
+  const orderNotificationAudioAllowed =
+    fulfillmentNotificationSettingsLoaded &&
+    fulfillmentNotificationSettings.audio_enabled &&
+    employeeOrderSoundSettings.enabled
+  const orderNotificationSoundDescription = !fulfillmentNotificationSettingsLoaded
+    ? "Order audio stays off until this app receives the LAN fulfillment settings."
+    : employeeOrderSoundSettings.soundFileName
+      ? `Using ${employeeOrderSoundSettings.soundFileName} as this station's local override.`
+      : fulfillmentNotificationSettings.notification_sound_url
+        ? "Using the store notification sound provided by the LAN settings."
+        : "Using the built-in alert tone because no store sound is configured."
   const customerProfileKioskOrderTickets =
     customerProfileResult?.status === "ok"
       ? customerProfileResult.kiosk_orders.map(kioskTicketFromLocalSyncOrder)
@@ -5531,6 +5565,19 @@ export function App() {
   }, [sessionIsUnlocked, localSyncSessionToken, customerKioskMode, localSyncClient])
 
   useEffect(() => {
+    if (pendingWorkspaceScrollRef.current !== activeSection) {
+      return
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      sectionTarget(activeSection).current?.scrollIntoView({ block: "start", behavior: "smooth" })
+      pendingWorkspaceScrollRef.current = null
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [activeSection])
+
+  useEffect(() => {
     if (activeSection !== "ScryDex" || !localSyncSessionToken) {
       return
     }
@@ -6355,7 +6402,7 @@ export function App() {
     settings?: LocalSyncFulfillmentNotificationSettings,
   ) {
     if (!settings) {
-      return fulfillmentNotificationSettings
+      return fulfillmentNotificationSettingsRef.current
     }
 
     const nextSettings = {
@@ -6366,35 +6413,62 @@ export function App() {
       raw_credentials_returned: false as const,
     }
 
+    fulfillmentNotificationSettingsRef.current = nextSettings
     setFulfillmentNotificationSettings(nextSettings)
+
+    if (!nextSettings.audio_enabled) {
+      setOrderNotificationSoundEnabled(false)
+    }
 
     return nextSettings
   }
 
   async function refreshFulfillmentNotificationSettings(sessionToken = localSyncSessionToken) {
     if (!sessionToken || customerKioskMode) {
-      return fulfillmentNotificationSettings
+      return fulfillmentNotificationSettingsRef.current
     }
 
     const result = await localSyncClient.getFulfillmentNotifications(sessionToken)
 
     if (result.status !== "ok") {
       handleBlockedLocalSyncSession(result, "Order sound settings locked")
-      return fulfillmentNotificationSettings
+      return fulfillmentNotificationSettingsRef.current
     }
 
     return applyFulfillmentNotificationSettings(result.fulfillment_notifications)
   }
 
   async function enableOrderNotificationSound() {
-    setEmployeeOrderSoundSettings((settings) => ({
-      ...settings,
+    const nextStationSettings = {
+      ...employeeOrderSoundSettingsRef.current,
       enabled: true,
       savedAtUtc: new Date().toISOString(),
-    }))
+    }
+    employeeOrderSoundSettingsRef.current = nextStationSettings
+    setEmployeeOrderSoundSettings(nextStationSettings)
+
+    if (fulfillmentNotificationSettingsRef.current.source === "employee_app_default") {
+      setOrderNotificationSoundEnabled(false)
+      setOrderNotificationIssue("")
+      setActivityMessage({
+        title: "Waiting for LAN order sound settings",
+        detail: "Refresh Fulfillment or wait for the next sync before enabling audio on this station.",
+      })
+      return
+    }
+
+    if (!fulfillmentNotificationSettingsRef.current.audio_enabled) {
+      setOrderNotificationSoundEnabled(false)
+      setOrderNotificationIssue("")
+      setActivityMessage({
+        title: "Order sounds disabled by store settings",
+        detail: "This station is allowed to play alerts, but the LAN-provided fulfillment settings currently disable order audio.",
+      })
+      return
+    }
+
     const played = await playOrderNotificationSound({
       reason: "Staff sound check",
-      force: true,
     })
 
     if (played) {
@@ -6402,9 +6476,30 @@ export function App() {
       setOrderNotificationIssue("")
       setActivityMessage({
         title: "Order sounds enabled",
-        detail: "This employee station will play a sound when a new kiosk or website pickup order arrives.",
+        detail: "This employee station will play the configured sound when a new kiosk or website pickup order arrives while store audio is enabled.",
       })
     }
+  }
+
+  async function handleEmployeeOrderSoundEnabledChange(enabled: boolean) {
+    if (enabled) {
+      await enableOrderNotificationSound()
+      return
+    }
+
+    const nextStationSettings = {
+      ...employeeOrderSoundSettingsRef.current,
+      enabled: false,
+      savedAtUtc: new Date().toISOString(),
+    }
+    employeeOrderSoundSettingsRef.current = nextStationSettings
+    setEmployeeOrderSoundSettings(nextStationSettings)
+    setOrderNotificationSoundEnabled(false)
+    setOrderNotificationIssue("")
+    setActivityMessage({
+      title: "Order sounds off on this station",
+      detail: "New pickup orders will stay visible in Fulfillment, but this employee station will not play an alert.",
+    })
   }
 
   async function handleEmployeeOrderSoundFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -6427,12 +6522,14 @@ export function App() {
 
     try {
       const soundDataUrl = await fileToDataUrl(file)
-      setEmployeeOrderSoundSettings({
+      const nextStationSettings = {
         enabled: true,
         soundDataUrl,
         soundFileName: file.name,
         savedAtUtc: new Date().toISOString(),
-      })
+      }
+      employeeOrderSoundSettingsRef.current = nextStationSettings
+      setEmployeeOrderSoundSettings(nextStationSettings)
       setOrderNotificationIssue("")
       setOrderNotificationSoundEnabled(false)
       setActivityMessage({
@@ -6448,36 +6545,42 @@ export function App() {
     }
   }
 
-  function handleUseBuiltInOrderSound() {
-    setEmployeeOrderSoundSettings({
-      enabled: true,
+  function handleUseStoreOrderSound() {
+    const nextStationSettings = {
+      ...employeeOrderSoundSettingsRef.current,
       soundDataUrl: "",
       soundFileName: "",
       savedAtUtc: new Date().toISOString(),
-    })
+    }
+    employeeOrderSoundSettingsRef.current = nextStationSettings
+    setEmployeeOrderSoundSettings(nextStationSettings)
     setOrderNotificationSoundEnabled(false)
     setOrderNotificationIssue("")
     setActivityMessage({
-      title: "Default order sound selected",
-      detail: "This employee station will use the built-in alert tone until another MP3 or MP4 is chosen.",
+      title: "Store order sound selected",
+      detail: fulfillmentNotificationSettingsRef.current.notification_sound_url
+        ? "This station will use the sound supplied by the LAN fulfillment settings."
+        : "No store sound is configured, so this station will use the built-in alert tone.",
     })
   }
 
   async function playOrderNotificationSound({
     newOrderCount = 0,
     reason = "New pickup order",
-    force = false,
   }: {
     newOrderCount?: number
     reason?: string
-    force?: boolean
   } = {}) {
-    if (customerKioskMode || (!force && !employeeOrderSoundSettings.enabled)) {
+    const lanSettings = fulfillmentNotificationSettingsRef.current
+    const stationSettings = employeeOrderSoundSettingsRef.current
+
+    if (customerKioskMode || !lanSettings.audio_enabled || !stationSettings.enabled) {
       return false
     }
 
     try {
-      const soundUrl = employeeOrderSoundSettings.soundDataUrl.trim()
+      const soundUrl =
+        stationSettings.soundDataUrl.trim() || lanSettings.notification_sound_url.trim()
 
       if (soundUrl) {
         const audio = orderNotificationAudioRef.current ?? new Audio()
@@ -6521,7 +6624,7 @@ export function App() {
     kioskTickets: KioskOrderTicket[],
     websiteTickets: WebsitePickupTicket[],
   ) {
-    if (customerKioskMode || !employeeOrderSoundSettings.enabled) {
+    if (customerKioskMode) {
       return
     }
 
@@ -6542,7 +6645,11 @@ export function App() {
     const newIds = [...activeIds].filter((id) => !knownPickupTicketIdsRef.current?.has(id))
     knownPickupTicketIdsRef.current = activeIds
 
-    if (newIds.length > 0) {
+    if (
+      newIds.length > 0 &&
+      fulfillmentNotificationSettingsRef.current.audio_enabled &&
+      employeeOrderSoundSettingsRef.current.enabled
+    ) {
       void playOrderNotificationSound({
         newOrderCount: newIds.length,
         reason: "New pickup order",
@@ -6595,11 +6702,13 @@ export function App() {
     const nextWebsitePickupTickets =
       websitePickupResult.status === "ok"
         ? websitePickupResult.orders.map(websitePickupTicketFromLocalSyncOrder)
-        : websitePickupTickets
+        : websitePickupTicketsRef.current
 
+    kioskOrderTicketsRef.current = nextKioskTickets
     setKioskOrderTickets(nextKioskTickets)
 
     if (websitePickupResult.status === "ok") {
+      websitePickupTicketsRef.current = nextWebsitePickupTickets
       setWebsitePickupTickets(nextWebsitePickupTickets)
     } else if (showMessage) {
       setActivityMessage({
@@ -6656,27 +6765,31 @@ export function App() {
       if (eventResult.status === "ok") {
         setEventSnapshots(eventResult.events.map(eventSnapshotFromLocalSync))
       }
+      const nextKioskTickets =
+        kioskResult.status === "ok"
+          ? kioskResult.orders.map(kioskTicketFromLocalSyncOrder)
+          : kioskOrderTicketsRef.current
+      const nextWebsitePickupTickets =
+        fulfillmentResult.status === "ok"
+          ? fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder)
+          : websitePickupTicketsRef.current
+
       if (kioskResult.status === "ok") {
         if (kioskResult.fulfillment_notifications) {
           applyFulfillmentNotificationSettings(kioskResult.fulfillment_notifications)
         }
-        setKioskOrderTickets(kioskResult.orders.map(kioskTicketFromLocalSyncOrder))
+        kioskOrderTicketsRef.current = nextKioskTickets
+        setKioskOrderTickets(nextKioskTickets)
       }
       if (fulfillmentResult.status === "ok") {
         if (fulfillmentResult.fulfillment_notifications) {
           applyFulfillmentNotificationSettings(fulfillmentResult.fulfillment_notifications)
         }
-        setWebsitePickupTickets(
-          fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder),
-        )
+        websitePickupTicketsRef.current = nextWebsitePickupTickets
+        setWebsitePickupTickets(nextWebsitePickupTickets)
       }
       if (kioskResult.status === "ok" || fulfillmentResult.status === "ok") {
-        handlePickupTicketNotifications(
-          kioskResult.status === "ok" ? kioskResult.orders.map(kioskTicketFromLocalSyncOrder) : kioskOrderTickets,
-          fulfillmentResult.status === "ok"
-            ? fulfillmentResult.orders.map(websitePickupTicketFromLocalSyncOrder)
-            : websitePickupTickets,
-        )
+        handlePickupTicketNotifications(nextKioskTickets, nextWebsitePickupTickets)
       }
       setLocalSyncStatus(statusResult)
       setLocalSyncLastCheckedAtUtc(new Date().toISOString())
@@ -7284,40 +7397,8 @@ export function App() {
     })
   }
 
-  function sectionTarget(label: string) {
-    if (label === "Sync") {
-      return queuePanelRef
-    }
-
-    if (label === "Status") {
-      return statusPanelRef
-    }
-
-    if (label === "Kiosk") {
-      return kioskPanelRef
-    }
-
-    if (label === "Queue") {
-      return queuePanelRef
-    }
-
-    if (label === "Events") {
-      return eventPanelRef
-    }
-
-    if (label === "Conflicts") {
-      return conflictPanelRef
-    }
-
-    if (label === "Customers") {
-      return creditPanelRef
-    }
-
-    if (label === "Settings") {
-      return connectorPanelRef
-    }
-
-    return inventoryPanelRef
+  function sectionTarget(_label: string) {
+    return activeWorkspaceRef
   }
 
   function handleNavSelection(label: string) {
@@ -7329,13 +7410,20 @@ export function App() {
       return
     }
 
+    pendingWorkspaceScrollRef.current = label
     setActiveSection(label)
     if (label === "Events") {
       void refreshLanEventSnapshots()
     }
-    window.requestAnimationFrame(() => {
-      sectionTarget(label).current?.scrollIntoView({ block: "start", behavior: "smooth" })
-    })
+    if (label === activeSection) {
+      window.requestAnimationFrame(() => {
+        if (pendingWorkspaceScrollRef.current !== label) {
+          return
+        }
+        sectionTarget(label).current?.scrollIntoView({ block: "start", behavior: "smooth" })
+        pendingWorkspaceScrollRef.current = null
+      })
+    }
   }
 
   async function stageOfflineOperation(
@@ -9743,7 +9831,11 @@ export function App() {
     setActiveSection("Kiosk")
     setActivityMessage({
       title: "Kiosk ticket updated",
-      detail: `${orderId} is now ${statusLabelMap[nextStatus].toLowerCase()} in the shared LAN pickup queue. Inventory was not mutated by this status update.`,
+      detail: `${orderId} is now ${statusLabelMap[nextStatus].toLowerCase()} in the shared LAN pickup queue. Inventory was not mutated by this status update.${
+        nextStatus === "ready" && updatedTicket.paymentStatus !== "paid"
+          ? " Payment is still due at the counter and remains tracked separately."
+          : ""
+      }`,
     })
   }
 
@@ -13340,6 +13432,11 @@ export function App() {
                 >
                   <Icon name={item.icon} />
                   <span>{employeeSectionLabel(item.label)}</span>
+                  {item.label === "Kiosk" && fulfillmentBadgeCount > 0 ? (
+                    <strong aria-label={`${fulfillmentBadgeCount} actionable fulfillment orders`}>
+                      {fulfillmentBadgeCount}
+                    </strong>
+                  ) : null}
                   {item.label === "Queue" ? <strong>{queueBadgeCount}</strong> : null}
                   {item.label === "Price Review" ? <strong>{priceReviewBadgeCount}</strong> : null}
                   {item.label === "Events" ? <strong>{eventBadgeCount}</strong> : null}
@@ -13418,7 +13515,11 @@ export function App() {
             ))}
           </section>
 
-          <section className="active-workspace-pill" aria-label="Active workspace">
+          <section
+            className="active-workspace-pill"
+            aria-label="Active workspace"
+            ref={activeWorkspaceRef}
+          >
             <span className="micro-label">Active workspace</span>
             <strong>{employeeSectionLabel(activeSection)}</strong>
           </section>
@@ -16667,15 +16768,15 @@ export function App() {
                   </div>
 
                   <footer>
-                    <small>Every card must be checked before this order can be marked ready.</small>
+                    <small>
+                      Every card must be checked before this order can be marked ready. Kiosk payment
+                      is tracked separately and may still be due at the counter.
+                    </small>
                     <button
                       type="button"
                       disabled={
                         !(activeKioskFulfillmentTicket ?? activeWebsiteFulfillmentTicket)?.allItemsPicked ||
-                        Boolean(
-                          activeKioskFulfillmentTicket &&
-                          activeKioskFulfillmentTicket.paymentStatus !== "paid",
-                        )
+                        activeFulfillmentTicketIsReady
                       }
                       onClick={() =>
                         activeKioskFulfillmentTicket
@@ -16714,27 +16815,39 @@ export function App() {
               {!customerKioskMode ? (
                 <div
                   className={`order-notification-sound-card ${
-                    employeeOrderSoundSettings.enabled ? "is-on" : "is-off"
+                    orderNotificationAudioAllowed ? "is-on" : "is-off"
                   } ${orderNotificationSoundEnabled ? "is-ready" : "needs-enable"}`}
                   aria-label="Employee order sound notification"
                 >
                   <div>
                     <span className="micro-label">Employee order sounds</span>
                     <strong>
-                      {employeeOrderSoundSettings.enabled
-                        ? orderNotificationSoundEnabled
-                          ? "Sound is enabled on this station"
-                          : "Click once to enable pickup alerts"
-                        : "Sound alerts are off on this station"}
+                      {!fulfillmentNotificationSettingsLoaded
+                        ? "Waiting for LAN order sound settings"
+                        : !fulfillmentNotificationSettings.audio_enabled
+                          ? "Sound alerts are disabled by store settings"
+                        : !employeeOrderSoundSettings.enabled
+                          ? "Sound alerts are off on this station"
+                          : orderNotificationSoundEnabled
+                            ? "Sound is enabled on this station"
+                            : "Click once to enable pickup alerts"}
                     </strong>
                     <small>
-                      {employeeOrderSoundSettings.soundFileName
-                        ? `Using ${employeeOrderSoundSettings.soundFileName} saved in this app.`
-                        : "Using the built-in alert tone until an MP3/MP4 is selected in this app."}
+                      {orderNotificationSoundDescription}
                       {orderNotificationIssue ? ` ${orderNotificationIssue}` : ""}
                     </small>
                   </div>
                   <div className="order-notification-actions">
+                    <label className="order-notification-toggle">
+                      <input
+                        type="checkbox"
+                        checked={employeeOrderSoundSettings.enabled}
+                        onChange={(event) =>
+                          void handleEmployeeOrderSoundEnabledChange(event.currentTarget.checked)
+                        }
+                      />
+                      <span>Allow on this station</span>
+                    </label>
                     <label className="order-notification-file">
                       <span>Choose MP3/MP4</span>
                       <input
@@ -16745,13 +16858,13 @@ export function App() {
                     </label>
                     <button
                       type="button"
-                      disabled={!employeeOrderSoundSettings.enabled}
+                      disabled={!orderNotificationAudioAllowed}
                       onClick={() => void enableOrderNotificationSound()}
                     >
                       {orderNotificationSoundEnabled ? "Test Sound" : "Enable Sound"}
                     </button>
-                    <button type="button" onClick={handleUseBuiltInOrderSound}>
-                      Default Tone
+                    <button type="button" onClick={handleUseStoreOrderSound}>
+                      Store Default
                     </button>
                   </div>
                 </div>
@@ -16801,6 +16914,7 @@ export function App() {
                     {activeKioskOrderTickets.map((ticket) => (
                       <article key={ticket.orderId}>
                         <div>
+                          <span className="fulfillment-source-badge kiosk">Kiosk</span>
                           <strong>{ticket.orderId}</strong>
                           <small>
                             {ticket.customerName}; {ticket.itemCount} card(s); {ticket.totalLabel}
@@ -16849,7 +16963,6 @@ export function App() {
                               type="button"
                               disabled={
                                 !ticket.allItemsPicked ||
-                                ticket.paymentStatus !== "paid" ||
                                 ticket.status === "ready" ||
                                 ticket.status === "completed"
                               }
@@ -16859,7 +16972,7 @@ export function App() {
                             </button>
                             <button
                               type="button"
-                              disabled={ticket.status === "completed"}
+                              disabled={ticket.status !== "ready" || ticket.paymentStatus !== "paid"}
                               onClick={() => void handleKioskTicketStatus(ticket.orderId, "completed")}
                             >
                               Complete Pickup
@@ -16881,6 +16994,13 @@ export function App() {
                     {activeWebsitePickupTickets.map((ticket) => (
                       <article key={`website-${ticket.orderId}`}>
                         <div>
+                          <span
+                            className={`fulfillment-source-badge ${
+                              ticket.source === "wordpress" ? "woo-synced" : "woo-queued"
+                            }`}
+                          >
+                            {websitePickupSourceLabel(ticket.source)}
+                          </span>
                           <strong>Woo order #{ticket.orderNumber}</strong>
                           <small>
                             {ticket.customerName}; {ticket.itemCount} item(s); {ticket.totalLabel};{" "}
@@ -16928,7 +17048,7 @@ export function App() {
                             </button>
                             <button
                               type="button"
-                              disabled={ticket.status === "completed"}
+                              disabled={ticket.status !== "ready_for_pickup"}
                               onClick={() => void handleWebsitePickupTicketStatus(ticket.orderId, "completed")}
                             >
                               Complete Pickup
@@ -16942,13 +17062,13 @@ export function App() {
                   <p className="panel-empty">No paid website pickup orders loaded from WooCommerce.</p>
                 )}
                 <div className="fulfillment-source-heading">
-                  <span className="micro-label">Completed pickup history</span>
+                  <span className="micro-label">Past orders</span>
                   <strong>
-                    {completedKioskOrderTickets.length + completedWebsitePickupTickets.length} completed order(s)
+                    {completedPickupOrderCount} completed pickup(s); {expiredKioskOrderTickets.length} expired hold(s)
                   </strong>
                 </div>
                 <label className="fulfillment-history-search" htmlFor="fulfillment-history-search">
-                  <span className="micro-label">Search completed</span>
+                  <span className="micro-label">Search past orders</span>
                   <input
                     id="fulfillment-history-search"
                     value={fulfillmentHistorySearch}
@@ -16956,20 +17076,25 @@ export function App() {
                     placeholder="Customer, order, receipt, barcode"
                   />
                 </label>
-                {searchableCompletedKioskOrderTickets.length + searchableCompletedWebsitePickupTickets.length > 0 ? (
-                  <div className="completed-fulfillment-list" aria-label="Completed pickup order history">
-                    {searchableCompletedKioskOrderTickets.map((ticket) => (
-                      <article key={`completed-kiosk-${ticket.orderId}`}>
+                {searchablePastKioskOrderTickets.length + searchableCompletedWebsitePickupTickets.length > 0 ? (
+                  <div className="completed-fulfillment-list" aria-label="Past pickup order history">
+                    {searchablePastKioskOrderTickets.map((ticket) => (
+                      <article key={`past-kiosk-${ticket.orderId}`} className={ticket.status === "expired" ? "is-expired" : ""}>
                         <div>
+                          <span className="fulfillment-source-badge kiosk">Kiosk</span>
                           <strong>{ticket.customerName}</strong>
                           <small>
                             Kiosk order {ticket.orderId}; {ticket.itemCount} card(s); {ticket.totalLabel}
                           </small>
                           <span className={`kiosk-payment-status ${ticket.paymentStatus}`}>
-                            {ticket.squareReceiptReference || "No receipt stored"}
+                            {ticket.paymentStatus === "paid"
+                              ? ticket.squareReceiptReference || "Paid; no receipt stored"
+                              : "No payment recorded"}
                           </span>
                           <span className={`kiosk-ticket-status ${ticket.status}`}>
-                            {ticket.status === "expired" ? "Hold expired" : "Completed"}
+                            {ticket.status === "expired"
+                              ? "Hold expired; pickup not completed"
+                              : "Pickup completed"}
                           </span>
                         </div>
                         <div className="kiosk-ticket-items">
@@ -16984,12 +17109,20 @@ export function App() {
                     {searchableCompletedWebsitePickupTickets.map((ticket) => (
                       <article key={`completed-website-${ticket.orderId}`}>
                         <div>
+                          <span
+                            className={`fulfillment-source-badge ${
+                              ticket.source === "wordpress" ? "woo-synced" : "woo-queued"
+                            }`}
+                          >
+                            {websitePickupSourceLabel(ticket.source)}
+                          </span>
                           <strong>{ticket.customerName}</strong>
                           <small>
                             Woo order #{ticket.orderNumber}; {ticket.itemCount} item(s); {ticket.totalLabel}
                           </small>
+                          <small>Woo order status: {ticket.orderStatus.replace(/_/g, " ")}</small>
                           <span className="kiosk-ticket-status completed">
-                            {ticket.orderStatus.replace(/_/g, " ")}
+                            Pickup completed
                           </span>
                         </div>
                         <div className="kiosk-ticket-items">
@@ -17003,7 +17136,7 @@ export function App() {
                     ))}
                   </div>
                 ) : (
-                  <p className="panel-empty">No completed pickup orders match that search.</p>
+                  <p className="panel-empty">No past pickup orders match that search.</p>
                 )}
               </div>
             </section>
