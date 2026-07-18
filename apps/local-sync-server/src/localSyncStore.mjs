@@ -143,7 +143,7 @@ export function createLocalSyncStore(options = {}) {
     options.exchangeRateMaxAgeHours,
     1,
     7 * 24,
-    36,
+    96,
   ) * 60 * 60 * 1000
   const exchangeRateCache = new Map()
   const squareLocationId = cleanExternalId(options.squareLocationId) || "LOCAL-SQUARE-POS"

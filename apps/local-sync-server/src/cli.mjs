@@ -26,6 +26,7 @@ import { createWordPressKioskOrderPush } from "./wordpressKioskOrderPush.mjs"
 import { createWordPressReportsPull } from "./wordpressReportsPull.mjs"
 import { createWordPressScryDexWebhookRelay } from "./wordpressScryDexWebhookRelay.mjs"
 import { listenLocalSyncDiscoveryResponder } from "./localSyncDiscovery.mjs"
+import { createExchangeRateProvider } from "./exchangeRateProvider.mjs"
 import { createGradedPricingLookup } from "./gradedPricingProviders.mjs"
 import { createSquareInventoryCountsPuller } from "./squareInventoryCountsPuller.mjs"
 import { createSquareCatalogInventorySyncer } from "./squareCatalogInventorySyncer.mjs"
@@ -84,6 +85,11 @@ const squareAccessToken = firstEnv("PUG_SQUARE_ACCESS_TOKEN", "LOCAL_SYNC_SQUARE
 const squareTerminalDeviceId = firstEnv("PUG_SQUARE_TERMINAL_DEVICE_ID", "LOCAL_SYNC_SQUARE_TERMINAL_DEVICE_ID")
 const squareApiVersion = firstEnv("PUG_SQUARE_API_VERSION", "LOCAL_SYNC_SQUARE_API_VERSION")
 const squareBaseUrl = firstEnv("PUG_SQUARE_BASE_URL", "LOCAL_SYNC_SQUARE_BASE_URL")
+const exchangeRateProvider = createExchangeRateProvider({
+  baseUrl: firstEnv("PUG_FX_PROVIDER_BASE_URL", "LOCAL_SYNC_FX_PROVIDER_BASE_URL"),
+  provider: firstEnv("PUG_FX_PROVIDER", "LOCAL_SYNC_FX_PROVIDER") ?? "ECB",
+  timeoutMs: firstEnv("PUG_FX_PROVIDER_TIMEOUT_MS", "LOCAL_SYNC_FX_PROVIDER_TIMEOUT_MS"),
+})
 const squareInventoryPollDisabled = envFlag(
   "PUG_SQUARE_INVENTORY_POLL_DISABLED",
   "LOCAL_SYNC_SQUARE_INVENTORY_POLL_DISABLED",
@@ -399,6 +405,13 @@ const server = await listenLocalSyncHttpServer({
       "PUG_GRADED_PRICING_CACHE_TTL_SECONDS",
       "GRADED_PRICING_CACHE_TTL_SECONDS",
     ),
+    pricingMarkupBasisPoints: firstEnv("PUG_PRICING_MARKUP_BASIS_POINTS", "LOCAL_SYNC_PRICING_MARKUP_BASIS_POINTS"),
+    priceReviewThresholdBasisPoints: firstEnv(
+      "PUG_PRICE_REVIEW_THRESHOLD_BASIS_POINTS",
+      "LOCAL_SYNC_PRICE_REVIEW_THRESHOLD_BASIS_POINTS",
+    ),
+    exchangeRateProvider,
+    exchangeRateMaxAgeHours: firstEnv("PUG_FX_MAX_AGE_HOURS", "LOCAL_SYNC_FX_MAX_AGE_HOURS") ?? "96",
     squareLocationId,
     squareEnvironment,
     squareTerminalConnector,
@@ -416,6 +429,7 @@ console.log(`WordPress push enabled: ${wordpressPushEnabled ? "true" : "false"}`
 console.log(`ScryDex Vision configured: ${scryDexVisionIdentifier.status().configured ? "true" : "false"}`)
 console.log(`ScryDex local catalog index configured: ${localScryDexCatalogIndexer ? "true" : "false"}`)
 console.log(`PriceCharting graded pricing configured: ${gradedPricingLookup.configured === true ? "true" : "false"}`)
+console.log(`JPY exchange-rate provider configured: ${exchangeRateProvider.status().configured ? "true" : "false"}`)
 console.log(`Square Terminal configured: ${squareTerminalConnector.status().configured ? "true" : "false"}`)
 console.log(`Square catalog inventory sync configured: ${squareCatalogInventorySyncer.status().configured ? "true" : "false"}`)
 console.log(`Square inventory poll configured: ${squareInventoryCountsPuller.status().configured ? "true" : "false"}`)
