@@ -15,6 +15,7 @@ try {
     databasePath,
     now,
     heartbeatTimeoutSeconds: 90,
+    seedDemoData: true,
     seedDemoInventory: true,
   })
   const managerAuth = firstStore.createSession({ pin: "9999" })
@@ -128,6 +129,7 @@ try {
     databasePath,
     now,
     heartbeatTimeoutSeconds: 90,
+    seedDemoData: true,
     seedDemoInventory: true,
   })
   const persistedSetupConfig = restartedStore.getSetupConfig()

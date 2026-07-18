@@ -127,9 +127,12 @@ export function createLocalSyncStore(options = {}) {
   const seedDemoInventory =
     options.seedDemoInventory === true ||
     (options.seedDemoInventory !== false && !options.database && databasePath === ":memory:")
+  const seedDemoData =
+    options.seedDemoData === true ||
+    (options.seedDemoData !== false && !options.database && databasePath === ":memory:")
   const database = options.database ?? openLocalSyncDatabase(databasePath)
   migrateLocalSyncDatabase(database)
-  seedLocalSyncDatabase(database, now, { seedDemoInventory })
+  seedLocalSyncDatabase(database, now, { seedDemoData, seedDemoInventory })
   const setupConfig = loadSetupConfig(database, {
     configuredAtUtc: now().toISOString(),
     localDatabase: options.localDatabase ?? "store-sync.sqlite",
@@ -168,6 +171,21 @@ export function createLocalSyncStore(options = {}) {
   let activeScryDexCatalogSyncJob = null
   const activeScryDexCatalogSyncJobs = new Map()
   const scryDexCatalogSyncHistory = [...persistedScryDexCatalogSyncHistory]
+  let databaseClosed = false
+
+  function closeStore() {
+    if (databaseClosed) {
+      return
+    }
+
+    if (resolvedDatabasePath !== ":memory:") {
+      database.prepare("PRAGMA wal_checkpoint(TRUNCATE)").get()
+      database.exec("PRAGMA journal_mode = DELETE;")
+    }
+
+    database.close()
+    databaseClosed = true
+  }
 
   function createSession({ pin, ttlMinutes = 30 } = {}) {
     const user = users.find((candidate) => verifyPin(pin, candidate))
@@ -6857,63 +6875,8 @@ export function createLocalSyncStore(options = {}) {
         const existing = existingIndex >= 0 ? inventoryItems[existingIndex] : null
 
         if (existing && (existing.source === "queued" || existing.status === "pending_intake")) {
-          const pulledPublicId = cleanPublicId(pulledItem.public_id)
-          const sameWordPressId =
-            cleanPublicId(existing.wordpress_public_id) && cleanPublicId(existing.wordpress_public_id) === pulledPublicId
-          const sameBarcode =
-            cleanBarcode(existing.barcode) && cleanBarcode(existing.barcode) === cleanBarcode(pulledItem.barcode)
-          const matchingQueuedOperations = queue.filter(
-            (operation) =>
-              operation.operation_type === "inventory_intake" &&
-              operation.entity_id === existing.public_id &&
-              operation.sync_status === "pending",
-          )
-
-          if ((sameWordPressId || sameBarcode) && matchingQueuedOperations.length > 0) {
-            const reconciledQuantityOnHand = websitePulledInventoryQuantityOnHand(
-              existing,
-              pulledItem,
-              pulledHasQuantity,
-              allowRemoteInventoryQuantityIncrease,
-            )
-            if (websitePulledInventoryQuantityIncreaseIgnored(
-              existing,
-              pulledItem,
-              pulledHasQuantity,
-              allowRemoteInventoryQuantityIncrease,
-            )) {
-              remoteQuantityIncreaseIgnoredCount += 1
-            }
-            const reconciledItem = {
-              ...existing,
-              ...pulledItem,
-              public_id: existing.public_id,
-              wordpress_public_id: cleanPublicId(pulledItem.wordpress_public_id) || cleanPublicId(pulledItem.public_id),
-              row_version: Math.max(existing.row_version + 1, pulledItem.row_version),
-              quantity_on_hand: reconciledQuantityOnHand,
-              source: "accepted",
-              external_sync_state: "synced",
-              created_by_user_id: existing.created_by_user_id || pulledItem.created_by_user_id,
-              created_by_user_name: existing.created_by_user_name || pulledItem.created_by_user_name,
-              square_catalog_item_id: cleanExternalId(pulledItem.square_catalog_item_id) || existing.square_catalog_item_id,
-              square_catalog_variation_id:
-                cleanExternalId(pulledItem.square_catalog_variation_id) || existing.square_catalog_variation_id,
-            }
-
-            inventoryItems[existingIndex] = reconciledItem
-            saveInventoryItem(database, reconciledItem, now)
-            removeInventoryDuplicateShadows(database, inventoryItems, reconciledItem)
-
-            for (const operation of matchingQueuedOperations) {
-              deleteQueueOperation(database, queue, operation.operation_id)
-            }
-
-            appliedItems.push(publicInventoryItem(reconciledItem))
-            reconciledPendingCount += 1
-            updatedCount += 1
-            continue
-          }
-
+          // A remote barcode match is not proof that WordPress accepted this local write.
+          // Keep pending local work authoritative until its outbound operation succeeds.
           ignoredCount += 1
           continue
         }
@@ -8386,7 +8349,7 @@ export function createLocalSyncStore(options = {}) {
     addUser,
     authorizeCashDrawer,
     authorizeLabelPrinting,
-    close: () => database.close(),
+    close: closeStore,
     addCashToDrawer,
     checkCashDrawerPayout,
     closeCashDrawerSession,
@@ -8968,7 +8931,7 @@ function seedLocalSyncDatabase(database, now, options = {}) {
     }
   }
 
-  if (Number(customerCount) === 0) {
+  if (options.seedDemoData === true && Number(customerCount) === 0) {
     for (const customer of seedCustomers()) {
       saveCustomer(database, customer, now)
     }
@@ -8978,13 +8941,13 @@ function seedLocalSyncDatabase(database, now, options = {}) {
     }
   }
 
-  if (Number(eventCount) === 0) {
-    for (const event of seedEventSnapshots()) {
+  if (options.seedDemoData === true && Number(eventCount) === 0) {
+    for (const event of seedEventSnapshots(now)) {
       saveEventSnapshot(database, event, now)
     }
   }
 
-  if (Number(referenceCardCount) === 0) {
+  if (options.seedDemoData === true && Number(referenceCardCount) === 0) {
     for (const card of seedScryDexReferenceCards()) {
       saveReferenceCard(database, normalizeReferenceCard(card, card.game, now), now)
     }
@@ -11100,15 +11063,18 @@ function seedCreditLedgerEntries() {
   ]
 }
 
-function seedEventSnapshots() {
+function seedEventSnapshots(now = () => new Date()) {
+  const firstStart = new Date(now().getTime() + 30 * 24 * 60 * 60 * 1000)
+  const secondStart = new Date(now().getTime() + 32 * 24 * 60 * 60 * 1000)
+
   return [
     {
       event_id: "event-100",
       slug: "event-100",
       row_version: 3,
       title: "Friday Commander Night",
-      starts_at_utc: "2026-07-12T23:00:00Z",
-      starts_at_label: "Sun Jul 12, 7:00 PM",
+      starts_at_utc: firstStart.toISOString(),
+      starts_at_label: firstStart.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }),
       registration_status: "open",
       capacity: 24,
       registered_count: 10,
@@ -11121,8 +11087,8 @@ function seedEventSnapshots() {
       slug: "event-101",
       row_version: 2,
       title: "Pokemon League Challenge",
-      starts_at_utc: "2026-07-14T17:00:00Z",
-      starts_at_label: "Tue Jul 14, 1:00 PM",
+      starts_at_utc: secondStart.toISOString(),
+      starts_at_label: secondStart.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }),
       registration_status: "waitlist",
       capacity: 32,
       registered_count: 32,

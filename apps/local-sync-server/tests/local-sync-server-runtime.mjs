@@ -744,7 +744,7 @@ try {
   assert.equal(fallbackScryDexSearch.cards[0].set_name, "Evolving Skies")
   assert.equal(fallbackScryDexSearch.cards[0].suggested_barcode, "PKM-EVS-215-MOONBREON")
   assert.equal(fallbackScryDexSearch.cards[0].market_price_minor_units, 112045)
-  assert.equal(fallbackScryDexSearch.cards[0].image_url, "https://images.pokemontcg.io/swsh7/215.png")
+  assert.equal(fallbackScryDexSearch.cards[0].image_url, "https://images.pokemontcg.io/swsh7/215_hires.png")
   assert.equal(fallbackScryDexSearch.cards[0].variants[0].reference_variant_id, 515)
   assert.equal(fallbackScryDexSearch.cards[0].price_points[0].provider_variant_id, "scrydex-pokemon-evs-215-alt-art")
   assert.equal(fallbackScryDexSearch.cards[0].price_points[0].condition_code, "NM")
@@ -1083,7 +1083,7 @@ try {
       public_id: "event-public-42",
       slug: "friday-commander-night",
       title: "Friday Commander Night",
-      start_datetime: "2026-07-12T23:00:00+00:00",
+      start_datetime: "2099-07-12T23:00:00+00:00",
       player_cap: 24,
       registered_count: 10,
       seats_remaining: 14,
