@@ -6,8 +6,10 @@ import { join } from "node:path"
 import {
   createRateLimitAwareFetcher,
   DEFAULT_CARDS_PER_SET,
+  DEFAULT_SANITIZED_FIXTURE_PATH,
   DEFAULT_VALIDATION_OUTPUT_PATH,
   runScryDexValidation,
+  runSanitizedFixtureValidation,
   VALIDATION_CSV_COLUMNS,
 } from "../tools/scrydex-validation.mjs"
 
@@ -17,11 +19,93 @@ const temporaryDirectory = await mkdtemp(join(tmpdir(), "pug-scrydex-validation-
 try {
   await testDeterministicStreamingValidation()
   await testTwoPageTwoHundredCardCap()
+  await testRepresentedLocalCatalogSetScoping()
+  await testSanitizedFixtureReportGeneration()
   await testRetryAfterRateLimitHandling()
   await testRemainingAndResetRateLimitHandling()
   console.log("PASS read-only deterministic ScryDex validation harness")
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true })
+}
+
+async function testRepresentedLocalCatalogSetScoping() {
+  const cardRequests = []
+  const fetcher = async (url) => {
+    const endpoint = new URL(String(url))
+    const page = Number(endpoint.searchParams.get("page"))
+    const pageSize = Number(endpoint.searchParams.get("page_size"))
+    if (endpoint.pathname === "/pokemon/v1/expansions") {
+      return jsonResponse({ data: pageSlice(fixture.expansions, page, pageSize) })
+    }
+    cardRequests.push(endpoint.pathname)
+    const expansionId = decodeURIComponent(endpoint.pathname.match(/expansions\/([^/]+)\/cards$/)?.[1] ?? "")
+    return jsonResponse({ data: pageSlice(fixture.cards_by_expansion[expansionId] ?? [], page, pageSize) })
+  }
+  const outputPath = join(temporaryDirectory, "represented-set.csv")
+  const summary = await runScryDexValidation({
+    apiKey: "represented-fixture-key",
+    teamId: "represented-fixture-team",
+    baseUrl: "https://scrydex.example.test",
+    fetcher,
+    games: ["pokemon"],
+    catalogRows: fixture.local_catalog_rows.filter((row) => row.provider_set_id === "fixture-set-alpha"),
+    inventoryRows: fixture.inventory_rows,
+    cardsPerSet: 200,
+    outputPath,
+    requestsPerSecond: 99,
+    sleep: async () => {},
+  })
+
+  assert.equal(summary.sample_scope, "local_pug_catalog")
+  assert.equal(summary.represented_set_count, 1)
+  assert.equal(summary.set_count, 1)
+  assert.equal(summary.sampled_card_count, 2)
+  assert.ok(cardRequests.length > 0)
+  assert.ok(cardRequests.every((path) => path.includes("/fixture-set-alpha/cards")))
+}
+
+async function testSanitizedFixtureReportGeneration() {
+  const outputPath = join(temporaryDirectory, "sanitized-report.csv")
+  const summary = await runSanitizedFixtureValidation({ outputPath })
+  const csv = await readFile(outputPath, "utf8")
+  const requiredColumns = [
+    "expected_identity",
+    "matched_identity",
+    "match_method",
+    "source_record_id",
+    "requested_condition",
+    "selected_condition",
+    "requested_grading_company",
+    "selected_grading_company",
+    "requested_grade",
+    "selected_grade",
+    "fallback_reason",
+    "source_currency",
+    "source_value_minor_units",
+    "fx_value_minor_units",
+    "rounded_sale_minor_units",
+    "floor_minor_units",
+    "percent_change_basis_points",
+    "final_publication_decision",
+    "wordpress_public_ids",
+    "square_variation_ids",
+  ]
+
+  assert.equal(DEFAULT_SANITIZED_FIXTURE_PATH.endsWith("scrydex-validation-pages.json"), true)
+  assert.equal(summary.status, "ok")
+  assert.equal(summary.sanitized_fixture, true)
+  assert.equal(summary.catalog_snapshot_status, "provided")
+  assert.equal(summary.represented_set_count, 2)
+  assert.equal(summary.sampled_card_count, 3)
+  assert.equal(csv.trimEnd().split("\n").length, 4)
+  assert.ok(requiredColumns.every((column) => VALIDATION_CSV_COLUMNS.includes(column)))
+  assert.ok(csv.includes("fixture-wordpress-alpha-001"))
+  assert.ok(csv.includes("fixture-square-alpha-001"))
+  assert.ok(csv.includes("manual_review"))
+  assert.ok(csv.includes("publish"))
+  assert.ok(csv.includes("'=SUM(1,1) Formula-safe card"))
+  assert.equal(csv.includes("sanitized-fixture-key"), false)
+  assert.equal(csv.includes("sanitized-fixture-team"), false)
 }
 
 async function testDeterministicStreamingValidation() {

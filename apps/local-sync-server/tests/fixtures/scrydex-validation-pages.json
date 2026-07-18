@@ -1,11 +1,91 @@
 {
   "fixture_notice": "Synthetic sanitized data; not copied from a live ScryDex response.",
+  "local_catalog_rows": [
+    {
+      "provider_card_id": "fixture-alpha-001",
+      "provider_set_id": "fixture-set-alpha",
+      "provider_variant_id": "fixture-alpha-001-reverse",
+      "game": "pokemon",
+      "card_name": "Fixture First Card",
+      "set_name": "Fixture Alpha",
+      "set_code": "FXA",
+      "card_number": "1",
+      "language": "EN",
+      "finish": "reverseHolofoil",
+      "catalog_source": "sanitized_local_reference"
+    },
+    {
+      "provider_card_id": "fixture-alpha-002",
+      "provider_set_id": "fixture-set-alpha",
+      "provider_variant_id": "fixture-alpha-002-normal",
+      "game": "pokemon",
+      "card_name": "=SUM(1,1) Formula-safe card",
+      "set_name": "Fixture Alpha",
+      "set_code": "FXA",
+      "card_number": "2",
+      "language": "EN",
+      "finish": "normal",
+      "catalog_source": "sanitized_local_reference"
+    },
+    {
+      "provider_card_id": "fixture-zeta-001",
+      "provider_set_id": "fixture-set-zeta",
+      "game": "pokemon",
+      "card_name": "Fixture Missing Optional Data",
+      "set_name": "Fixture Zeta",
+      "set_code": "FXZ",
+      "card_number": "1",
+      "catalog_source": "sanitized_local_reference"
+    }
+  ],
+  "inventory_rows": [
+    {
+      "public_id": "fixture-inventory-alpha-001",
+      "wordpress_public_id": "fixture-wordpress-alpha-001",
+      "square_catalog_variation_id": "fixture-square-alpha-001",
+      "provider_card_id": "fixture-alpha-001",
+      "provider_set_id": "fixture-set-alpha",
+      "provider_variant_id": "fixture-alpha-001-reverse",
+      "game": "pokemon",
+      "card_name": "Fixture First Card",
+      "set_name": "Fixture Alpha",
+      "set_code": "FXA",
+      "card_number": "1",
+      "language": "EN",
+      "finish": "reverseHolofoil",
+      "condition": "LP",
+      "price_minor_units": 200,
+      "minimum_sale_price_minor_units": 100,
+      "catalog_source": "sanitized_local_inventory"
+    },
+    {
+      "public_id": "fixture-inventory-alpha-002",
+      "wordpress_public_id": "fixture-wordpress-alpha-002",
+      "square_catalog_variation_id": "fixture-square-alpha-002",
+      "provider_card_id": "fixture-alpha-002",
+      "provider_set_id": "fixture-set-alpha",
+      "provider_variant_id": "fixture-alpha-002-normal",
+      "game": "pokemon",
+      "card_name": "=SUM(1,1) Formula-safe card",
+      "set_name": "Fixture Alpha",
+      "set_code": "FXA",
+      "card_number": "2",
+      "language": "EN",
+      "finish": "normal",
+      "condition": "NM",
+      "price_minor_units": 200,
+      "minimum_sale_price_minor_units": 200,
+      "catalog_source": "sanitized_local_inventory"
+    }
+  ],
   "expansions": [
     {
+      "game": "pokemon",
       "id": "fixture-set-zeta",
       "name": "Fixture Zeta"
     },
     {
+      "game": "pokemon",
       "id": "fixture-set-alpha",
       "name": "Fixture Alpha"
     }
@@ -32,19 +112,25 @@
           {
             "id": "fixture-alpha-002-normal",
             "name": "normal",
+            "language": "EN",
+            "finish": "normal",
             "prices": [
               {
+                "id": "fixture-price-alpha-002-nm",
                 "condition": "NM",
                 "type": "raw",
                 "market": "1.25",
-                "currency": "USD"
+                "currency": "USD",
+                "observed_at_utc": "2026-01-01T00:00:00.000Z"
               },
               {
+                "id": "fixture-price-alpha-002-psa10",
                 "type": "graded",
                 "company": "PSA",
                 "grade": "10",
                 "market": "20.00",
-                "currency": "USD"
+                "currency": "USD",
+                "observed_at_utc": "2026-01-01T00:00:00.000Z"
               }
             ]
           }
@@ -67,6 +153,8 @@
           {
             "id": "fixture-alpha-001-reverse",
             "name": "reverseHolofoil",
+            "language": "EN",
+            "finish": "reverseHolofoil",
             "graded_prices": {
               "CGC": {
                 "9.5": {
@@ -77,11 +165,13 @@
             },
             "prices": [
               {
+                "id": "fixture-price-alpha-001-lp",
                 "condition": "LP",
                 "type": "raw",
                 "low": "0.75",
                 "market": "0.90",
-                "currency": "USD"
+                "currency": "USD",
+                "observed_at_utc": "2026-01-01T00:00:00.000Z"
               }
             ]
           }

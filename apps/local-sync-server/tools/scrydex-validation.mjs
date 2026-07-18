@@ -1,13 +1,18 @@
 import { once } from "node:events"
-import { createWriteStream } from "node:fs"
-import { mkdir } from "node:fs/promises"
+import { createWriteStream, existsSync } from "node:fs"
+import { mkdir, readFile } from "node:fs/promises"
+import { DatabaseSync } from "node:sqlite"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { createScryDexCatalogIndexer } from "../src/scrydexCatalogIndexer.mjs"
 import {
+  calculateAutomaticSalePrice,
+  convertSourcePriceToUsd,
   decimalPriceToSourceMinorUnits,
   normalizePriceCurrency,
+  priceChangeBasisPoints,
+  priceChangeRequiresReview,
   selectExactVariantPricePoint,
 } from "../src/pricingEngine.mjs"
 
@@ -15,17 +20,40 @@ export const DEFAULT_CARDS_PER_SET = 200
 export const DEFAULT_VALIDATION_OUTPUT_PATH = fileURLToPath(
   new URL("../../../PUG_SCRYDEX_VALIDATION.csv", import.meta.url),
 )
+export const DEFAULT_SANITIZED_FIXTURE_PATH = fileURLToPath(
+  new URL("../tests/fixtures/scrydex-validation-pages.json", import.meta.url),
+)
 
 export const VALIDATION_CSV_COLUMNS = Object.freeze([
   "row_type",
+  "sample_scope",
   "game",
   "expansion_id",
   "set_name",
   "set_code",
   "sample_position",
+  "expected_identity",
+  "matched_identity",
+  "identity_match_status",
+  "match_method",
   "provider_card_id",
   "card_name",
   "card_number",
+  "expected_provider_variant_id",
+  "matched_provider_variant_id",
+  "expected_reference_variant_id",
+  "matched_reference_variant_id",
+  "expected_language",
+  "matched_language",
+  "expected_finish",
+  "matched_finish",
+  "expected_treatment",
+  "matched_treatment",
+  "local_reference_match_count",
+  "local_inventory_match_count",
+  "local_inventory_public_ids",
+  "wordpress_public_ids",
+  "square_variation_ids",
   "variant_count",
   "price_point_count",
   "raw_price_point_count",
@@ -38,6 +66,32 @@ export const VALIDATION_CSV_COLUMNS = Object.freeze([
   "minimum_price_minor_units",
   "maximum_price_minor_units",
   "pricing_selection_status",
+  "source_provider",
+  "source_record_id",
+  "source_variant",
+  "raw_or_graded",
+  "requested_condition",
+  "selected_condition",
+  "requested_grading_company",
+  "selected_grading_company",
+  "requested_grade",
+  "selected_grade",
+  "fallback_used",
+  "fallback_reason",
+  "source_currency",
+  "source_value_minor_units",
+  "fx_provider",
+  "fx_rate",
+  "fx_value_minor_units",
+  "markup_basis_points",
+  "rounded_sale_minor_units",
+  "floor_minor_units",
+  "floor_applied",
+  "current_price_minor_units",
+  "percent_change_basis_points",
+  "final_publication_decision",
+  "price_observed_at_utc",
+  "catalog_source",
   "validation_status",
   "validation_codes",
 ])
@@ -77,6 +131,11 @@ export async function runScryDexValidation(options = {}) {
     MAX_PROVIDER_PAGE_SIZE,
   )
   const maxExpansionPages = boundedInteger(options.maxExpansionPages, 1, 10000, 1000)
+  const snapshot = resolveCatalogSnapshot(options)
+  const catalogRows = snapshot.catalogRows
+  const inventoryRows = snapshot.inventoryRows
+  const representedSets = representedCatalogSets(catalogRows, inventoryRows)
+  const localIndexes = buildLocalIndexes(catalogRows, inventoryRows)
   const rateLimitedFetcher = createRateLimitAwareFetcher({
     fetcher: createReadOnlyFetcher(fetcher),
     requestsPerSecond: options.requestsPerSecond,
@@ -107,6 +166,10 @@ export async function runScryDexValidation(options = {}) {
     games,
     cards_per_set: cardsPerSet,
     provider_page_size: pageSize,
+    catalog_snapshot_status: snapshot.status,
+    represented_set_count: representedSets.length,
+    represented_set_unresolved_count: 0,
+    sample_scope: representedSets.length > 0 ? "local_pug_catalog" : "provider_catalog_fallback",
     set_count: 0,
     sampled_card_count: 0,
     passed_card_count: 0,
@@ -154,8 +217,24 @@ export async function runScryDexValidation(options = {}) {
       }
 
       const expansionIds = uniqueSortedIds(expansionResult.expansion_result?.provider_set_ids)
+      const gameRepresentedSets = representedSets.filter((set) => set.game === game)
+      const selection = selectRepresentedExpansionIds(expansionIds, gameRepresentedSets)
+      const selectedExpansionIds = gameRepresentedSets.length > 0 ? selection.expansionIds : expansionIds
 
-      for (const expansionId of expansionIds) {
+      for (const unresolved of selection.unresolved) {
+        summary.represented_set_unresolved_count += 1
+        await writeCsvRow(writer, csvValues(errorRow({
+          rowType: "set_error",
+          sampleScope: "local_pug_catalog",
+          game,
+          expansionId: unresolved.providerSetId,
+          setName: unresolved.setName,
+          setCode: unresolved.setCode,
+          validationCode: "represented_set_provider_id_unresolved",
+        })))
+      }
+
+      for (const expansionId of selectedExpansionIds) {
         summary.set_count += 1
         const cardResult = await indexer({
           game,
@@ -195,6 +274,9 @@ export async function runScryDexValidation(options = {}) {
             expansionId,
             samplePosition: index + 1,
             seenProviderCardIds,
+            sampleScope: gameRepresentedSets.length > 0 ? "local_pug_catalog" : "provider_catalog_fallback",
+            localIndexes,
+            options,
           })
           summary.sampled_card_count += 1
           if (row.validation_status === "pass") summary.passed_card_count += 1
@@ -212,11 +294,69 @@ export async function runScryDexValidation(options = {}) {
     summary.failed_card_count > 0 ||
     summary.provider_error_count > 0 ||
     summary.expansion_listing_truncated_count > 0
+    || summary.represented_set_unresolved_count > 0
   ) {
     summary.status = "failed"
   }
 
   return summary
+}
+
+export async function runSanitizedFixtureValidation(options = {}) {
+  const fixturePath = resolve(cleanText(options.fixturePath) || DEFAULT_SANITIZED_FIXTURE_PATH)
+  const fixture = JSON.parse(await readFile(fixturePath, "utf8"))
+  const catalogRows = validObjects(fixture.local_catalog_rows)
+  const inventoryRows = validObjects(fixture.inventory_rows)
+  const games = uniqueValues(
+    [...catalogRows, ...inventoryRows, ...validObjects(fixture.expansions)].map((row) => cleanGame(row.game || "pokemon")),
+  )
+  const summary = await runScryDexValidation({
+    ...options,
+    apiKey: "sanitized-fixture-key",
+    teamId: "sanitized-fixture-team",
+    baseUrl: "https://scrydex.fixture.invalid",
+    fetcher: createSanitizedFixtureFetcher(fixture),
+    catalogRows,
+    inventoryRows,
+    games: games.length > 0 ? games : ["pokemon"],
+    requestsPerSecond: 99,
+    sleep: async () => {},
+    nowDate: new Date("2026-01-01T00:00:00.000Z"),
+  })
+  return { ...summary, action: "scrydex_sanitized_fixture_validation_completed", sanitized_fixture: true }
+}
+
+function createSanitizedFixtureFetcher(fixture) {
+  return async (input) => {
+    const endpoint = new URL(String(input))
+    const [, game] = endpoint.pathname.split("/")
+    const page = boundedInteger(endpoint.searchParams.get("page"), 1, 100000, 1)
+    const pageSize = boundedInteger(endpoint.searchParams.get("page_size"), 1, MAX_PROVIDER_PAGE_SIZE, MAX_PROVIDER_PAGE_SIZE)
+    if (endpoint.pathname === `/${game}/v1/expansions`) {
+      return sanitizedFixtureResponse({ data: pageSlice(validObjects(fixture.expansions), page, pageSize) })
+    }
+    const match = endpoint.pathname.match(/^\/([^/]+)\/v1\/expansions\/([^/]+)\/cards$/)
+    if (!match) return sanitizedFixtureResponse({ error: "fixture_endpoint_not_found" }, 404)
+    const expansionId = decodeURIComponent(match[2])
+    return sanitizedFixtureResponse({
+      data: pageSlice(validObjects(fixture.cards_by_expansion?.[expansionId]), page, pageSize),
+    })
+  }
+}
+
+function pageSlice(values, page, pageSize) {
+  const start = (page - 1) * pageSize
+  return values.slice(start, start + pageSize)
+}
+
+function sanitizedFixtureResponse(body, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: status === 200 ? "OK" : "Fixture Error",
+    headers: { get: () => null },
+    json: async () => body,
+  }
 }
 
 export function createRateLimitAwareFetcher(options = {}) {
@@ -316,9 +456,64 @@ function validateCard(card, context) {
   const variants = Array.isArray(card?.variants) ? card.variants.filter(objectValue) : []
   const pricePoints = normalizeCardPricePoints(card, variants)
   const pricing = validatePricingSelections(pricePoints, variants.length)
+  const local = findLocalMatches(card, context.game, context.localIndexes)
+  const expected = local.inventoryMatches[0] ?? local.referenceMatches[0] ?? null
+  const requested = requestedPricingIdentity(expected, pricePoints)
+  const selection = selectExactVariantPricePoint(pricePoints, {
+    raw_or_graded: requested.rawOrGraded,
+    provider_variant_id: requested.providerVariantId,
+    reference_variant_id: requested.referenceVariantId,
+    variant_count: variants.length,
+    condition: requested.condition,
+    grading_company: requested.gradingCompany,
+    grade: requested.grade,
+  })
+  const conversion = selection.status === "ok"
+    ? convertSourcePriceToUsd({
+        sourceAmountMinorUnits: selection.source_amount_minor_units,
+        sourceCurrency: selection.source_currency,
+        fxQuote: resolveFxQuote(context.options, selection.source_currency),
+        now: context.options.nowDate ?? new Date(),
+        maxFxAgeMs: context.options.maxFxAgeMs,
+      })
+    : { status: "review_required", reason_code: selection.reason_code || "exact_variant_price_missing" }
+  const currentPriceMinorUnits = nonNegativeInteger(expected?.price_minor_units ?? expected?.sale_price_minor_units)
+  const floorMinorUnits = nonNegativeInteger(
+    expected?.minimum_sale_price_minor_units ?? expected?.minimum_price_minor_units,
+  )
+  const markupBasisPoints = boundedInteger(context.options.markupBasisPoints, 0, 10000, 1000)
+  const calculation = conversion.status === "ok"
+    ? calculateAutomaticSalePrice({
+        sourceUsdMinorUnits: conversion.converted_usd_minor_units,
+        markupBasisPoints,
+        effectiveFloorMinorUnits: floorMinorUnits,
+      })
+    : null
+  const decision = publicationDecision({
+    expected,
+    selection,
+    conversion,
+    calculation,
+    currentPriceMinorUnits,
+    thresholdBasisPoints: context.options.reviewThresholdBasisPoints,
+  })
   const failureCodes = []
   const warningCodes = []
   const identityKey = `${context.game}:${providerCardId}`
+  const identity = compareIdentity(expected, card, context.game)
+  const matchedVariant = findMatchedVariant(variants, selection?.provider_variant_id)
+  const expectedProviderVariantId = cleanText(expected?.provider_variant_id ?? expected?.providerVariantId)
+  const expectedReferenceVariantId = positiveInteger(expected?.reference_variant_id ?? expected?.referenceVariantId)
+  const matchedProviderVariantId = cleanText(selection?.provider_variant_id)
+  const matchedReferenceVariantId = positiveInteger(selection?.reference_variant_id)
+  const expectedLanguage = cleanText(expected?.language)
+  const expectedFinish = cleanText(expected?.finish ?? expected?.printing ?? expected?.variant)
+  const expectedTreatment = cleanText(expected?.treatment ?? expected?.border ?? expected?.frame)
+  const matchedLanguage = cleanText(matchedVariant?.language ?? card?.language)
+  const matchedFinish = cleanText(matchedVariant?.finish ?? matchedVariant?.printing ?? matchedVariant?.name ?? card?.finish)
+  const matchedTreatment = cleanText(
+    matchedVariant?.treatment ?? matchedVariant?.border ?? matchedVariant?.frame ?? card?.treatment,
+  )
 
   if (!providerCardId) failureCodes.push("missing_provider_card_id")
   if (!cardName) failureCodes.push("missing_card_name")
@@ -336,6 +531,30 @@ function validateCard(card, context) {
   }
   if (pricing.errorCount > 0) failureCodes.push("pricing_api_selection_failed")
   if (pricePoints.length > 0 && pricing.selectableCount === 0) warningCodes.push("unselectable_price_metadata")
+  if (expected && identity.status !== "match") failureCodes.push("local_identity_mismatch")
+  if (expectedProviderVariantId && matchedProviderVariantId && expectedProviderVariantId !== matchedProviderVariantId) {
+    failureCodes.push("provider_variant_mismatch")
+  }
+  if (expectedReferenceVariantId && matchedReferenceVariantId && expectedReferenceVariantId !== matchedReferenceVariantId) {
+    failureCodes.push("reference_variant_mismatch")
+  }
+  if (expectedLanguage && matchedLanguage && normalizeComparable(expectedLanguage) !== normalizeComparable(matchedLanguage)) {
+    failureCodes.push("language_mismatch")
+  }
+  if (expectedFinish && matchedFinish && normalizeComparable(expectedFinish) !== normalizeComparable(matchedFinish)) {
+    failureCodes.push("finish_mismatch")
+  }
+  if (expectedTreatment && matchedTreatment && normalizeComparable(expectedTreatment) !== normalizeComparable(matchedTreatment)) {
+    failureCodes.push("treatment_mismatch")
+  }
+  if (selection.status !== "ok") warningCodes.push(cleanCode(selection.reason_code) || "price_review_required")
+  if (selection.status === "ok" && conversion.status !== "ok") {
+    warningCodes.push(cleanCode(conversion.reason_code) || "currency_review_required")
+  }
+  if (context.sampleScope === "local_pug_catalog" && local.referenceMatches.length === 0) {
+    warningCodes.push("local_reference_mapping_missing")
+  }
+  if (local.referenceMatches.length > 1) failureCodes.push("duplicate_local_reference_mapping")
 
   const validationCodes = [...new Set([...failureCodes, ...warningCodes])]
   const amounts = pricePoints.flatMap((point) => [
@@ -346,17 +565,43 @@ function validateCard(card, context) {
   ]).filter((value) => value > 0)
   const currencies = [...new Set(pricePoints.map((point) => point.currency).filter(Boolean))].sort(compareText)
   const pricedVariantIds = new Set(pricePoints.map((point) => point.provider_variant_id).filter(Boolean))
+  const fallbackReasons = [selection?.condition_fallback_reason, selection?.grade_fallback_reason]
+    .map(cleanCode)
+    .filter(Boolean)
+  const inventoryPublicIds = uniqueValues(local.inventoryMatches.map((row) => row.public_id))
+  const wordpressPublicIds = uniqueValues(local.inventoryMatches.map((row) => row.wordpress_public_id))
+  const squareVariationIds = uniqueValues(local.inventoryMatches.map((row) => row.square_catalog_variation_id))
 
   return {
     row_type: "card",
+    sample_scope: context.sampleScope,
     game: context.game,
     expansion_id: context.expansionId,
     set_name: setName,
     set_code: setCode,
     sample_position: context.samplePosition,
+    expected_identity: identity.expected,
+    matched_identity: identity.matched,
+    identity_match_status: identity.status,
+    match_method: local.matchMethod,
     provider_card_id: providerCardId,
     card_name: cardName,
     card_number: cardNumber,
+    expected_provider_variant_id: expectedProviderVariantId,
+    matched_provider_variant_id: matchedProviderVariantId,
+    expected_reference_variant_id: expectedReferenceVariantId ?? "",
+    matched_reference_variant_id: matchedReferenceVariantId ?? "",
+    expected_language: expectedLanguage,
+    matched_language: matchedLanguage,
+    expected_finish: expectedFinish,
+    matched_finish: matchedFinish,
+    expected_treatment: expectedTreatment,
+    matched_treatment: matchedTreatment,
+    local_reference_match_count: local.referenceMatches.length,
+    local_inventory_match_count: local.inventoryMatches.length,
+    local_inventory_public_ids: inventoryPublicIds.join("|"),
+    wordpress_public_ids: wordpressPublicIds.join("|"),
+    square_variation_ids: squareVariationIds.join("|"),
     variant_count: variants.length,
     price_point_count: pricePoints.length,
     raw_price_point_count: pricePoints.filter((point) => point.raw_or_graded === "raw").length,
@@ -370,9 +615,37 @@ function validateCard(card, context) {
     maximum_price_minor_units: amounts.length > 0 ? Math.max(...amounts) : "",
     pricing_selection_status: pricing.errorCount > 0
       ? "failed"
-      : pricing.selectableCount > 0
+      : selection.status === "ok"
         ? "ok"
-        : "not_applicable",
+        : "review_required",
+    source_provider: "scrydex",
+    source_record_id: cleanText(selection?.source_record_id) || providerCardId,
+    source_variant: sourceVariantIdentity(matchedVariant, selection),
+    raw_or_graded: requested.rawOrGraded,
+    requested_condition: selection?.requested_condition || requested.condition,
+    selected_condition: selection?.selected_condition || "",
+    requested_grading_company: selection?.requested_grading_company || requested.gradingCompany,
+    selected_grading_company: selection?.selected_grading_company || "",
+    requested_grade: selection?.requested_grade || requested.grade,
+    selected_grade: selection?.selected_grade || "",
+    fallback_used: selection?.condition_fallback_used === true || selection?.grade_fallback_used === true ? "yes" : "no",
+    fallback_reason: fallbackReasons.join("|"),
+    source_currency: selection?.source_currency || "",
+    source_value_minor_units: selection?.source_amount_minor_units ?? "",
+    fx_provider: conversion?.fx_provider || "",
+    fx_rate: conversion?.fx_rate || "",
+    fx_value_minor_units: conversion?.converted_usd_minor_units ?? "",
+    markup_basis_points: calculation ? markupBasisPoints : "",
+    rounded_sale_minor_units: calculation?.rounded_minor_units ?? "",
+    floor_minor_units: floorMinorUnits,
+    floor_applied: calculation ? (calculation.floor_applied ? "yes" : "no") : "",
+    current_price_minor_units: currentPriceMinorUnits,
+    percent_change_basis_points: calculation
+      ? priceChangeBasisPoints(currentPriceMinorUnits, calculation.candidate_price_minor_units)
+      : "",
+    final_publication_decision: decision,
+    price_observed_at_utc: selection?.observed_at_utc || cleanText(card?.price_observed_at_utc),
+    catalog_source: cleanText(expected?.catalog_source) || "scrydex_provider_validation",
     validation_status: failureCodes.length > 0 ? "fail" : warningCodes.length > 0 ? "warning" : "pass",
     validation_codes: validationCodes.join("|"),
   }
@@ -473,6 +746,7 @@ function normalizePricePoint(point, fallbackProviderVariantId) {
       currency,
     ),
     currency,
+    source_record_id: cleanText(point.source_record_id ?? point.sourceRecordId ?? point.id),
     observed_at_utc: cleanText(
       point.observed_at_utc ?? point.observedAtUtc ?? point.observed_at ?? point.source_observed_at,
     ),
@@ -523,12 +797,276 @@ function validatePricingSelections(points, variantCount) {
   return { selectableCount, errorCount }
 }
 
-function errorRow({ rowType, game, expansionId = "", validationStatus = "fail", validationCode }) {
+function resolveCatalogSnapshot(options) {
+  if (Array.isArray(options.catalogRows) || Array.isArray(options.inventoryRows)) {
+    return {
+      status: "provided",
+      catalogRows: validObjects(options.catalogRows),
+      inventoryRows: validObjects(options.inventoryRows),
+    }
+  }
+
+  const databasePath = cleanText(options.databasePath)
+  if (!databasePath || !existsSync(resolve(databasePath))) {
+    return { status: "unavailable", catalogRows: [], inventoryRows: [] }
+  }
+
+  const database = new DatabaseSync(resolve(databasePath), { readOnly: true })
+  try {
+    return {
+      status: "local_sqlite",
+      catalogRows: readTableIfPresent(database, "reference_cards"),
+      inventoryRows: readTableIfPresent(database, "inventory_items"),
+    }
+  } finally {
+    database.close()
+  }
+}
+
+function readTableIfPresent(database, tableName) {
+  const exists = database.prepare(
+    "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+  ).get(tableName)
+  return exists ? database.prepare(`SELECT * FROM ${tableName}`).all() : []
+}
+
+function representedCatalogSets(catalogRows, inventoryRows) {
+  const sets = new Map()
+  for (const row of [...catalogRows, ...inventoryRows]) {
+    const game = cleanGame(row.game)
+    const providerSetId = cleanText(row.provider_set_id ?? row.expansion_id ?? row.set_id)
+    const setName = cleanText(row.set_name ?? row.name)
+    const setCode = cleanText(row.set_code ?? row.code)
+    if (!game || (!providerSetId && !setName && !setCode)) continue
+    const key = [game, providerSetId || normalizeComparable(setCode) || normalizeComparable(setName)].join("|")
+    if (!sets.has(key)) sets.set(key, { game, providerSetId, setName, setCode })
+  }
+  return [...sets.values()].sort((left, right) => compareText(
+    `${left.game}|${left.providerSetId}|${left.setCode}|${left.setName}`,
+    `${right.game}|${right.providerSetId}|${right.setCode}|${right.setName}`,
+  ))
+}
+
+function selectRepresentedExpansionIds(providerExpansionIds, representedSets) {
+  if (representedSets.length === 0) return { expansionIds: providerExpansionIds, unresolved: [] }
+
+  const providerIds = new Map(providerExpansionIds.map((id) => [normalizeComparable(id), id]))
+  const expansionIds = []
+  const unresolved = []
+  for (const set of representedSets) {
+    const candidates = uniqueValues([set.providerSetId, set.setCode, set.setName])
+    const matched = candidates.map(normalizeComparable).map((key) => providerIds.get(key)).find(Boolean)
+    if (matched) {
+      expansionIds.push(matched)
+    } else if (set.providerSetId) {
+      expansionIds.push(set.providerSetId)
+    } else {
+      unresolved.push(set)
+    }
+  }
+
+  return { expansionIds: uniqueValues(expansionIds).sort(compareText), unresolved }
+}
+
+function buildLocalIndexes(catalogRows, inventoryRows) {
+  return {
+    references: indexLocalRows(catalogRows),
+    inventory: indexLocalRows(inventoryRows),
+  }
+}
+
+function indexLocalRows(rows) {
+  const byProviderCardId = new Map()
+  const byComposite = new Map()
+  for (const row of rows) {
+    appendIndex(byProviderCardId, cleanText(row.provider_card_id ?? row.providerCardId), row)
+    appendIndex(byComposite, localIdentityKey(row, row.game), row)
+  }
+  return { byProviderCardId, byComposite }
+}
+
+function appendIndex(index, key, value) {
+  if (!key) return
+  const current = index.get(key) ?? []
+  current.push(value)
+  index.set(key, current)
+}
+
+function findLocalMatches(card, game, indexes) {
+  const providerCardId = cleanText(card?.provider_card_id ?? card?.providerCardId ?? card?.id)
+  const composite = localIdentityKey(card, game)
+  const providerReferenceMatches = indexes.references.byProviderCardId.get(providerCardId) ?? []
+  const providerInventoryMatches = indexes.inventory.byProviderCardId.get(providerCardId) ?? []
+  if (providerReferenceMatches.length > 0 || providerInventoryMatches.length > 0) {
+    return {
+      referenceMatches: providerReferenceMatches,
+      inventoryMatches: providerInventoryMatches,
+      matchMethod: "provider_card_id",
+    }
+  }
+  const referenceMatches = indexes.references.byComposite.get(composite) ?? []
+  const inventoryMatches = indexes.inventory.byComposite.get(composite) ?? []
+  return {
+    referenceMatches,
+    inventoryMatches,
+    matchMethod: referenceMatches.length > 0 || inventoryMatches.length > 0 ? "game_set_number_name" : "not_in_local_catalog",
+  }
+}
+
+function localIdentityKey(row, fallbackGame) {
+  const expansion = objectValue(row?.expansion) ?? objectValue(row?.set) ?? {}
+  const game = cleanGame(row?.game ?? fallbackGame)
+  const set = normalizeComparable(
+    row?.provider_set_id ?? row?.expansion_id ?? row?.set_id ?? row?.set_code ?? row?.set_name ?? expansion.id ?? expansion.code ?? expansion.name,
+  )
+  const number = normalizeComparable(row?.card_number ?? row?.number ?? row?.printed_number)
+  const name = normalizeComparable(row?.card_name ?? row?.name)
+  return game && set && (number || name) ? `${game}|${set}|${number}|${name}` : ""
+}
+
+function compareIdentity(expected, card, fallbackGame) {
+  const providerCardId = cleanText(card?.provider_card_id ?? card?.providerCardId ?? card?.id)
+  const matched = identityText(card, fallbackGame)
+  if (!expected) return { expected: matched, matched, status: "provider_only" }
+
+  const expectedText = identityText(expected, fallbackGame)
+  const mismatches = []
+  compareField(mismatches, "game", cleanGame(expected.game), cleanGame(card.game ?? fallbackGame))
+  compareField(mismatches, "provider_card_id", cleanText(expected.provider_card_id), providerCardId)
+  if (!setsEquivalent(expected, card)) mismatches.push("set")
+  compareField(
+    mismatches,
+    "card_number",
+    normalizeComparable(expected.card_number ?? expected.printed_number),
+    normalizeComparable(card.card_number ?? card.number),
+  )
+  compareField(mismatches, "card_name", normalizeComparable(expected.card_name), normalizeComparable(card.card_name ?? card.name))
+  return { expected: expectedText, matched, status: mismatches.length === 0 ? "match" : `mismatch:${mismatches.join("|")}` }
+}
+
+function compareField(mismatches, name, expected, matched) {
+  if (expected && matched && expected !== matched) mismatches.push(name)
+}
+
+function identityText(row, fallbackGame) {
+  const providerCardId = cleanText(row?.provider_card_id ?? row?.providerCardId ?? row?.id)
+  return [
+    cleanGame(row?.game ?? fallbackGame),
+    cleanText(row?.provider_set_id ?? row?.expansion_id ?? row?.set_id ?? row?.set_code ?? row?.set_name ?? row?.expansion?.id),
+    cleanText(row?.card_number ?? row?.number ?? row?.printed_number),
+    cleanText(row?.card_name ?? row?.name),
+    providerCardId,
+  ].join("|")
+}
+
+function setIdentityAliases(row) {
+  const expansion = objectValue(row?.expansion) ?? objectValue(row?.set) ?? {}
+  return new Set(uniqueValues([
+    row?.provider_set_id,
+    row?.expansion_id,
+    row?.set_id,
+    row?.set_code,
+    row?.set_name,
+    expansion.id,
+    expansion.code,
+    expansion.name,
+  ]).map(normalizeComparable).filter(Boolean))
+}
+
+function setsEquivalent(expected, matched) {
+  const expectedAliases = setIdentityAliases(expected)
+  const matchedAliases = setIdentityAliases(matched)
+  if (expectedAliases.size === 0 || matchedAliases.size === 0) return true
+  return [...expectedAliases].some((alias) => matchedAliases.has(alias))
+}
+
+function requestedPricingIdentity(expected, points) {
+  const firstPriced = points.find((point) => point.has_positive_amount) ?? {}
+  return {
+    rawOrGraded: cleanText(expected?.raw_or_graded ?? expected?.product_type ?? firstPriced.raw_or_graded).toLowerCase() === "graded"
+      ? "graded"
+      : "raw",
+    providerVariantId: cleanText(expected?.provider_variant_id ?? firstPriced.provider_variant_id),
+    referenceVariantId: positiveInteger(expected?.reference_variant_id ?? firstPriced.reference_variant_id),
+    condition: cleanText(expected?.condition ?? expected?.condition_code ?? firstPriced.condition_code) || "NM",
+    gradingCompany: cleanText(expected?.grading_company ?? firstPriced.grading_company),
+    grade: cleanText(expected?.grade ?? firstPriced.grade),
+  }
+}
+
+function publicationDecision({ expected, selection, conversion, calculation, currentPriceMinorUnits, thresholdBasisPoints }) {
+  if (selection.status !== "ok" || conversion.status !== "ok" || !calculation) return "manual_review"
+  if (!expected || !cleanText(expected.public_id)) return "reference_catalog_only"
+  if (
+    expected.manual_price_override_active === true ||
+    ["manual", "manager_override"].includes(cleanText(expected.price_mode ?? expected.pricing_mode).toLowerCase())
+  ) {
+    return "preserve_manual_override"
+  }
+  return priceChangeRequiresReview(
+    currentPriceMinorUnits,
+    calculation.candidate_price_minor_units,
+    boundedInteger(thresholdBasisPoints, 0, 100000, 1000),
+  ) ? "manual_review" : "publish"
+}
+
+function resolveFxQuote(options, currency) {
+  const key = normalizePriceCurrency(currency)
+  return objectValue(options.fxQuotes)?.[key] ?? options.fxQuote
+}
+
+function findMatchedVariant(variants, providerVariantId) {
+  if (!providerVariantId) return variants.length === 1 ? variants[0] : null
+  return variants.find((variant) => cleanText(
+    variant.provider_variant_id ?? variant.providerVariantId ?? variant.variant_id ?? variant.variantId ?? variant.id,
+  ) === providerVariantId) ?? null
+}
+
+function sourceVariantIdentity(variant, selection) {
+  return [
+    cleanText(selection?.provider_variant_id),
+    cleanText(variant?.language),
+    cleanText(variant?.finish ?? variant?.printing ?? variant?.name),
+    cleanText(variant?.treatment ?? variant?.border ?? variant?.frame),
+  ].join("|")
+}
+
+function normalizeComparable(value) {
+  return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, "")
+}
+
+function validObjects(value) {
+  return (Array.isArray(value) ? value : []).filter(objectValue)
+}
+
+function uniqueValues(value) {
+  return [...new Set((Array.isArray(value) ? value : []).map(cleanText).filter(Boolean))]
+}
+
+function nonNegativeInteger(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0
+}
+
+function errorRow({
+  rowType,
+  game,
+  expansionId = "",
+  setName = "",
+  setCode = "",
+  sampleScope = "provider_catalog_fallback",
+  validationStatus = "fail",
+  validationCode,
+}) {
   return {
     row_type: rowType,
+    sample_scope: sampleScope,
     game,
     expansion_id: expansionId,
+    set_name: setName,
+    set_code: setCode,
     pricing_selection_status: "not_applicable",
+    final_publication_decision: "manual_review",
     validation_status: validationStatus,
     validation_codes: validationCode,
   }
@@ -762,7 +1300,11 @@ function parseCliArguments(argv) {
       parsed.help = true
       continue
     }
-    if (!["--games", "--output", "--base-url", "--requests-per-second", "--max-expansion-pages"].includes(argument)) {
+    if (argument === "--sanitized-fixture") {
+      parsed.sanitizedFixture = true
+      continue
+    }
+    if (!["--games", "--output", "--base-url", "--requests-per-second", "--max-expansion-pages", "--database", "--fixture"].includes(argument)) {
       throw new Error(`Unknown ScryDex validation option: ${argument}`)
     }
     const value = argv[index + 1]
@@ -773,6 +1315,8 @@ function parseCliArguments(argv) {
     if (argument === "--base-url") parsed.baseUrl = value
     if (argument === "--requests-per-second") parsed.requestsPerSecond = value
     if (argument === "--max-expansion-pages") parsed.maxExpansionPages = value
+    if (argument === "--database") parsed.databasePath = value
+    if (argument === "--fixture") parsed.fixturePath = value
   }
   return parsed
 }
@@ -789,6 +1333,9 @@ function printHelp() {
     "  --base-url <url>              Override SCRYDEX_BASE_URL.",
     "  --requests-per-second <1-99>  Client-side request ceiling (defaults to 20).",
     "  --max-expansion-pages <n>     Expansion-listing page ceiling (defaults to 1000).",
+    "  --database <path>              Read represented sets and mappings from local SQLite.",
+    "  --sanitized-fixture            Generate a deterministic non-live report from sanitized fixtures.",
+    "  --fixture <path>               Override the sanitized fixture JSON path.",
     "  --help                        Show this help.",
     "",
     "Credentials are read only from SCRYDEX_API_KEY/PUG_SCRYDEX_API_KEY and",
@@ -806,6 +1353,13 @@ async function main() {
       return
     }
 
+    if (cli.sanitizedFixture) {
+      const summary = await runSanitizedFixtureValidation(cli)
+      console.log(JSON.stringify(summary, null, 2))
+      if (summary.status !== "ok") process.exitCode = 1
+      return
+    }
+
     apiKey = firstEnv("SCRYDEX_API_KEY", "PUG_SCRYDEX_API_KEY")
     teamId = firstEnv("SCRYDEX_TEAM_ID", "PUG_SCRYDEX_TEAM_ID")
     const summary = await runScryDexValidation({
@@ -814,6 +1368,7 @@ async function main() {
       teamId,
       baseUrl: cli.baseUrl || firstEnv("SCRYDEX_BASE_URL", "PUG_SCRYDEX_BASE_URL"),
       timeoutMs: firstEnv("SCRYDEX_CATALOG_TIMEOUT_MS", "PUG_SCRYDEX_CATALOG_TIMEOUT_MS"),
+      databasePath: cli.databasePath || firstEnv("LOCAL_SYNC_SQLITE_PATH", "PUG_LOCAL_SYNC_DB"),
     })
     console.log(JSON.stringify(summary, null, 2))
     if (summary.status !== "ok") process.exitCode = 1
