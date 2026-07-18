@@ -46,7 +46,7 @@ final class SquareInventoryBatchSyncPlannerTest extends TestCase {
 
 	public function test_hidden_unmapped_batch_is_skipped_without_blocking(): void {
 		$row                     = $this->available_row( 77, 'card-public-77', 'Mew', 'PKM-PROMO-151' );
-		$row['kiosk_visibility'] = 'hidden';
+		$row['pos_visibility'] = 'hidden';
 		$plan                    = ( new SquareInventoryBatchSyncPlanner() )->plan(
 			array( $row ),
 			array( 'square_location_id' => 'L-SANDBOX-1' )
@@ -58,7 +58,7 @@ final class SquareInventoryBatchSyncPlannerTest extends TestCase {
 		$this->assert_same( 0, $plan['blocked_count'] );
 		$this->assert_same( 0, $plan['operation_count'] );
 		$this->assert_same( 'skipped', $plan['row_results'][0]['status'] );
-		$this->assert_true( in_array( 'kiosk_visibility_not_visible', $plan['configuration_issues'], true ) );
+		$this->assert_true( in_array( 'pos_visibility_not_visible', $plan['configuration_issues'], true ) );
 	}
 
 	public function test_batch_blocks_production_context_and_invalid_rows(): void {

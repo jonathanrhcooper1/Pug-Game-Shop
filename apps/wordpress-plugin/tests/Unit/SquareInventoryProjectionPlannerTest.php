@@ -78,7 +78,7 @@ final class SquareInventoryProjectionPlannerTest extends TestCase {
 
 	public function test_hidden_item_without_square_mapping_is_skipped_without_payloads(): void {
 		$row                   = $this->available_row();
-		$row['kiosk_visibility'] = 'hidden';
+		$row['pos_visibility'] = 'hidden';
 
 		$plan = ( new SquareInventoryProjectionPlanner() )->plan_row(
 			$row,
@@ -89,15 +89,15 @@ final class SquareInventoryProjectionPlannerTest extends TestCase {
 
 		$this->assert_same( SquareInventoryProjectionPlan::SKIPPED, $plan->status() );
 		$this->assert_same( 0, $plan->operation_count() );
-		$this->assert_true( in_array( 'kiosk_visibility_not_visible', $plan->errors(), true ) );
+		$this->assert_true( in_array( 'pos_visibility_not_visible', $plan->errors(), true ) );
 		$this->assert_true( in_array( 'square_catalog_variation_id_missing', $plan->errors(), true ) );
 		$this->assert_same( true, $plan->projection_contract()['network_request_deferred'] );
 	}
 
-	public function test_pos_hidden_item_is_still_square_ready_when_kiosk_visible(): void {
+	public function test_kiosk_hidden_item_is_still_square_ready_when_pos_visible(): void {
 		$row                    = $this->available_row();
-		$row['kiosk_visibility'] = 'visible';
-		$row['pos_visibility']   = 'hidden';
+		$row['kiosk_visibility'] = 'hidden';
+		$row['pos_visibility']   = 'visible';
 
 		$plan = ( new SquareInventoryProjectionPlanner() )->plan_row(
 			$row,
@@ -108,7 +108,7 @@ final class SquareInventoryProjectionPlannerTest extends TestCase {
 
 		$this->assert_same( SquareInventoryProjectionPlan::READY, $plan->status() );
 		$this->assert_same( 2, $plan->operation_count() );
-		$this->assert_false( in_array( 'pos_visibility_not_visible', $plan->errors(), true ) );
+		$this->assert_false( in_array( 'kiosk_visibility_not_visible', $plan->errors(), true ) );
 	}
 
 	public function test_available_item_requires_scan_identity_price_currency_and_square_location(): void {

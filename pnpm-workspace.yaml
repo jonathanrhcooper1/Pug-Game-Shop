@@ -1,4 +1,4 @@
 allowBuilds:
-  cpu-features: set this to true or false
-  fs-ext-extra-prebuilt: set this to true or false
-  ssh2: set this to true or false
+  cpu-features: false
+  fs-ext-extra-prebuilt: false
+  ssh2: false

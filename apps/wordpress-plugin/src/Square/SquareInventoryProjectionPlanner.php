@@ -18,7 +18,7 @@ final class SquareInventoryProjectionPlanner {
 	 */
 	public function plan_row( array $inventory_row, array $context = array() ): SquareInventoryProjectionPlan {
 		$status                 = $this->slug( $inventory_row['status'] ?? '' );
-		$kiosk_visibility       = $this->slug( $inventory_row['kiosk_visibility'] ?? 'hidden' );
+		$pos_visibility         = $this->slug( $inventory_row['pos_visibility'] ?? 'hidden' );
 		$public_id              = $this->public_identity( $inventory_row );
 		$idempotency_key        = $this->idempotency_key( $public_id, $inventory_row, $context );
 		$square_location_id     = $this->string_value( $context, array( 'square_location_id', 'provider_location_id' ) );
@@ -26,7 +26,7 @@ final class SquareInventoryProjectionPlanner {
 			? $square_location_id
 			: $this->string_value( $inventory_row, array( 'square_location_id', 'provider_location_id' ) );
 		$square_variation_id    = $this->string_value( $inventory_row, array( 'square_catalog_variation_id', 'square_variation_id', 'external_variation_id' ) );
-		$available_for_square   = InventoryStatus::AVAILABLE === $status && 'visible' === $kiosk_visibility;
+		$available_for_square   = InventoryStatus::AVAILABLE === $status && 'visible' === $pos_visibility;
 		$has_existing_mapping   = '' !== $square_variation_id;
 		$occurred_at            = $this->timestamp( $context['occurred_at'] ?? null );
 		$requires_id_resolution = false;
@@ -34,7 +34,7 @@ final class SquareInventoryProjectionPlanner {
 		if ( ! $available_for_square ) {
 			return $this->plan_unavailable_row(
 				$status,
-				$kiosk_visibility,
+				$pos_visibility,
 				$public_id,
 				$idempotency_key,
 				$square_location_id,
@@ -97,7 +97,7 @@ final class SquareInventoryProjectionPlanner {
 
 	private function plan_unavailable_row(
 		string $status,
-		string $kiosk_visibility,
+		string $pos_visibility,
 		string $public_id,
 		string $idempotency_key,
 		string $square_location_id,
@@ -111,8 +111,8 @@ final class SquareInventoryProjectionPlanner {
 			$skip_reasons[] = 'status_not_available';
 		}
 
-		if ( 'visible' !== $kiosk_visibility ) {
-			$skip_reasons[] = 'kiosk_visibility_not_visible';
+		if ( 'visible' !== $pos_visibility ) {
+			$skip_reasons[] = 'pos_visibility_not_visible';
 		}
 
 		if ( $has_existing_mapping && '' !== $square_location_id ) {

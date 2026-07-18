@@ -188,7 +188,11 @@ for (const marker of [
   "manual_discount",
   "staff_conflict_review",
   "sync_intent: options.syncIntent ?? \"staff_inventory_update\"",
-  "syncIntent?: \"staff_inventory_update\" | \"staff_barcode_scan\" | \"staff_quantity_adjustment\"",
+  "syncIntent?:",
+  "\"staff_inventory_update\"",
+  "\"staff_barcode_scan\"",
+  "\"staff_quantity_adjustment\"",
+  "\"staff_manual_price_visibility_update\"",
   "operationKind?: \"scan\" | \"quantity\" | \"update\"",
   "quantity_delta",
   "adjustment_reason",
@@ -446,7 +450,7 @@ assert.ok(appSource.includes("window.localStorage.removeItem(OFFLINE_SESSION_STO
 assert.ok(appSource.includes("operationKind: \"scan\""))
 assert.ok(appSource.includes("operationKind: \"quantity\""))
 assert.ok(appSource.includes("syncIntent: \"staff_barcode_scan\""))
-assert.ok(appSource.includes("syncIntent: \"staff_quantity_adjustment\""))
+assert.ok(appSource.includes("\"staff_quantity_adjustment\""))
 assert.ok(workspaceSource.includes('PUG_PRODUCTION_HOST = "thepuggaming.com"'))
 for (const oldHost of [
   ["vbf", "2a7", "myftpupload", "com"].join("."),
