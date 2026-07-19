@@ -268,15 +268,15 @@ final class InventoryExternalMappingRepository {
 	private function result( string $action, string $status, array $errors, int $rows_affected, ?string $sql, array $extra = array() ): array {
 		return array_merge(
 			array(
-				'action'             => $action,
-				'status'             => $status,
-				'synced'             => in_array( $status, array( 'synced', 'square_synced' ), true ),
-				'rows_affected'      => $rows_affected,
-				'sql_prepared'       => null !== $sql,
-				'payment_deferred'   => true,
-				'square_deferred'    => true,
-				'source_of_truth'    => 'tcg_store_platform',
-				'errors'             => array_values( array_unique( $errors ) ),
+				'action'           => $action,
+				'status'           => $status,
+				'synced'           => in_array( $status, array( 'synced', 'square_synced' ), true ),
+				'rows_affected'    => $rows_affected,
+				'sql_prepared'     => null !== $sql,
+				'payment_deferred' => true,
+				'square_deferred'  => true,
+				'source_of_truth'  => 'tcg_store_platform',
+				'errors'           => array_values( array_unique( $errors ) ),
 			),
 			$extra
 		);

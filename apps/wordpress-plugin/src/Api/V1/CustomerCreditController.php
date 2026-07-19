@@ -54,7 +54,7 @@ final class CustomerCreditController {
 		$payload = $this->request_payload( $request );
 		$amount  = (string) ( $payload['amount'] ?? '' );
 
-		$payload['entry_type'] = $this->adjustment_entry_type( $amount );
+		$payload['entry_type']      = $this->adjustment_entry_type( $amount );
 		$payload['manager_user_id'] = $payload['manager_user_id'] ?? $this->current_user_id();
 
 		return $this->post_credit( $request, $payload, 'adjust_credit' );
@@ -95,8 +95,8 @@ final class CustomerCreditController {
 			);
 		}
 
-		$result          = $this->ledger_service()->post( $posting_request );
-		$status_code     = $result->is_accepted() ? ( $result->is_idempotent() ? 200 : 201 ) : 409;
+		$result      = $this->ledger_service()->post( $posting_request );
+		$status_code = $result->is_accepted() ? ( $result->is_idempotent() ? 200 : 201 ) : 409;
 
 		return new \WP_REST_Response(
 			CustomerCreditRestPresenter::present_posting_result(

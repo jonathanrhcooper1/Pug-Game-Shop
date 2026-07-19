@@ -11,10 +11,10 @@ use TCGStorePlatform\Settings\FulfillmentNotificationSettings;
 use TCGStorePlatform\Settings\Settings;
 
 final class FulfillmentOrderController {
-	private const NAMESPACE = 'tcg-store/v1';
-	private const STATUS_META = '_tcg_fulfillment_status';
-	private const READY_EMAIL_SENT_META = '_tcg_ready_for_pickup_email_sent_at';
-	private const READY_ORDER_STATUS = 'ready-pickup';
+	private const NAMESPACE               = 'tcg-store/v1';
+	private const STATUS_META             = '_tcg_fulfillment_status';
+	private const READY_EMAIL_SENT_META   = '_tcg_ready_for_pickup_email_sent_at';
+	private const READY_ORDER_STATUS      = 'ready-pickup';
 	private const TERMINAL_RELAY_STATUSES = array( 'cancelled', 'refunded' );
 
 	public function register(): void {
@@ -37,6 +37,7 @@ final class FulfillmentOrderController {
 				'exclude_from_search'       => false,
 				'show_in_admin_all_list'    => true,
 				'show_in_admin_status_list' => true,
+				/* translators: %s: number of orders ready for pickup. */
 				'label_count'               => _n_noop(
 					'Ready for pickup <span class="count">(%s)</span>',
 					'Ready for pickup <span class="count">(%s)</span>',
@@ -175,15 +176,15 @@ final class FulfillmentOrderController {
 		return new \WP_REST_Response(
 			array(
 				'data' => array(
-					'resource'              => 'fulfillment_orders',
-					'orders'                => $payload,
-					'order_count'           => count( $payload ),
-					'woocommerce_available' => true,
-					'local_pickup_required' => true,
-					'payment_required'      => true,
-					'payment_authority'     => 'woocommerce_square_or_configured_gateway',
-					'inventory_authority'   => 'tcg_store_platform_reservations',
-					'fulfillment_notifications' => $this->fulfillment_notification_payload(),
+					'resource'                     => 'fulfillment_orders',
+					'orders'                       => $payload,
+					'order_count'                  => count( $payload ),
+					'woocommerce_available'        => true,
+					'local_pickup_required'        => true,
+					'payment_required'             => true,
+					'payment_authority'            => 'woocommerce_square_or_configured_gateway',
+					'inventory_authority'          => 'tcg_store_platform_reservations',
+					'fulfillment_notifications'    => $this->fulfillment_notification_payload(),
 					'credentials_synced_to_client' => false,
 				),
 			),
@@ -308,10 +309,10 @@ final class FulfillmentOrderController {
 		);
 
 		return array(
-			'audio_enabled'              => ! empty( $settings['audio_enabled'] ),
-			'notification_sound_url'     => (string) ( $settings['notification_sound_url'] ?? '' ),
-			'employee_only'              => true,
-			'ready_pickup_email_enabled' => ! empty( $settings['ready_pickup_email_enabled'] ),
+			'audio_enabled'                => ! empty( $settings['audio_enabled'] ),
+			'notification_sound_url'       => (string) ( $settings['notification_sound_url'] ?? '' ),
+			'employee_only'                => true,
+			'ready_pickup_email_enabled'   => ! empty( $settings['ready_pickup_email_enabled'] ),
 			'credentials_synced_to_client' => false,
 		);
 	}
@@ -340,10 +341,13 @@ final class FulfillmentOrderController {
 
 		$order_number  = method_exists( $order, 'get_order_number' ) ? (string) $order->get_order_number() : '';
 		$customer_name = $this->customer_name( $order );
-		$subject       = sprintf( __( 'Your Pug order %s is ready for pickup', 'tcg-store-platform' ), $order_number );
-		$lines         = array(
+		/* translators: %s: WooCommerce order number. */
+		$subject = sprintf( __( 'Your Pug order %s is ready for pickup', 'tcg-store-platform' ), $order_number );
+		$lines   = array(
+			/* translators: %s: customer first or full name. */
 			sprintf( __( 'Hi %s,', 'tcg-store-platform' ), '' !== $customer_name ? $customer_name : __( 'there', 'tcg-store-platform' ) ),
 			'',
+			/* translators: %s: WooCommerce order number. */
 			sprintf( __( 'Order %s is ready for pickup at The Pug.', 'tcg-store-platform' ), $order_number ),
 			__( 'Please bring your order number and ID when you arrive.', 'tcg-store-platform' ),
 			'',
@@ -404,21 +408,21 @@ final class FulfillmentOrderController {
 		$order_id = method_exists( $order, 'get_id' ) ? (int) $order->get_id() : 0;
 
 		return array(
-			'order_id'               => $order_id,
-			'order_number'           => method_exists( $order, 'get_order_number' ) ? (string) $order->get_order_number() : (string) $order_id,
-			'customer_name'          => $this->customer_name( $order ),
-			'order_status'           => $order_status,
-			'fulfillment_status'     => $fulfillment_status,
-			'payment_status'         => 'paid',
-			'shipping_method_id'     => $pickup['method_id'],
-			'shipping_method_title'  => $pickup['method_title'],
-			'local_pickup'           => $pickup['is_local_pickup'],
-			'item_count'             => count( $items ),
-			'total_minor_units'      => $this->minor_units( method_exists( $order, 'get_total' ) ? $order->get_total() : '0' ),
-			'currency'               => method_exists( $order, 'get_currency' ) ? (string) $order->get_currency() : 'USD',
-			'paid_at_utc'            => $this->date_to_utc( method_exists( $order, 'get_date_paid' ) ? $order->get_date_paid() : null ),
-			'created_at_utc'         => $this->date_to_utc( method_exists( $order, 'get_date_created' ) ? $order->get_date_created() : null ),
-			'items'                  => $items,
+			'order_id'              => $order_id,
+			'order_number'          => method_exists( $order, 'get_order_number' ) ? (string) $order->get_order_number() : (string) $order_id,
+			'customer_name'         => $this->customer_name( $order ),
+			'order_status'          => $order_status,
+			'fulfillment_status'    => $fulfillment_status,
+			'payment_status'        => 'paid',
+			'shipping_method_id'    => $pickup['method_id'],
+			'shipping_method_title' => $pickup['method_title'],
+			'local_pickup'          => $pickup['is_local_pickup'],
+			'item_count'            => count( $items ),
+			'total_minor_units'     => $this->minor_units( method_exists( $order, 'get_total' ) ? $order->get_total() : '0' ),
+			'currency'              => method_exists( $order, 'get_currency' ) ? (string) $order->get_currency() : 'USD',
+			'paid_at_utc'           => $this->date_to_utc( method_exists( $order, 'get_date_paid' ) ? $order->get_date_paid() : null ),
+			'created_at_utc'        => $this->date_to_utc( method_exists( $order, 'get_date_created' ) ? $order->get_date_created() : null ),
+			'items'                 => $items,
 		);
 	}
 
@@ -556,7 +560,7 @@ final class FulfillmentOrderController {
 			$method_id = is_object( $shipping_item ) && method_exists( $shipping_item, 'get_method_id' )
 				? (string) $shipping_item->get_method_id()
 				: '';
-			$title = is_object( $shipping_item ) && method_exists( $shipping_item, 'get_method_title' )
+			$title     = is_object( $shipping_item ) && method_exists( $shipping_item, 'get_method_title' )
 				? (string) $shipping_item->get_method_title()
 				: '';
 

@@ -38,17 +38,17 @@ final class ScryDexCardsSyncWorker {
 		array $existing_reference_rows = array(),
 		array $gate_overrides = array()
 	): array {
-		$max_pages              = $this->max_pages( $request['max_pages'] ?? 1 );
-		$current_request        = $request;
+		$max_pages               = $this->max_pages( $request['max_pages'] ?? 1 );
+		$current_request         = $request;
 		$execute_database_writes = true === ( $request['execute_database_writes'] ?? false );
-		$pages                  = array();
-		$provider               = null;
-		$provider_request_count = 0;
-		$status                 = 'completed';
-		$continuation_available = false;
-		$next_checkpoint_row    = null;
-		$block_reasons          = array();
-		$last_gate              = null;
+		$pages                   = array();
+		$provider                = null;
+		$provider_request_count  = 0;
+		$status                  = 'completed';
+		$continuation_available  = false;
+		$next_checkpoint_row     = null;
+		$block_reasons           = array();
+		$last_gate               = null;
 
 		for ( $index = 0; $index < $max_pages; ++$index ) {
 			$gate      = $this->execution_gate->plan_cards_worker( $current_request, $gate_overrides );
@@ -61,8 +61,8 @@ final class ScryDexCardsSyncWorker {
 			}
 
 			$provider_request = $this->provider_request( $gate['request'] ?? array() );
-			$provider        = $provider ?? $this->provider_factory->provider();
-			$provider_result = '' === $provider_request['expansion_id']
+			$provider         = $provider ?? $this->provider_factory->provider();
+			$provider_result  = '' === $provider_request['expansion_id']
 				? $provider->search_cards(
 					'',
 					array(
@@ -120,7 +120,7 @@ final class ScryDexCardsSyncWorker {
 					'game'         => $provider_request['game'],
 					'page_size'    => $provider_request['page_size'],
 					'expansion_id' => $provider_request['expansion_id'],
-					'checkpoint' => $next_checkpoint_row,
+					'checkpoint'   => $next_checkpoint_row,
 				)
 			);
 			$status          = 'page_limit_reached';
@@ -131,27 +131,27 @@ final class ScryDexCardsSyncWorker {
 		}
 
 		return array(
-			'status'                              => $status,
-			'action'                              => 'scrydex_cards_sync_worker_run',
-			'worker_resource'                     => 'cards',
-			'max_pages'                           => $max_pages,
-			'page_count'                          => count( $pages ),
-			'provider_request_count'              => $provider_request_count,
-			'provider_fetch_deferred'             => 0 === $provider_request_count,
-			'network_requests_deferred'           => 0 === $provider_request_count,
-			'database_writes_deferred'            => $this->database_writes_deferred( $pages ),
-			'reference_card_writes_deferred'      => $this->reference_card_writes_deferred( $pages ),
+			'status'                               => $status,
+			'action'                               => 'scrydex_cards_sync_worker_run',
+			'worker_resource'                      => 'cards',
+			'max_pages'                            => $max_pages,
+			'page_count'                           => count( $pages ),
+			'provider_request_count'               => $provider_request_count,
+			'provider_fetch_deferred'              => 0 === $provider_request_count,
+			'network_requests_deferred'            => 0 === $provider_request_count,
+			'database_writes_deferred'             => $this->database_writes_deferred( $pages ),
+			'reference_card_writes_deferred'       => $this->reference_card_writes_deferred( $pages ),
 			'checkpoint_upsert_execution_deferred' => $this->checkpoint_writes_deferred( $pages ),
-			'execute_database_writes_requested'   => $execute_database_writes,
-			'provider_result_bodies_not_logged'   => true,
-			'credential_values_redacted'          => true,
-			'continuation_available'              => $continuation_available,
-			'continuation_checkpoint_row'         => $continuation_available ? $next_checkpoint_row : null,
-			'last_checkpoint_row'                 => $next_checkpoint_row,
-			'execution_gate'                      => $last_gate,
-			'pages'                               => $pages,
-			'block_reasons'                       => array_values( array_unique( $block_reasons ) ),
-			'configuration_issues'                => $this->configuration_issues( $last_gate, $block_reasons ),
+			'execute_database_writes_requested'    => $execute_database_writes,
+			'provider_result_bodies_not_logged'    => true,
+			'credential_values_redacted'           => true,
+			'continuation_available'               => $continuation_available,
+			'continuation_checkpoint_row'          => $continuation_available ? $next_checkpoint_row : null,
+			'last_checkpoint_row'                  => $next_checkpoint_row,
+			'execution_gate'                       => $last_gate,
+			'pages'                                => $pages,
+			'block_reasons'                        => array_values( array_unique( $block_reasons ) ),
+			'configuration_issues'                 => $this->configuration_issues( $last_gate, $block_reasons ),
 		);
 	}
 
@@ -205,9 +205,9 @@ final class ScryDexCardsSyncWorker {
 		}
 
 		return array(
-			'resource_key'  => $this->resource_key( $request['resource_key'] ?? $game ),
-			'game'          => $game,
-			'expansion_id'  => $this->provider_resource_id( $request['expansion_id'] ?? '' ),
+			'resource_key' => $this->resource_key( $request['resource_key'] ?? $game ),
+			'game'         => $game,
+			'expansion_id' => $this->provider_resource_id( $request['expansion_id'] ?? '' ),
 			'page'         => max( 1, (int) ( $request['page'] ?? 1 ) ),
 			'page_size'    => max( 1, min( self::MAX_PAGE_SIZE, (int) ( $request['page_size'] ?? 100 ) ) ),
 			'cursor'       => trim( (string) ( $request['cursor'] ?? '' ) ),

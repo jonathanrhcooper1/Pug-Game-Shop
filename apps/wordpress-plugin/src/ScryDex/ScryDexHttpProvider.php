@@ -49,10 +49,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		$params = array_merge(
 			$filters,
 			array(
-				'q'        => $query,
-				'page'     => (string) max( 1, $page ),
+				'q'         => $query,
+				'page'      => (string) max( 1, $page ),
 				'page_size' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
-				'cursor'   => trim( $cursor ),
+				'cursor'    => trim( $cursor ),
 			)
 		);
 
@@ -137,10 +137,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		$params = array_merge(
 			$filters,
 			array(
-				'q'        => $query,
-				'page'     => (string) max( 1, $page ),
+				'q'         => $query,
+				'page'      => (string) max( 1, $page ),
 				'page_size' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
-				'cursor'   => trim( $cursor ),
+				'cursor'    => trim( $cursor ),
 			)
 		);
 
@@ -173,10 +173,10 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 		$params = array_merge(
 			$filters,
 			array(
-				'q'        => $query,
-				'page'     => (string) max( 1, $page ),
+				'q'         => $query,
+				'page'      => (string) max( 1, $page ),
 				'page_size' => (string) min( self::MAX_PAGE_SIZE, max( 1, (int) ( $filters['page_size'] ?? 100 ) ) ),
-				'cursor'   => trim( $cursor ),
+				'cursor'    => trim( $cursor ),
 			)
 		);
 
@@ -206,7 +206,7 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	 * @return array<string, string>
 	 */
 	private function with_price_include( array $filters ): array {
-		$include = trim( (string) ( $filters['include'] ?? '' ) );
+		$include           = trim( (string) ( $filters['include'] ?? '' ) );
 		$required_includes = array( 'prices', 'pop_reports' );
 
 		if ( '' === $include ) {
@@ -442,17 +442,17 @@ final class ScryDexHttpProvider implements ScryDexProvider {
 	}
 
 	private function game_endpoint( mixed $value ): string {
-		$value = strtolower( trim( (string) $value ) );
-		$value = preg_replace( '/[^a-z0-9_-]+/', '-', $value ) ?? $value;
-		$value = trim( $value, '-' );
+		$value   = strtolower( trim( (string) $value ) );
+		$value   = preg_replace( '/[^a-z0-9_-]+/', '-', $value ) ?? $value;
+		$value   = trim( $value, '-' );
 		$aliases = array(
-			'magic'                => 'magicthegathering',
-			'mtg'                  => 'magicthegathering',
-			'magic-the-gathering'  => 'magicthegathering',
-			'one-piece'            => 'onepiece',
-			'one-piece-card-game'  => 'onepiece',
-			'yu-gi-oh'             => 'yugioh',
-			'yu-gi-oh-tcg'         => 'yugioh',
+			'magic'               => 'magicthegathering',
+			'mtg'                 => 'magicthegathering',
+			'magic-the-gathering' => 'magicthegathering',
+			'one-piece'           => 'onepiece',
+			'one-piece-card-game' => 'onepiece',
+			'yu-gi-oh'            => 'yugioh',
+			'yu-gi-oh-tcg'        => 'yugioh',
 		);
 
 		return '' === $value ? 'pokemon' : ( $aliases[ $value ] ?? $value );

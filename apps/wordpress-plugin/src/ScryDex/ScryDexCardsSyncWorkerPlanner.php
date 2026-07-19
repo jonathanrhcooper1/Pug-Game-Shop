@@ -113,15 +113,15 @@ final class ScryDexCardsSyncWorkerPlanner {
 		$next_checkpoint = $page_plan->next_checkpoint();
 
 		return array(
-			'status'              => $page_plan->status(),
-			'reference_row_count' => count( $page_plan->reference_rows() ),
-			'price_row_count'     => count( $page_plan->price_rows() ),
+			'status'                => $page_plan->status(),
+			'reference_row_count'   => count( $page_plan->reference_rows() ),
+			'price_row_count'       => count( $page_plan->price_rows() ),
 			'price_point_row_count' => count( $page_plan->price_point_rows() ),
-			'variant_row_count'   => count( $page_plan->variant_rows() ),
-			'error_count'         => count( $page_plan->errors() ),
-			'retryable'           => $page_plan->retryable(),
-			'error_code'          => $page_plan->error_code(),
-			'next_checkpoint_row' => null === $next_checkpoint ? null : $next_checkpoint->to_row(),
+			'variant_row_count'     => count( $page_plan->variant_rows() ),
+			'error_count'           => count( $page_plan->errors() ),
+			'retryable'             => $page_plan->retryable(),
+			'error_code'            => $page_plan->error_code(),
+			'next_checkpoint_row'   => null === $next_checkpoint ? null : $next_checkpoint->to_row(),
 		);
 	}
 
@@ -130,19 +130,19 @@ final class ScryDexCardsSyncWorkerPlanner {
 	 */
 	private function persistence_plan_summary( ScryDexPersistencePlan $persistence_plan ): array {
 		return array(
-			'status'                    => $persistence_plan->status(),
-			'reference_insert_count'    => count( $persistence_plan->reference_inserts() ),
-			'reference_update_count'    => count( $persistence_plan->reference_updates() ),
+			'status'                         => $persistence_plan->status(),
+			'reference_insert_count'         => count( $persistence_plan->reference_inserts() ),
+			'reference_update_count'         => count( $persistence_plan->reference_updates() ),
 			'reference_variant_upsert_count' => count( $persistence_plan->reference_variant_upserts() ),
-			'unchanged_reference_count' => count( $persistence_plan->unchanged_reference_keys() ),
-			'price_observation_count'   => count( $persistence_plan->price_observations() ),
-			'reference_write_count'     => $persistence_plan->reference_write_count(),
-			'reference_variant_write_count' => $persistence_plan->reference_variant_write_count(),
-			'error_count'               => count( $persistence_plan->errors() ),
-			'price_point_count'         => count( $persistence_plan->price_points() ),
-			'price_point_write_count'   => $persistence_plan->price_point_write_count(),
-			'retryable'                 => $persistence_plan->retryable(),
-			'error_code'                => $persistence_plan->error_code(),
+			'unchanged_reference_count'      => count( $persistence_plan->unchanged_reference_keys() ),
+			'price_observation_count'        => count( $persistence_plan->price_observations() ),
+			'reference_write_count'          => $persistence_plan->reference_write_count(),
+			'reference_variant_write_count'  => $persistence_plan->reference_variant_write_count(),
+			'error_count'                    => count( $persistence_plan->errors() ),
+			'price_point_count'              => count( $persistence_plan->price_points() ),
+			'price_point_write_count'        => $persistence_plan->price_point_write_count(),
+			'retryable'                      => $persistence_plan->retryable(),
+			'error_code'                     => $persistence_plan->error_code(),
 		);
 	}
 

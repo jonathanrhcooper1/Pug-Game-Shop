@@ -28,7 +28,7 @@ final class ScryDexWebhookRefreshRunner {
 	 * @return array<string, mixed>
 	 */
 	public function run( array $payload ): array {
-		$event_id     = trim( (string) ( $payload['event_id'] ?? '' ) );
+		$event_id      = trim( (string) ( $payload['event_id'] ?? '' ) );
 		$expansion_ids = $this->string_list( $payload['expansion_ids'] ?? array() );
 
 		if ( '' === $event_id || array() === $expansion_ids ) {

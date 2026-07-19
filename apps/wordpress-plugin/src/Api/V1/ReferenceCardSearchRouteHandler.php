@@ -142,15 +142,15 @@ final class ReferenceCardSearchRouteHandler {
 	 * @return array{query:string,game:string,raw_or_graded:string,page:int,page_size:int,errors:list<string>}
 	 */
 	private function parse_request( OfflineRestRequestData $data ): array {
-		$params    = array_merge( $data->query_params(), $data->body_params() );
-		$query     = trim( (string) ( $params['q'] ?? ( $params['query'] ?? '' ) ) );
-		$game      = strtolower( trim( (string) ( $params['game'] ?? '' ) ) );
+		$params        = array_merge( $data->query_params(), $data->body_params() );
+		$query         = trim( (string) ( $params['q'] ?? ( $params['query'] ?? '' ) ) );
+		$game          = strtolower( trim( (string) ( $params['game'] ?? '' ) ) );
 		$raw_or_graded = strtolower( trim( (string) ( $params['raw_or_graded'] ?? ( $params['product_type'] ?? '' ) ) ) );
-		$page_raw  = $params['page'] ?? 1;
-		$limit_raw = $params['page_size'] ?? ( $params['limit'] ?? 25 );
-		$page      = $this->positive_int( $page_raw, 1 );
-		$page_size = $this->positive_int( $limit_raw, 25 );
-		$errors    = array();
+		$page_raw      = $params['page'] ?? 1;
+		$limit_raw     = $params['page_size'] ?? ( $params['limit'] ?? 25 );
+		$page          = $this->positive_int( $page_raw, 1 );
+		$page_size     = $this->positive_int( $limit_raw, 25 );
+		$errors        = array();
 
 		if ( '' === $query ) {
 			$errors[] = 'reference_search_query_required';
@@ -187,12 +187,12 @@ final class ReferenceCardSearchRouteHandler {
 		}
 
 		return array(
-			'query'     => $query,
-			'game'      => $game,
+			'query'         => $query,
+			'game'          => $game,
 			'raw_or_graded' => $raw_or_graded,
-			'page'      => $page,
-			'page_size' => $page_size,
-			'errors'    => array_values( array_unique( $errors ) ),
+			'page'          => $page,
+			'page_size'     => $page_size,
+			'errors'        => array_values( array_unique( $errors ) ),
 		);
 	}
 
@@ -211,19 +211,19 @@ final class ReferenceCardSearchRouteHandler {
 			return array( 'errors' => $errors );
 		}
 
-		$cards_table    = $table_prefix . 'tcg_reference_cards';
-		$variants_table = $table_prefix . 'tcg_reference_variants';
-		$prices_table   = $table_prefix . 'tcg_provider_price_observations';
+		$cards_table        = $table_prefix . 'tcg_reference_cards';
+		$variants_table     = $table_prefix . 'tcg_reference_variants';
+		$prices_table       = $table_prefix . 'tcg_provider_price_observations';
 		$price_points_table = $table_prefix . 'tcg_provider_price_points';
-		$inventory_table = $table_prefix . 'tcg_inventory_items';
-		$escaped_query = addcslashes( $query, "\\_%" );
-		$like          = '%' . $escaped_query . '%';
-		$prefix_like   = $escaped_query . '%';
-		$where_parts   = array(
+		$inventory_table    = $table_prefix . 'tcg_inventory_items';
+		$escaped_query      = addcslashes( $query, '\\_%' );
+		$like               = '%' . $escaped_query . '%';
+		$prefix_like        = $escaped_query . '%';
+		$where_parts        = array(
 			'(cards.name LIKE %s OR cards.set_name LIKE %s OR cards.set_code LIKE %s OR cards.card_number LIKE %s OR cards.printed_number LIKE %s OR cards.provider_card_id LIKE %s OR cards.search_text LIKE %s)',
 		);
-		$where_args    = array( $like, $like, $like, $like, $like, $like, $like );
-		$order_args    = array(
+		$where_args         = array( $like, $like, $like, $like, $like, $like, $like );
+		$order_args         = array(
 			$query,
 			$prefix_like,
 			$like,
@@ -656,7 +656,7 @@ final class ReferenceCardSearchRouteHandler {
 			);
 		}
 
-		$page_plan          = $this->page_processor()->process_cards_page(
+		$page_plan         = $this->page_processor()->process_cards_page(
 			ScryDexSyncCheckpoint::initial( 0, 'cards', $game ),
 			$result
 		);
@@ -699,11 +699,11 @@ final class ReferenceCardSearchRouteHandler {
 			'meta'        => array_merge(
 				$this->ready_meta( $query, count( $provider_cards ), count( $provider_cards ) ),
 				array(
-					'row_count'                     => count( $provider_cards ),
-					'total'                         => count( $provider_cards ),
-					'live_provider_request'         => true,
-					'wordpress_catalog_cache_hit'   => false,
-					'scrydex_persistence_status'    => $persistence['status'],
+					'row_count'                       => count( $provider_cards ),
+					'total'                           => count( $provider_cards ),
+					'live_provider_request'           => true,
+					'wordpress_catalog_cache_hit'     => false,
+					'scrydex_persistence_status'      => $persistence['status'],
 					'scrydex_credentials_in_response' => false,
 				)
 			),
@@ -734,28 +734,28 @@ final class ReferenceCardSearchRouteHandler {
 				'source'       => 'wordpress_catalog_cache',
 				'lookup_order' => array( 'wordpress_catalog_cache', 'scrydex_provider' ),
 				'meta'         => array(
-					'total'                       => 0,
-					'page'                        => (int) $request['page'],
-					'page_size'                   => (int) $request['page_size'],
-					'public_catalog_safe'         => true,
-					'credentials_in_response'     => false,
-					'live_provider_request'       => true,
-					'wordpress_catalog_cache_hit' => false,
-					'scrydex_fallback_status'     => 'blocked',
-					'scrydex_provider_status'     => null === $result ? 'failed' : $result->status(),
+					'total'                        => 0,
+					'page'                         => (int) $request['page'],
+					'page_size'                    => (int) $request['page_size'],
+					'public_catalog_safe'          => true,
+					'credentials_in_response'      => false,
+					'live_provider_request'        => true,
+					'wordpress_catalog_cache_hit'  => false,
+					'scrydex_fallback_status'      => 'blocked',
+					'scrydex_provider_status'      => null === $result ? 'failed' : $result->status(),
 					'scrydex_provider_http_status' => null === $result ? 0 : $result->http_status(),
-					'scrydex_provider_error_code' => $error_code,
-					'scrydex_provider_message'    => $this->safe_provider_message( $message ),
-					'scrydex_credentials_scope'   => 'wordpress_server_settings',
+					'scrydex_provider_error_code'  => $error_code,
+					'scrydex_provider_message'     => $this->safe_provider_message( $message ),
+					'scrydex_credentials_scope'    => 'wordpress_server_settings',
 				),
 			),
 			'meta'        => array_merge(
 				$this->ready_meta( $query, 0, 0 ),
 				array(
-					'live_provider_request'          => true,
-					'wordpress_catalog_cache_hit'    => false,
-					'scrydex_fallback_status'        => 'blocked',
-					'scrydex_provider_error_code'    => $error_code,
+					'live_provider_request'           => true,
+					'wordpress_catalog_cache_hit'     => false,
+					'scrydex_fallback_status'         => 'blocked',
+					'scrydex_provider_error_code'     => $error_code,
 					'scrydex_credentials_in_response' => false,
 				)
 			),
@@ -811,38 +811,38 @@ final class ReferenceCardSearchRouteHandler {
 			$front_image_url  = $this->url( $row['front_image_url'] ?? '' );
 
 			$presented[] = array(
-				'reference_card_id'       => 0,
-				'provider_card_id'          => $provider_card_id,
-				'public_id'                 => '',
-				'provider_name'             => $this->text( $row['provider_name'] ?? 'scrydex' ),
-				'game'                      => $this->slug( $row['game'] ?? '' ),
-				'card_name'                 => $this->text( $row['name'] ?? '' ),
-				'name'                      => $this->text( $row['name'] ?? '' ),
-				'set_name'                  => $this->text( $row['set_name'] ?? '' ),
-				'set_code'                  => strtoupper( $this->text( $row['set_code'] ?? '' ) ),
-				'card_number'               => $this->text( $row['card_number'] ?? '' ),
-				'printed_number'            => $this->text( $row['printed_number'] ?? '' ),
-				'suggested_barcode'         => $provider_card_id,
-				'image_url'                 => $front_image_url,
-				'front_image_url'           => $front_image_url,
-				'back_image_url'            => $this->url( $row['back_image_url'] ?? '' ),
-				'market_price_minor_units'  => $this->minor_units( $market_price ),
-				'market_price'              => array(
+				'reference_card_id'        => 0,
+				'provider_card_id'         => $provider_card_id,
+				'public_id'                => '',
+				'provider_name'            => $this->text( $row['provider_name'] ?? 'scrydex' ),
+				'game'                     => $this->slug( $row['game'] ?? '' ),
+				'card_name'                => $this->text( $row['name'] ?? '' ),
+				'name'                     => $this->text( $row['name'] ?? '' ),
+				'set_name'                 => $this->text( $row['set_name'] ?? '' ),
+				'set_code'                 => strtoupper( $this->text( $row['set_code'] ?? '' ) ),
+				'card_number'              => $this->text( $row['card_number'] ?? '' ),
+				'printed_number'           => $this->text( $row['printed_number'] ?? '' ),
+				'suggested_barcode'        => $provider_card_id,
+				'image_url'                => $front_image_url,
+				'front_image_url'          => $front_image_url,
+				'back_image_url'           => $this->url( $row['back_image_url'] ?? '' ),
+				'market_price_minor_units' => $this->minor_units( $market_price ),
+				'market_price'             => array(
 					'amount'   => $market_price,
 					'currency' => $currency,
 				),
-				'currency'                  => $currency,
-				'price_observed_at_utc'     => $this->utc_timestamp( $price['source_observed_at'] ?? null ),
-				'catalog_synced_at_utc'     => gmdate( 'c' ),
-				'provider_updated_at_utc'   => $this->utc_timestamp( $row['provider_updated_at'] ?? null ),
-				'catalog_source'            => 'scrydex_provider',
-				'stock_available_count'     => 0,
-				'stock_total_count'         => 0,
-				'stock_by_condition'        => array(),
-				'variants'                  => $variants_by_card[ $provider_card_id ] ?? array(),
-				'price_points'              => $price_points_by_card[ $provider_card_id ] ?? array(),
-				'live_provider_request'     => true,
-				'credentials_in_response'   => false,
+				'currency'                 => $currency,
+				'price_observed_at_utc'    => $this->utc_timestamp( $price['source_observed_at'] ?? null ),
+				'catalog_synced_at_utc'    => gmdate( 'c' ),
+				'provider_updated_at_utc'  => $this->utc_timestamp( $row['provider_updated_at'] ?? null ),
+				'catalog_source'           => 'scrydex_provider',
+				'stock_available_count'    => 0,
+				'stock_total_count'        => 0,
+				'stock_by_condition'       => array(),
+				'variants'                 => $variants_by_card[ $provider_card_id ] ?? array(),
+				'price_points'             => $price_points_by_card[ $provider_card_id ] ?? array(),
+				'live_provider_request'    => true,
+				'credentials_in_response'  => false,
 			);
 		}
 
@@ -960,40 +960,40 @@ final class ReferenceCardSearchRouteHandler {
 		$stock_summary    = array_merge( $this->empty_stock_summary(), $stock_summary );
 
 		return array(
-			'reference_card_id'       => (int) ( $row['reference_card_id'] ?? 0 ),
-			'provider_card_id'          => $provider_card_id,
-			'public_id'                 => $this->text( $row['public_id'] ?? '' ),
-			'provider_name'             => $this->text( $row['provider_name'] ?? 'scrydex' ),
-			'game'                      => $this->slug( $row['game'] ?? '' ),
-			'card_name'                 => $this->text( $row['name'] ?? '' ),
-			'name'                      => $this->text( $row['name'] ?? '' ),
-			'set_name'                  => $this->text( $row['set_name'] ?? '' ),
-			'set_code'                  => strtoupper( $this->text( $row['set_code'] ?? '' ) ),
-			'card_number'               => $this->text( $row['card_number'] ?? '' ),
-			'printed_number'            => $this->text( $row['printed_number'] ?? '' ),
-			'suggested_barcode'         => $provider_card_id,
-			'image_url'                 => $front_image_url,
-			'front_image_url'           => $front_image_url,
-			'back_image_url'            => $this->url( $row['back_image_url'] ?? '' ),
-			'market_price_minor_units'  => $this->minor_units( $market_price ),
-			'market_price'              => array(
+			'reference_card_id'          => (int) ( $row['reference_card_id'] ?? 0 ),
+			'provider_card_id'           => $provider_card_id,
+			'public_id'                  => $this->text( $row['public_id'] ?? '' ),
+			'provider_name'              => $this->text( $row['provider_name'] ?? 'scrydex' ),
+			'game'                       => $this->slug( $row['game'] ?? '' ),
+			'card_name'                  => $this->text( $row['name'] ?? '' ),
+			'name'                       => $this->text( $row['name'] ?? '' ),
+			'set_name'                   => $this->text( $row['set_name'] ?? '' ),
+			'set_code'                   => strtoupper( $this->text( $row['set_code'] ?? '' ) ),
+			'card_number'                => $this->text( $row['card_number'] ?? '' ),
+			'printed_number'             => $this->text( $row['printed_number'] ?? '' ),
+			'suggested_barcode'          => $provider_card_id,
+			'image_url'                  => $front_image_url,
+			'front_image_url'            => $front_image_url,
+			'back_image_url'             => $this->url( $row['back_image_url'] ?? '' ),
+			'market_price_minor_units'   => $this->minor_units( $market_price ),
+			'market_price'               => array(
 				'amount'   => $market_price,
 				'currency' => $currency,
 			),
-			'currency'                  => $currency,
-			'price_observed_at_utc'     => $this->utc_timestamp( $row['price_observed_at'] ?? null ),
-			'catalog_synced_at_utc'     => $this->utc_timestamp( $row['updated_at'] ?? null ),
-			'provider_updated_at_utc'   => $this->utc_timestamp( $row['provider_updated_at'] ?? null ),
-			'catalog_source'            => 'wordpress_catalog_cache',
-			'stock_available_count'     => (int) $stock_summary['stock_available_count'],
-			'stock_reserved_count'      => (int) $stock_summary['stock_reserved_count'],
+			'currency'                   => $currency,
+			'price_observed_at_utc'      => $this->utc_timestamp( $row['price_observed_at'] ?? null ),
+			'catalog_synced_at_utc'      => $this->utc_timestamp( $row['updated_at'] ?? null ),
+			'provider_updated_at_utc'    => $this->utc_timestamp( $row['provider_updated_at'] ?? null ),
+			'catalog_source'             => 'wordpress_catalog_cache',
+			'stock_available_count'      => (int) $stock_summary['stock_available_count'],
+			'stock_reserved_count'       => (int) $stock_summary['stock_reserved_count'],
 			'stock_pending_intake_count' => (int) $stock_summary['stock_pending_intake_count'],
-			'stock_total_count'         => (int) $stock_summary['stock_total_count'],
-			'stock_by_condition'        => $this->stock_by_condition( $stock_summary['stock_by_condition'] ?? array() ),
-			'variants'                  => array_values( $variants ),
-			'price_points'              => array_values( $price_points ),
-			'live_provider_request'     => false,
-			'credentials_in_response'   => false,
+			'stock_total_count'          => (int) $stock_summary['stock_total_count'],
+			'stock_by_condition'         => $this->stock_by_condition( $stock_summary['stock_by_condition'] ?? array() ),
+			'variants'                   => array_values( $variants ),
+			'price_points'               => array_values( $price_points ),
+			'live_provider_request'      => false,
+			'credentials_in_response'    => false,
 		);
 	}
 
@@ -1053,19 +1053,19 @@ final class ReferenceCardSearchRouteHandler {
 	 */
 	private function ready_meta( array $query, int $row_count, int $total ): array {
 		return array(
-			'route_connected_reads_enabled'   => true,
-			'route_connected_reads_deferred'  => false,
-			'route_connected_writes_deferred' => true,
-			'reference_repository_deferred'   => false,
+			'route_connected_reads_enabled'       => true,
+			'route_connected_reads_deferred'      => false,
+			'route_connected_writes_deferred'     => true,
+			'reference_repository_deferred'       => false,
 			'default_route_registration_deferred' => true,
-			'route_still_gated'               => true,
-			'cards_table'                     => (string) ( $query['cards_table'] ?? '' ),
-			'variants_table'                  => (string) ( $query['variants_table'] ?? '' ),
-			'prices_table'                    => (string) ( $query['prices_table'] ?? '' ),
-			'price_points_table'              => (string) ( $query['price_points_table'] ?? '' ),
-			'inventory_table'                 => (string) ( $query['inventory_table'] ?? '' ),
-			'row_count'                       => $row_count,
-			'total'                           => $total,
+			'route_still_gated'                   => true,
+			'cards_table'                         => (string) ( $query['cards_table'] ?? '' ),
+			'variants_table'                      => (string) ( $query['variants_table'] ?? '' ),
+			'prices_table'                        => (string) ( $query['prices_table'] ?? '' ),
+			'price_points_table'                  => (string) ( $query['price_points_table'] ?? '' ),
+			'inventory_table'                     => (string) ( $query['inventory_table'] ?? '' ),
+			'row_count'                           => $row_count,
+			'total'                               => $total,
 		);
 	}
 
@@ -1077,13 +1077,13 @@ final class ReferenceCardSearchRouteHandler {
 	 */
 	private function maybe_enrich_graded_price_history( array $request, array $rows, array $price_points ): array {
 		$result = array(
-			'status'              => 'skipped',
-			'request_count'       => 0,
-			'price_point_count'   => 0,
-			'price_points'        => array(),
-			'errors'              => array(),
-			'persistence_status'  => 'skipped',
-			'persistence_errors'  => array(),
+			'status'             => 'skipped',
+			'request_count'      => 0,
+			'price_point_count'  => 0,
+			'price_points'       => array(),
+			'errors'             => array(),
+			'persistence_status' => 'skipped',
+			'persistence_errors' => array(),
 		);
 
 		if ( 'graded' !== (string) ( $request['raw_or_graded'] ?? '' ) ) {
@@ -1139,7 +1139,7 @@ final class ReferenceCardSearchRouteHandler {
 			: 'not_needed';
 
 		if ( array() !== $result['price_points'] ) {
-			$persistence = $this->persist_price_history_price_points( $result['price_points'], $rows );
+			$persistence                  = $this->persist_price_history_price_points( $result['price_points'], $rows );
 			$result['persistence_status'] = $persistence['status'];
 			$result['persistence_errors'] = $persistence['errors'];
 		}
@@ -1284,7 +1284,7 @@ final class ReferenceCardSearchRouteHandler {
 			);
 		}
 
-		$page_plan = ScryDexSyncPagePlan::planned(
+		$page_plan        = ScryDexSyncPagePlan::planned(
 			array(),
 			array(),
 			array(),
@@ -1327,12 +1327,12 @@ final class ReferenceCardSearchRouteHandler {
 	 */
 	private function price_history_enrichment_meta( array $enrichment ): array {
 		return array(
-			'status'                => (string) ( $enrichment['status'] ?? 'skipped' ),
-			'request_count'         => (int) ( $enrichment['request_count'] ?? 0 ),
-			'price_point_count'     => (int) ( $enrichment['price_point_count'] ?? 0 ),
-			'persistence_status'    => (string) ( $enrichment['persistence_status'] ?? 'skipped' ),
-			'persistence_errors'    => $this->string_list( $enrichment['persistence_errors'] ?? array() ),
-			'errors'                => $this->string_list( $enrichment['errors'] ?? array() ),
+			'status'                  => (string) ( $enrichment['status'] ?? 'skipped' ),
+			'request_count'           => (int) ( $enrichment['request_count'] ?? 0 ),
+			'price_point_count'       => (int) ( $enrichment['price_point_count'] ?? 0 ),
+			'persistence_status'      => (string) ( $enrichment['persistence_status'] ?? 'skipped' ),
+			'persistence_errors'      => $this->string_list( $enrichment['persistence_errors'] ?? array() ),
+			'errors'                  => $this->string_list( $enrichment['errors'] ?? array() ),
 			'credentials_in_response' => false,
 		);
 	}
@@ -1519,7 +1519,7 @@ final class ReferenceCardSearchRouteHandler {
 		$summary['stock_total_count'] += $count;
 
 		if ( 'available' === $status ) {
-			$summary['stock_available_count'] += $count;
+			$summary['stock_available_count']           += $count;
 			$summary['stock_by_condition'][ $condition ] = ( $summary['stock_by_condition'][ $condition ] ?? 0 ) + $count;
 		} elseif ( 'reserved' === $status ) {
 			$summary['stock_reserved_count'] += $count;

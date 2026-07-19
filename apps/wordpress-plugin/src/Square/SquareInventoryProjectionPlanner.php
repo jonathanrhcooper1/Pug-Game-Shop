@@ -114,7 +114,6 @@ final class SquareInventoryProjectionPlanner {
 		if ( 'visible' !== $pos_visibility ) {
 			$skip_reasons[] = 'pos_visibility_not_visible';
 		}
-
 		if ( $has_existing_mapping && '' !== $square_location_id ) {
 			$inventory_change = $this->physical_count_change( $square_variation_id, $square_location_id, '0', $occurred_at );
 

@@ -97,11 +97,11 @@ final class ProductShelfShortcode {
 
 		$wc_products = wc_get_products(
 			array(
-				'status'  => 'publish',
-				'limit'   => (int) $attributes['limit'],
+				'status'   => 'publish',
+				'limit'    => (int) $attributes['limit'],
 				'category' => array( (string) $attributes['category'] ),
-				'orderby' => 'date',
-				'order'   => 'DESC',
+				'orderby'  => 'date',
+				'order'    => 'DESC',
 			)
 		);
 
@@ -238,7 +238,9 @@ final class ProductShelfShortcode {
 		$value = strtolower( trim( (string) $value ) );
 		$value = preg_replace( '/[^a-z0-9_-]+/', '-', $value ) ?? '';
 
-		return trim( $value, '-' ) ?: 'sealed-products';
+		$value = trim( $value, '-' );
+
+		return '' !== $value ? $value : 'sealed-products';
 	}
 
 	private function clean_text( mixed $value ): string {

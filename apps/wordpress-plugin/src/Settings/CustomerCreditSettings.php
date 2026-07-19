@@ -27,8 +27,8 @@ final class CustomerCreditSettings {
 	 * @return array<string, mixed>
 	 */
 	public static function sanitize( mixed $value, array $fallback = array() ): array {
-		$value    = is_array( $value ) ? $value : array();
-		$fallback = array_merge( self::defaults(), $fallback );
+		$value     = is_array( $value ) ? $value : array();
+		$fallback  = array_merge( self::defaults(), $fallback );
 		$threshold = (int) ( $value['manager_approval_threshold_minor_units'] ?? $fallback['manager_approval_threshold_minor_units'] );
 
 		if ( $threshold < 0 ) {

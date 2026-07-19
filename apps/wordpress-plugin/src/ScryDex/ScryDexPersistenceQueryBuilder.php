@@ -515,8 +515,8 @@ final class ScryDexPersistenceQueryBuilder {
 			self::REFERENCE_INSERT_COLUMNS,
 			$row,
 			array(
-				'query_kind'                     => 'reference_card_insert',
-				'provider_card_id'               => (string) $row['provider_card_id'],
+				'query_kind'                       => 'reference_card_insert',
+				'provider_card_id'                 => (string) $row['provider_card_id'],
 				'reference_card_insert_idempotent' => true,
 			)
 		);
@@ -531,7 +531,7 @@ final class ScryDexPersistenceQueryBuilder {
 			$assignments[] = $quoted . ' = VALUES(' . $quoted . ')';
 		}
 
-		$assignments[]         = '`row_version` = `row_version` + 1';
+		$assignments[]          = '`row_version` = `row_version` + 1';
 		$query['sql_template'] .= ' ON DUPLICATE KEY UPDATE ' . implode( ', ', $assignments );
 
 		return $query;
@@ -588,8 +588,8 @@ final class ScryDexPersistenceQueryBuilder {
 		if ( null !== ( $row['reference_card_id'] ?? null ) ) {
 			$placeholders[] = $this->placeholder_for_value( (int) $row['reference_card_id'], $prepare_args );
 		} else {
-			$prepare_args[]  = (string) $row['provider_name'];
-			$prepare_args[]  = (string) $row['provider_card_id'];
+			$prepare_args[] = (string) $row['provider_name'];
+			$prepare_args[] = (string) $row['provider_card_id'];
 			$placeholders[] = sprintf(
 				'(SELECT reference_card_id FROM `%s` WHERE provider_name = %%s AND provider_card_id = %%s LIMIT 1)',
 				$reference_table_name
@@ -658,14 +658,14 @@ final class ScryDexPersistenceQueryBuilder {
 			self::PRICE_POINT_COLUMNS,
 			$row,
 			array(
-				'query_kind'              => 'provider_price_point_insert',
-				'provider_card_id'        => (string) $row['provider_card_id'],
-				'provider_variant_id'     => (string) ( $row['provider_variant_id'] ?? '' ),
-				'public_id'               => (string) $row['public_id'],
+				'query_kind'          => 'provider_price_point_insert',
+				'provider_card_id'    => (string) $row['provider_card_id'],
+				'provider_variant_id' => (string) ( $row['provider_variant_id'] ?? '' ),
+				'public_id'           => (string) $row['public_id'],
 			)
 		);
 
-		$query['sql_template']                                  .= ' ON DUPLICATE KEY UPDATE reference_card_id = VALUES(reference_card_id), reference_variant_id = VALUES(reference_variant_id), game = VALUES(game), condition_code = VALUES(condition_code), raw_or_graded = VALUES(raw_or_graded), grading_company = VALUES(grading_company), grade = VALUES(grade), market_price = VALUES(market_price), low_price = VALUES(low_price), mid_price = VALUES(mid_price), high_price = VALUES(high_price), source_observed_at = VALUES(source_observed_at), provider_updated_at = VALUES(provider_updated_at), raw_price_payload_json = VALUES(raw_price_payload_json)';
+		$query['sql_template']                                 .= ' ON DUPLICATE KEY UPDATE reference_card_id = VALUES(reference_card_id), reference_variant_id = VALUES(reference_variant_id), game = VALUES(game), condition_code = VALUES(condition_code), raw_or_graded = VALUES(raw_or_graded), grading_company = VALUES(grading_company), grade = VALUES(grade), market_price = VALUES(market_price), low_price = VALUES(low_price), mid_price = VALUES(mid_price), high_price = VALUES(high_price), source_observed_at = VALUES(source_observed_at), provider_updated_at = VALUES(provider_updated_at), raw_price_payload_json = VALUES(raw_price_payload_json)';
 		$query['provider_price_point_write_execution_deferred'] = true;
 
 		return $query;

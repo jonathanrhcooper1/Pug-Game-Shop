@@ -58,9 +58,9 @@ final class OfflineRouteRuntimeConfigurator {
 				$route_contract = $this->enable_runtime_route(
 					$route_contract,
 					array(
-						'route_connected_reads_deferred'       => false,
+						'route_connected_reads_deferred' => false,
 						'route_connected_queue_writes_deferred' => false,
-						'canonical_mutations_deferred'         => true,
+						'canonical_mutations_deferred'   => true,
 					)
 				);
 			}
@@ -97,9 +97,9 @@ final class OfflineRouteRuntimeConfigurator {
 		return array_merge(
 			$route_contract,
 			array(
-				'live_enabled_by_default'   => true,
+				'live_enabled_by_default'     => true,
 				'route_registration_deferred' => false,
-				'runtime_gate_enabled'      => true,
+				'runtime_gate_enabled'        => true,
 			),
 			$metadata
 		);

@@ -14,8 +14,8 @@ use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
 
 final class InventoryWorkspacePresenter {
 	private const REFERENCE_SEARCH_ROUTE_KEY = 'GET /reference/search';
-	private const SEARCH_ROUTE_KEY = 'GET /inventory/search';
-	private const CREATE_ROUTE_KEY = 'POST /inventory';
+	private const SEARCH_ROUTE_KEY           = 'GET /inventory/search';
+	private const CREATE_ROUTE_KEY           = 'POST /inventory';
 
 	/**
 	 * @param array<string, mixed> $bootstrap_payload Inventory route bootstrap payload.
@@ -131,21 +131,21 @@ final class InventoryWorkspacePresenter {
 			&& false === ( $dependency_payload['inventory_search_route_reads_deferred'] ?? true );
 
 		return array(
-			'ready'          => $ready,
-			'status'         => $ready ? 'ready' : 'locked',
-			'status_label'   => $ready
+			'ready'                 => $ready,
+			'status'                => $ready ? 'ready' : 'locked',
+			'status_label'          => $ready
 				? 'Ready for staff inventory search'
 				: 'Locked until inventory search gates are enabled',
-			'endpoint_path'  => '/tcg-store/v1/inventory/search',
-			'method'         => 'GET',
-			'query'          => $this->search_query( $query ),
-			'notes'          => $ready
+			'endpoint_path'         => '/tcg-store/v1/inventory/search',
+			'method'                => 'GET',
+			'query'                 => $this->search_query( $query ),
+			'notes'                 => $ready
 				? 'Staff search reads are enabled; writes and projections remain deferred.'
 				: $this->search_lock_notes( $bootstrap_payload, $dependency_payload, $search_route ),
-			'status_options' => array_merge( array( '' ), InventoryStatus::all() ),
+			'status_options'        => array_merge( array( '' ), InventoryStatus::all() ),
 			'raw_or_graded_options' => array( '', 'raw', 'graded' ),
-			'sort_options'   => array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ),
-			'page_sizes'     => array( 10, 25, 50, 100 ),
+			'sort_options'          => array( 'relevance', 'updated_desc', 'price_asc', 'price_desc', 'name_asc' ),
+			'page_sizes'            => array( 10, 25, 50, 100 ),
 		);
 	}
 
@@ -180,15 +180,15 @@ final class InventoryWorkspacePresenter {
 				static fn ( mixed $row ): bool => is_array( $row )
 			)
 		);
-		$scan_counts  = array_count_values(
+		$scan_counts    = array_count_values(
 			array_filter(
 				array_map( array( $this, 'square_scan_identity' ), $inventory_rows ),
 				static fn ( string $value ): bool => '' !== $value
 			)
 		);
-		$ready_items  = array();
-		$review_items = array();
-		$hidden_count = 0;
+		$ready_items    = array();
+		$review_items   = array();
+		$hidden_count   = 0;
 
 		foreach ( $inventory_rows as $row ) {
 			$pos_visibility = $this->visibility_value( $row['pos_visibility'] ?? 'hidden' );
@@ -213,7 +213,7 @@ final class InventoryWorkspacePresenter {
 			}
 
 			$item = array(
-				'inventory_id'                 => $this->non_negative_int( $row['inventory_id'] ?? 0 ),
+				'inventory_id'                => $this->non_negative_int( $row['inventory_id'] ?? 0 ),
 				'public_id'                   => $this->safe_text( $row['public_id'] ?? '' ),
 				'card_name'                   => $this->safe_text( $row['card_name'] ?? '' ),
 				'set_code'                    => $this->safe_text( $row['set_code'] ?? '' ),
@@ -237,21 +237,21 @@ final class InventoryWorkspacePresenter {
 		}
 
 		return array(
-			'total_rows'                    => count( $inventory_rows ),
-			'pos_visible_count'             => count( $ready_items ) + count( $review_items ),
+			'total_rows'                     => count( $inventory_rows ),
+			'pos_visible_count'              => count( $ready_items ) + count( $review_items ),
 			'pos_hidden_or_staff_only_count' => $hidden_count,
-			'ready_count'                   => count( $ready_items ),
-			'review_count'                  => count( $review_items ),
-			'duplicate_scan_identity_count' => count(
+			'ready_count'                    => count( $ready_items ),
+			'review_count'                   => count( $review_items ),
+			'duplicate_scan_identity_count'  => count(
 				array_filter(
 					$scan_counts,
 					static fn ( int $count ): bool => $count > 1
 				)
 			),
-			'square_inventory_authority'    => 'tcg_store_platform',
-			'square_counts_used_for'        => 'pos_reconciliation_and_exception_detection',
-			'ready_items'                   => array_slice( $ready_items, 0, 10 ),
-			'review_items'                  => array_slice( $review_items, 0, 10 ),
+			'square_inventory_authority'     => 'tcg_store_platform',
+			'square_counts_used_for'         => 'pos_reconciliation_and_exception_detection',
+			'ready_items'                    => array_slice( $ready_items, 0, 10 ),
+			'review_items'                   => array_slice( $review_items, 0, 10 ),
 		);
 	}
 
@@ -311,22 +311,22 @@ final class InventoryWorkspacePresenter {
 			&& false === ( $dependency_payload['inventory_intake_route_writes_deferred'] ?? true );
 
 		return array(
-			'ready'                 => $ready,
-			'status'                => $ready ? 'ready' : 'locked',
-			'status_label'          => $ready
+			'ready'                   => $ready,
+			'status'                  => $ready ? 'ready' : 'locked',
+			'status_label'            => $ready
 				? 'Ready for staff inventory intake'
 				: 'Locked until inventory create gates are enabled',
-			'endpoint_path'         => '/tcg-store/v1/inventory',
-			'method'                => 'POST',
-			'form'                  => $this->intake_form( $form ),
-			'notes'                 => $ready
+			'endpoint_path'           => '/tcg-store/v1/inventory',
+			'method'                  => 'POST',
+			'form'                    => $this->intake_form( $form ),
+			'notes'                   => $ready
 				? 'Staff intake writes are enabled; WooCommerce, Square, POS, and labels remain deferred.'
 				: $this->intake_lock_notes( $bootstrap_payload, $dependency_payload, $create_route ),
-			'status_options'        => InventoryStatus::all(),
-			'condition_options'        => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
-			'raw_or_graded_options'    => array( 'raw', 'graded' ),
-			'grading_company_options'  => GradingCompanySettings::companies_from_settings( Settings::all() ),
-			'visibility_options'       => array( 'hidden', 'visible', 'staff_only' ),
+			'status_options'          => InventoryStatus::all(),
+			'condition_options'       => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
+			'raw_or_graded_options'   => array( 'raw', 'graded' ),
+			'grading_company_options' => GradingCompanySettings::companies_from_settings( Settings::all() ),
+			'visibility_options'      => array( 'hidden', 'visible', 'staff_only' ),
 		);
 	}
 
@@ -573,13 +573,13 @@ final class InventoryWorkspacePresenter {
 		}
 
 		return array(
-			'q'          => $q,
-			'game'       => $game,
-			'status'     => $status,
+			'q'             => $q,
+			'game'          => $game,
+			'status'        => $status,
 			'raw_or_graded' => $raw_or_graded,
-			'sort'       => $sort,
-			'page_size'  => $page_size,
-			'visibility' => 'staff',
+			'sort'          => $sort,
+			'page_size'     => $page_size,
+			'visibility'    => 'staff',
 		);
 	}
 
@@ -607,10 +607,10 @@ final class InventoryWorkspacePresenter {
 			'set_code'                       => strtoupper( $this->slug_value( $form['set_code'] ?? '', '' ) ),
 			'card_number'                    => $this->text_value( $form['card_number'] ?? '', 40 ),
 			'printed_number'                 => $this->text_value( $form['printed_number'] ?? '', 40 ),
-			'provider_name'                   => $this->slug_value( $form['provider_name'] ?? 'scrydex', 'scrydex' ),
-			'provider_card_id'                => $this->text_value( $form['provider_card_id'] ?? '', 120 ),
-			'reference_card_id'               => $this->positive_int_string( $form['reference_card_id'] ?? '' ),
-			'reference_variant_id'            => $this->positive_int_string( $form['reference_variant_id'] ?? '' ),
+			'provider_name'                  => $this->slug_value( $form['provider_name'] ?? 'scrydex', 'scrydex' ),
+			'provider_card_id'               => $this->text_value( $form['provider_card_id'] ?? '', 120 ),
+			'reference_card_id'              => $this->positive_int_string( $form['reference_card_id'] ?? '' ),
+			'reference_variant_id'           => $this->positive_int_string( $form['reference_variant_id'] ?? '' ),
 			'variant'                        => $this->text_value( $form['variant'] ?? '', 80 ),
 			'finish'                         => $this->text_value( $form['finish'] ?? '', 80 ),
 			'language'                       => strtoupper( $this->slug_value( $form['language'] ?? 'EN', 'EN' ) ),

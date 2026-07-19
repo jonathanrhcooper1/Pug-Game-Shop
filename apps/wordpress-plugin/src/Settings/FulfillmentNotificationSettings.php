@@ -15,10 +15,10 @@ final class FulfillmentNotificationSettings {
 	 */
 	public static function defaults(): array {
 		return array(
-			'audio_enabled'             => true,
+			'audio_enabled'              => true,
 			'ready_pickup_email_enabled' => true,
-			'notification_sound_url'    => '',
-			'employee_only'             => true,
+			'notification_sound_url'     => '',
+			'employee_only'              => true,
 		);
 	}
 

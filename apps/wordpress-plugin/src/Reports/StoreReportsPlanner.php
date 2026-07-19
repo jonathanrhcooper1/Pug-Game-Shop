@@ -34,18 +34,18 @@ final class StoreReportsPlanner {
 		$filters = $this->filters( $filters );
 
 		return array(
-			'capability'       => 'view_reports',
-			'public'           => false,
-			'filters'          => $filters,
-			'filter_controls'  => $this->filter_controls(),
-			'kpi_cards'        => $this->kpi_cards(),
-			'insight_tiles'     => $this->insight_tiles(),
-			'comparison_sets'  => $this->comparison_sets(),
-			'charts'           => $this->charts(),
-			'retail_kpis'      => $this->retail_kpis(),
-			'report_matrix'     => $this->report_matrix(),
-			'data_contracts'    => $this->data_contracts(),
-			'csv_exports'      => array_map(
+			'capability'      => 'view_reports',
+			'public'          => false,
+			'filters'         => $filters,
+			'filter_controls' => $this->filter_controls(),
+			'kpi_cards'       => $this->kpi_cards(),
+			'insight_tiles'   => $this->insight_tiles(),
+			'comparison_sets' => $this->comparison_sets(),
+			'charts'          => $this->charts(),
+			'retail_kpis'     => $this->retail_kpis(),
+			'report_matrix'   => $this->report_matrix(),
+			'data_contracts'  => $this->data_contracts(),
+			'csv_exports'     => array_map(
 				fn ( string $report ): array => array(
 					'report'   => $report,
 					'label'    => ucwords( str_replace( '_', ' ', $report ) ),
@@ -53,13 +53,13 @@ final class StoreReportsPlanner {
 				),
 				self::REPORTS
 			),
-			'query_strategy'   => array(
+			'query_strategy'  => array(
 				'graph_ready'              => true,
 				'pagination_required'      => true,
 				'avoid_full_catalog_loads' => true,
 				'manager_only'             => true,
 			),
-			'research_basis'   => array(
+			'research_basis'  => array(
 				'woocommerce_analytics' => array( 'revenue', 'orders', 'products', 'categories', 'coupons', 'taxes', 'stock', 'customers' ),
 				'retail_inventory_kpis' => array( 'sell_through_rate', 'inventory_turnover', 'days_on_hand', 'weeks_on_hand', 'stock_to_sales_ratio', 'gmroi' ),
 				'store_operations'      => array( 'employee_intake_vs_sales', 'online_vs_in_store_sales', 'trade_in_cash_vs_credit', 'pickup_fulfillment_speed' ),
@@ -111,15 +111,60 @@ final class StoreReportsPlanner {
 	 */
 	private function filter_controls(): array {
 		return array(
-			array( 'key' => 'date_from', 'label' => 'From', 'type' => 'date', 'options' => array() ),
-			array( 'key' => 'date_to', 'label' => 'To', 'type' => 'date', 'options' => array() ),
-			array( 'key' => 'staff_user_id', 'label' => 'Employee', 'type' => 'staff_lookup', 'options' => array() ),
-			array( 'key' => 'channel', 'label' => 'Channel', 'type' => 'select', 'options' => array( 'online', 'square_pos', 'kiosk', 'local_pickup', 'manual' ) ),
-			array( 'key' => 'game', 'label' => 'Game', 'type' => 'select', 'options' => array( 'pokemon', 'magicthegathering', 'lorcana', 'onepiece', 'riftbound', 'gundam', 'digimon' ) ),
-			array( 'key' => 'product_type', 'label' => 'Product Type', 'type' => 'select', 'options' => array( 'singles', 'graded', 'sealed', 'accessories', 'events' ) ),
-			array( 'key' => 'condition', 'label' => 'Condition', 'type' => 'select', 'options' => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ) ),
-			array( 'key' => 'grading_company', 'label' => 'Grading Company', 'type' => 'select', 'options' => array( 'PSA', 'CGC', 'BGS', 'SGC', 'TAG', 'Other' ) ),
-			array( 'key' => 'source', 'label' => 'Source', 'type' => 'select', 'options' => array( 'trade_in', 'buy_in', 'manual_intake', 'square_pos', 'online', 'kiosk' ) ),
+			array(
+				'key'     => 'date_from',
+				'label'   => 'From',
+				'type'    => 'date',
+				'options' => array(),
+			),
+			array(
+				'key'     => 'date_to',
+				'label'   => 'To',
+				'type'    => 'date',
+				'options' => array(),
+			),
+			array(
+				'key'     => 'staff_user_id',
+				'label'   => 'Employee',
+				'type'    => 'staff_lookup',
+				'options' => array(),
+			),
+			array(
+				'key'     => 'channel',
+				'label'   => 'Channel',
+				'type'    => 'select',
+				'options' => array( 'online', 'square_pos', 'kiosk', 'local_pickup', 'manual' ),
+			),
+			array(
+				'key'     => 'game',
+				'label'   => 'Game',
+				'type'    => 'select',
+				'options' => array( 'pokemon', 'magicthegathering', 'lorcana', 'onepiece', 'riftbound', 'gundam', 'digimon' ),
+			),
+			array(
+				'key'     => 'product_type',
+				'label'   => 'Product Type',
+				'type'    => 'select',
+				'options' => array( 'singles', 'graded', 'sealed', 'accessories', 'events' ),
+			),
+			array(
+				'key'     => 'condition',
+				'label'   => 'Condition',
+				'type'    => 'select',
+				'options' => array( 'NM', 'LP', 'MP', 'HP', 'DMG' ),
+			),
+			array(
+				'key'     => 'grading_company',
+				'label'   => 'Grading Company',
+				'type'    => 'select',
+				'options' => array( 'PSA', 'CGC', 'BGS', 'SGC', 'TAG', 'Other' ),
+			),
+			array(
+				'key'     => 'source',
+				'label'   => 'Source',
+				'type'    => 'select',
+				'options' => array( 'trade_in', 'buy_in', 'manual_intake', 'square_pos', 'online', 'kiosk' ),
+			),
 		);
 	}
 
@@ -128,12 +173,54 @@ final class StoreReportsPlanner {
 	 */
 	private function kpi_cards(): array {
 		return array(
-			array( 'key' => 'gross_sales', 'label' => 'Gross Sales', 'report' => 'sales', 'metric' => 'gross_sales', 'format' => 'money', 'description' => 'All online, Square/POS, kiosk, and local pickup sales before refunds.' ),
-			array( 'key' => 'net_sales', 'label' => 'Net Sales', 'report' => 'sales', 'metric' => 'net_sales', 'format' => 'money', 'description' => 'Sales after refunds, discounts, taxes, and shipping adjustments.' ),
-			array( 'key' => 'inventory_value', 'label' => 'Inventory Value', 'report' => 'inventory', 'metric' => 'inventory_value', 'format' => 'money', 'description' => 'Current sellable inventory value by singles, graded, sealed, and accessories.' ),
-			array( 'key' => 'trade_in_liability', 'label' => 'Credit Liability', 'report' => 'customers', 'metric' => 'customer_credit_balances', 'format' => 'money', 'description' => 'Outstanding local-store-only customer credit balance.' ),
-			array( 'key' => 'cash_paid_buyins', 'label' => 'Cash Paid Buy-Ins', 'report' => 'trade_ins', 'metric' => 'cash_given', 'format' => 'money', 'description' => 'Cash payouts by employee, customer, game, and card.' ),
-			array( 'key' => 'fulfillment_speed', 'label' => 'Pickup Speed', 'report' => 'fulfillment', 'metric' => 'placed_to_ready_minutes', 'format' => 'duration', 'description' => 'Average time from paid pickup order to ready for pickup.' ),
+			array(
+				'key'         => 'gross_sales',
+				'label'       => 'Gross Sales',
+				'report'      => 'sales',
+				'metric'      => 'gross_sales',
+				'format'      => 'money',
+				'description' => 'All online, Square/POS, kiosk, and local pickup sales before refunds.',
+			),
+			array(
+				'key'         => 'net_sales',
+				'label'       => 'Net Sales',
+				'report'      => 'sales',
+				'metric'      => 'net_sales',
+				'format'      => 'money',
+				'description' => 'Sales after refunds, discounts, taxes, and shipping adjustments.',
+			),
+			array(
+				'key'         => 'inventory_value',
+				'label'       => 'Inventory Value',
+				'report'      => 'inventory',
+				'metric'      => 'inventory_value',
+				'format'      => 'money',
+				'description' => 'Current sellable inventory value by singles, graded, sealed, and accessories.',
+			),
+			array(
+				'key'         => 'trade_in_liability',
+				'label'       => 'Credit Liability',
+				'report'      => 'customers',
+				'metric'      => 'customer_credit_balances',
+				'format'      => 'money',
+				'description' => 'Outstanding local-store-only customer credit balance.',
+			),
+			array(
+				'key'         => 'cash_paid_buyins',
+				'label'       => 'Cash Paid Buy-Ins',
+				'report'      => 'trade_ins',
+				'metric'      => 'cash_given',
+				'format'      => 'money',
+				'description' => 'Cash payouts by employee, customer, game, and card.',
+			),
+			array(
+				'key'         => 'fulfillment_speed',
+				'label'       => 'Pickup Speed',
+				'report'      => 'fulfillment',
+				'metric'      => 'placed_to_ready_minutes',
+				'format'      => 'duration',
+				'description' => 'Average time from paid pickup order to ready for pickup.',
+			),
 		);
 	}
 
@@ -142,12 +229,54 @@ final class StoreReportsPlanner {
 	 */
 	private function insight_tiles(): array {
 		return array(
-			array( 'key' => 'best_employee_margin', 'label' => 'Employee Margin', 'question' => 'Which employee is turning intake into profitable sales?', 'primary_report' => 'sales', 'filters' => array( 'staff_user_id', 'date_from', 'date_to', 'product_type' ), 'action' => 'Compare items intaken, items sold, gross margin, cash paid, and credit issued.' ),
-			array( 'key' => 'channel_shift', 'label' => 'Channel Shift', 'question' => 'Are online, kiosk, local pickup, or Square/POS sales growing faster?', 'primary_report' => 'sales', 'filters' => array( 'channel', 'date_from', 'date_to', 'game' ), 'action' => 'Review net sales, order count, average order value, and refunds by channel.' ),
-			array( 'key' => 'inventory_trap', 'label' => 'Slow Inventory', 'question' => 'Which game, set, condition, or graded company is tying up cash?', 'primary_report' => 'inventory', 'filters' => array( 'game', 'set', 'condition', 'grading_company' ), 'action' => 'Sort by days on hand, weeks on hand, stock-to-sales ratio, and GMROI.' ),
-			array( 'key' => 'credit_velocity', 'label' => 'Credit Velocity', 'question' => 'Is store credit coming back as purchases or piling up as liability?', 'primary_report' => 'customers', 'filters' => array( 'customer_id', 'date_from', 'date_to', 'staff_user_id' ), 'action' => 'Compare credit given, credit used, balance changes, and trade-in source.' ),
-			array( 'key' => 'pickup_bottleneck', 'label' => 'Pickup Bottleneck', 'question' => 'Where do local pickup orders slow down?', 'primary_report' => 'fulfillment', 'filters' => array( 'order_status', 'staff_user_id', 'date_from', 'date_to' ), 'action' => 'Compare placed-to-picked, picked-to-ready, and ready-to-completed timing.' ),
-			array( 'key' => 'sync_quality', 'label' => 'Sync Quality', 'question' => 'Are ScryDex, WooCommerce, Square/POS, and local app syncs healthy?', 'primary_report' => 'audit', 'filters' => array( 'source', 'date_from', 'date_to' ), 'action' => 'Track failed pulls, price changes, pending external sync rows, and reconciliation variance.' ),
+			array(
+				'key'            => 'best_employee_margin',
+				'label'          => 'Employee Margin',
+				'question'       => 'Which employee is turning intake into profitable sales?',
+				'primary_report' => 'sales',
+				'filters'        => array( 'staff_user_id', 'date_from', 'date_to', 'product_type' ),
+				'action'         => 'Compare items intaken, items sold, gross margin, cash paid, and credit issued.',
+			),
+			array(
+				'key'            => 'channel_shift',
+				'label'          => 'Channel Shift',
+				'question'       => 'Are online, kiosk, local pickup, or Square/POS sales growing faster?',
+				'primary_report' => 'sales',
+				'filters'        => array( 'channel', 'date_from', 'date_to', 'game' ),
+				'action'         => 'Review net sales, order count, average order value, and refunds by channel.',
+			),
+			array(
+				'key'            => 'inventory_trap',
+				'label'          => 'Slow Inventory',
+				'question'       => 'Which game, set, condition, or graded company is tying up cash?',
+				'primary_report' => 'inventory',
+				'filters'        => array( 'game', 'set', 'condition', 'grading_company' ),
+				'action'         => 'Sort by days on hand, weeks on hand, stock-to-sales ratio, and GMROI.',
+			),
+			array(
+				'key'            => 'credit_velocity',
+				'label'          => 'Credit Velocity',
+				'question'       => 'Is store credit coming back as purchases or piling up as liability?',
+				'primary_report' => 'customers',
+				'filters'        => array( 'customer_id', 'date_from', 'date_to', 'staff_user_id' ),
+				'action'         => 'Compare credit given, credit used, balance changes, and trade-in source.',
+			),
+			array(
+				'key'            => 'pickup_bottleneck',
+				'label'          => 'Pickup Bottleneck',
+				'question'       => 'Where do local pickup orders slow down?',
+				'primary_report' => 'fulfillment',
+				'filters'        => array( 'order_status', 'staff_user_id', 'date_from', 'date_to' ),
+				'action'         => 'Compare placed-to-picked, picked-to-ready, and ready-to-completed timing.',
+			),
+			array(
+				'key'            => 'sync_quality',
+				'label'          => 'Sync Quality',
+				'question'       => 'Are ScryDex, WooCommerce, Square/POS, and local app syncs healthy?',
+				'primary_report' => 'audit',
+				'filters'        => array( 'source', 'date_from', 'date_to' ),
+				'action'         => 'Track failed pulls, price changes, pending external sync rows, and reconciliation variance.',
+			),
 		);
 	}
 
@@ -156,10 +285,38 @@ final class StoreReportsPlanner {
 	 */
 	private function comparison_sets(): array {
 		return array(
-			array( 'key' => 'employee_intake_vs_sales', 'label' => 'Employee Intake vs Sales', 'chart' => 'stacked_bar', 'primary_report' => 'sales', 'compare_by' => array( 'staff_user_id', 'date' ), 'metrics' => array( 'items_intaken', 'items_sold', 'gross_sales', 'cash_paid', 'credit_given' ) ),
-			array( 'key' => 'online_vs_in_store_sales', 'label' => 'Online Sales vs In-Store Sales', 'chart' => 'line_compare', 'primary_report' => 'sales', 'compare_by' => array( 'channel', 'date' ), 'metrics' => array( 'gross_sales', 'net_sales', 'order_count', 'average_order_value' ) ),
-			array( 'key' => 'trade_in_cash_vs_credit', 'label' => 'Trade-In Cash vs Credit', 'chart' => 'stacked_area', 'primary_report' => 'trade_ins', 'compare_by' => array( 'staff_user_id', 'game', 'date' ), 'metrics' => array( 'cash_given', 'credit_given', 'market_mid_total', 'final_value_total' ) ),
-			array( 'key' => 'inventory_profitability', 'label' => 'Inventory Profitability', 'chart' => 'scatter', 'primary_report' => 'inventory', 'compare_by' => array( 'game', 'set', 'product_type' ), 'metrics' => array( 'gross_margin', 'gmroi', 'sell_through_rate', 'inventory_turnover' ) ),
+			array(
+				'key'            => 'employee_intake_vs_sales',
+				'label'          => 'Employee Intake vs Sales',
+				'chart'          => 'stacked_bar',
+				'primary_report' => 'sales',
+				'compare_by'     => array( 'staff_user_id', 'date' ),
+				'metrics'        => array( 'items_intaken', 'items_sold', 'gross_sales', 'cash_paid', 'credit_given' ),
+			),
+			array(
+				'key'            => 'online_vs_in_store_sales',
+				'label'          => 'Online Sales vs In-Store Sales',
+				'chart'          => 'line_compare',
+				'primary_report' => 'sales',
+				'compare_by'     => array( 'channel', 'date' ),
+				'metrics'        => array( 'gross_sales', 'net_sales', 'order_count', 'average_order_value' ),
+			),
+			array(
+				'key'            => 'trade_in_cash_vs_credit',
+				'label'          => 'Trade-In Cash vs Credit',
+				'chart'          => 'stacked_area',
+				'primary_report' => 'trade_ins',
+				'compare_by'     => array( 'staff_user_id', 'game', 'date' ),
+				'metrics'        => array( 'cash_given', 'credit_given', 'market_mid_total', 'final_value_total' ),
+			),
+			array(
+				'key'            => 'inventory_profitability',
+				'label'          => 'Inventory Profitability',
+				'chart'          => 'scatter',
+				'primary_report' => 'inventory',
+				'compare_by'     => array( 'game', 'set', 'product_type' ),
+				'metrics'        => array( 'gross_margin', 'gmroi', 'sell_through_rate', 'inventory_turnover' ),
+			),
 		);
 	}
 
@@ -168,12 +325,60 @@ final class StoreReportsPlanner {
 	 */
 	private function charts(): array {
 		return array(
-			array( 'key' => 'sales_by_channel', 'label' => 'Sales by Channel', 'type' => 'line', 'report' => 'sales', 'x' => 'date', 'y' => array( 'online_sales', 'square_pos_sales', 'kiosk_sales', 'local_pickup_sales' ), 'breakdowns' => array( 'channel', 'staff_user_id' ) ),
-			array( 'key' => 'employee_performance', 'label' => 'Employee Performance', 'type' => 'bar', 'report' => 'sales', 'x' => 'staff_user_id', 'y' => array( 'items_intaken', 'items_sold', 'gross_sales', 'trade_in_value' ), 'breakdowns' => array( 'date', 'product_type' ) ),
-			array( 'key' => 'inventory_health', 'label' => 'Inventory Health', 'type' => 'combo', 'report' => 'inventory', 'x' => 'game', 'y' => array( 'quantity', 'inventory_value', 'low_stock', 'reserved_inventory' ), 'breakdowns' => array( 'set', 'condition', 'grade' ) ),
-			array( 'key' => 'trade_in_pipeline', 'label' => 'Trade-In Pipeline', 'type' => 'funnel', 'report' => 'trade_ins', 'x' => 'status', 'y' => array( 'draft', 'review', 'approved', 'paid', 'converted' ), 'breakdowns' => array( 'staff_user_id', 'payout_type' ) ),
-			array( 'key' => 'fulfillment_timing', 'label' => 'Fulfillment Timing', 'type' => 'timeline', 'report' => 'fulfillment', 'x' => 'date', 'y' => array( 'awaiting_pull', 'picked', 'ready_for_pickup', 'completed' ), 'breakdowns' => array( 'staff_user_id', 'order_status' ) ),
-			array( 'key' => 'scrydex_sync_health', 'label' => 'ScryDex Sync Health', 'type' => 'line', 'report' => 'scrydex', 'x' => 'sync_run', 'y' => array( 'new_cards', 'price_changes', 'failed_pulls' ), 'breakdowns' => array( 'game', 'set' ) ),
+			array(
+				'key'        => 'sales_by_channel',
+				'label'      => 'Sales by Channel',
+				'type'       => 'line',
+				'report'     => 'sales',
+				'x'          => 'date',
+				'y'          => array( 'online_sales', 'square_pos_sales', 'kiosk_sales', 'local_pickup_sales' ),
+				'breakdowns' => array( 'channel', 'staff_user_id' ),
+			),
+			array(
+				'key'        => 'employee_performance',
+				'label'      => 'Employee Performance',
+				'type'       => 'bar',
+				'report'     => 'sales',
+				'x'          => 'staff_user_id',
+				'y'          => array( 'items_intaken', 'items_sold', 'gross_sales', 'trade_in_value' ),
+				'breakdowns' => array( 'date', 'product_type' ),
+			),
+			array(
+				'key'        => 'inventory_health',
+				'label'      => 'Inventory Health',
+				'type'       => 'combo',
+				'report'     => 'inventory',
+				'x'          => 'game',
+				'y'          => array( 'quantity', 'inventory_value', 'low_stock', 'reserved_inventory' ),
+				'breakdowns' => array( 'set', 'condition', 'grade' ),
+			),
+			array(
+				'key'        => 'trade_in_pipeline',
+				'label'      => 'Trade-In Pipeline',
+				'type'       => 'funnel',
+				'report'     => 'trade_ins',
+				'x'          => 'status',
+				'y'          => array( 'draft', 'review', 'approved', 'paid', 'converted' ),
+				'breakdowns' => array( 'staff_user_id', 'payout_type' ),
+			),
+			array(
+				'key'        => 'fulfillment_timing',
+				'label'      => 'Fulfillment Timing',
+				'type'       => 'timeline',
+				'report'     => 'fulfillment',
+				'x'          => 'date',
+				'y'          => array( 'awaiting_pull', 'picked', 'ready_for_pickup', 'completed' ),
+				'breakdowns' => array( 'staff_user_id', 'order_status' ),
+			),
+			array(
+				'key'        => 'scrydex_sync_health',
+				'label'      => 'ScryDex Sync Health',
+				'type'       => 'line',
+				'report'     => 'scrydex',
+				'x'          => 'sync_run',
+				'y'          => array( 'new_cards', 'price_changes', 'failed_pulls' ),
+				'breakdowns' => array( 'game', 'set' ),
+			),
 		);
 	}
 
@@ -182,14 +387,62 @@ final class StoreReportsPlanner {
 	 */
 	private function retail_kpis(): array {
 		return array(
-			array( 'key' => 'sell_through_rate', 'label' => 'Sell-Through Rate', 'formula' => 'units_sold / (units_sold + units_on_hand)', 'report' => 'inventory', 'why' => 'Shows whether a set/game is moving fast enough.' ),
-			array( 'key' => 'inventory_turnover', 'label' => 'Inventory Turnover', 'formula' => 'cost_of_goods_sold / average_inventory_cost', 'report' => 'inventory', 'why' => 'Measures how often inventory investment turns into sales.' ),
-			array( 'key' => 'days_on_hand', 'label' => 'Days on Hand', 'formula' => '(average_inventory / cost_of_sales) * 365', 'report' => 'inventory', 'why' => 'Flags slow-moving singles, graded cards, and sealed product.' ),
-			array( 'key' => 'weeks_on_hand', 'label' => 'Weeks on Hand', 'formula' => '(average_inventory / cost_of_sales) * 52', 'report' => 'inventory', 'why' => 'Helps plan restocks and markdowns.' ),
-			array( 'key' => 'stock_to_sales_ratio', 'label' => 'Stock-to-Sales Ratio', 'formula' => 'inventory_value / sales_value', 'report' => 'inventory', 'why' => 'Compares money tied in stock against sales demand.' ),
-			array( 'key' => 'gmroi', 'label' => 'GMROI', 'formula' => 'gross_margin / average_inventory_cost', 'report' => 'inventory', 'why' => 'Shows gross margin return on inventory dollars.' ),
-			array( 'key' => 'average_order_value', 'label' => 'Average Order Value', 'formula' => 'net_sales / order_count', 'report' => 'sales', 'why' => 'Compares online, Square/POS, kiosk, and pickup basket size.' ),
-			array( 'key' => 'credit_redemption_rate', 'label' => 'Credit Redemption Rate', 'formula' => 'credit_used / credit_given', 'report' => 'customers', 'why' => 'Tracks how store credit returns as sales.' ),
+			array(
+				'key'     => 'sell_through_rate',
+				'label'   => 'Sell-Through Rate',
+				'formula' => 'units_sold / (units_sold + units_on_hand)',
+				'report'  => 'inventory',
+				'why'     => 'Shows whether a set/game is moving fast enough.',
+			),
+			array(
+				'key'     => 'inventory_turnover',
+				'label'   => 'Inventory Turnover',
+				'formula' => 'cost_of_goods_sold / average_inventory_cost',
+				'report'  => 'inventory',
+				'why'     => 'Measures how often inventory investment turns into sales.',
+			),
+			array(
+				'key'     => 'days_on_hand',
+				'label'   => 'Days on Hand',
+				'formula' => '(average_inventory / cost_of_sales) * 365',
+				'report'  => 'inventory',
+				'why'     => 'Flags slow-moving singles, graded cards, and sealed product.',
+			),
+			array(
+				'key'     => 'weeks_on_hand',
+				'label'   => 'Weeks on Hand',
+				'formula' => '(average_inventory / cost_of_sales) * 52',
+				'report'  => 'inventory',
+				'why'     => 'Helps plan restocks and markdowns.',
+			),
+			array(
+				'key'     => 'stock_to_sales_ratio',
+				'label'   => 'Stock-to-Sales Ratio',
+				'formula' => 'inventory_value / sales_value',
+				'report'  => 'inventory',
+				'why'     => 'Compares money tied in stock against sales demand.',
+			),
+			array(
+				'key'     => 'gmroi',
+				'label'   => 'GMROI',
+				'formula' => 'gross_margin / average_inventory_cost',
+				'report'  => 'inventory',
+				'why'     => 'Shows gross margin return on inventory dollars.',
+			),
+			array(
+				'key'     => 'average_order_value',
+				'label'   => 'Average Order Value',
+				'formula' => 'net_sales / order_count',
+				'report'  => 'sales',
+				'why'     => 'Compares online, Square/POS, kiosk, and pickup basket size.',
+			),
+			array(
+				'key'     => 'credit_redemption_rate',
+				'label'   => 'Credit Redemption Rate',
+				'formula' => 'credit_used / credit_given',
+				'report'  => 'customers',
+				'why'     => 'Tracks how store credit returns as sales.',
+			),
 		);
 	}
 
@@ -198,11 +451,41 @@ final class StoreReportsPlanner {
 	 */
 	private function report_matrix(): array {
 		return array(
-			array( 'area' => 'Customer and Credit', 'reports' => array( 'customers', 'audit' ), 'graphs' => array( 'credit liability trend', 'credit given vs used', 'top customers' ), 'default_filters' => array( 'date range', 'customer', 'staff', 'location' ), 'exports' => array( 'ledger csv', 'customer balance csv' ) ),
-			array( 'area' => 'Sales and Channel', 'reports' => array( 'sales', 'square_reconciliation' ), 'graphs' => array( 'online vs in-store', 'sales by game', 'sales by employee', 'refunds/discounts/taxes' ), 'default_filters' => array( 'date range', 'channel', 'staff', 'game', 'product type' ), 'exports' => array( 'sales csv', 'square reconciliation csv' ) ),
-			array( 'area' => 'Inventory Health', 'reports' => array( 'inventory', 'scrydex' ), 'graphs' => array( 'inventory value', 'sell-through', 'aging', 'low stock', 'price changes' ), 'default_filters' => array( 'game', 'set', 'condition', 'grade', 'source' ), 'exports' => array( 'inventory csv', 'scrydex sync csv' ) ),
-			array( 'area' => 'Trade-In / Buy-In', 'reports' => array( 'trade_ins', 'customers' ), 'graphs' => array( 'cash vs credit', 'market mid vs payout', 'accepted/rejected/pending', 'employee intake volume' ), 'default_filters' => array( 'date range', 'staff', 'customer', 'game', 'payout type' ), 'exports' => array( 'trade-in csv', 'receipt line csv' ) ),
-			array( 'area' => 'Fulfillment', 'reports' => array( 'fulfillment', 'sales' ), 'graphs' => array( 'awaiting picking', 'picked', 'ready for pickup', 'completed history', 'staff timing' ), 'default_filters' => array( 'date range', 'staff', 'order status', 'channel' ), 'exports' => array( 'pickup queue csv', 'completed pickup csv' ) ),
+			array(
+				'area'            => 'Customer and Credit',
+				'reports'         => array( 'customers', 'audit' ),
+				'graphs'          => array( 'credit liability trend', 'credit given vs used', 'top customers' ),
+				'default_filters' => array( 'date range', 'customer', 'staff', 'location' ),
+				'exports'         => array( 'ledger csv', 'customer balance csv' ),
+			),
+			array(
+				'area'            => 'Sales and Channel',
+				'reports'         => array( 'sales', 'square_reconciliation' ),
+				'graphs'          => array( 'online vs in-store', 'sales by game', 'sales by employee', 'refunds/discounts/taxes' ),
+				'default_filters' => array( 'date range', 'channel', 'staff', 'game', 'product type' ),
+				'exports'         => array( 'sales csv', 'square reconciliation csv' ),
+			),
+			array(
+				'area'            => 'Inventory Health',
+				'reports'         => array( 'inventory', 'scrydex' ),
+				'graphs'          => array( 'inventory value', 'sell-through', 'aging', 'low stock', 'price changes' ),
+				'default_filters' => array( 'game', 'set', 'condition', 'grade', 'source' ),
+				'exports'         => array( 'inventory csv', 'scrydex sync csv' ),
+			),
+			array(
+				'area'            => 'Trade-In / Buy-In',
+				'reports'         => array( 'trade_ins', 'customers' ),
+				'graphs'          => array( 'cash vs credit', 'market mid vs payout', 'accepted/rejected/pending', 'employee intake volume' ),
+				'default_filters' => array( 'date range', 'staff', 'customer', 'game', 'payout type' ),
+				'exports'         => array( 'trade-in csv', 'receipt line csv' ),
+			),
+			array(
+				'area'            => 'Fulfillment',
+				'reports'         => array( 'fulfillment', 'sales' ),
+				'graphs'          => array( 'awaiting picking', 'picked', 'ready for pickup', 'completed history', 'staff timing' ),
+				'default_filters' => array( 'date range', 'staff', 'order status', 'channel' ),
+				'exports'         => array( 'pickup queue csv', 'completed pickup csv' ),
+			),
 		);
 	}
 
@@ -219,10 +502,10 @@ final class StoreReportsPlanner {
 				'chart_shape' => array( 'labels', 'series', 'totals', 'filters', 'generated_at' ),
 			),
 			'app'       => array(
-				'endpoint'    => 'GET /reports/{report} through the paired website connector',
-				'auth'        => 'local session with Reports access and website application password',
-				'cache'       => 'short local cache allowed; refresh on manager filter changes',
-				'offline'     => 'show last synced report snapshot when WordPress is unavailable',
+				'endpoint' => 'GET /reports/{report} through the paired website connector',
+				'auth'     => 'local session with Reports access and website application password',
+				'cache'    => 'short local cache allowed; refresh on manager filter changes',
+				'offline'  => 'show last synced report snapshot when WordPress is unavailable',
 			),
 		);
 	}
@@ -255,9 +538,21 @@ final class StoreReportsPlanner {
 	 */
 	private function columns( string $report ): array {
 		$common = array(
-			array( 'key' => 'date', 'label' => 'Date', 'type' => 'date' ),
-			array( 'key' => 'count', 'label' => 'Count', 'type' => 'integer' ),
-			array( 'key' => 'amount', 'label' => 'Amount', 'type' => 'money' ),
+			array(
+				'key'   => 'date',
+				'label' => 'Date',
+				'type'  => 'date',
+			),
+			array(
+				'key'   => 'count',
+				'label' => 'Count',
+				'type'  => 'integer',
+			),
+			array(
+				'key'   => 'amount',
+				'label' => 'Amount',
+				'type'  => 'money',
+			),
 		);
 
 		$map = array(
@@ -297,9 +592,9 @@ final class StoreReportsPlanner {
 	 */
 	private function query_plan( string $report, array $filters ): array {
 		return array(
-			'tables'      => $this->tables( $report ),
-			'filters'     => $filters,
-			'pagination'  => array(
+			'tables'           => $this->tables( $report ),
+			'filters'          => $filters,
+			'pagination'       => array(
 				'limit'  => $filters['page_size'],
 				'offset' => ( $filters['page'] - 1 ) * $filters['page_size'],
 			),

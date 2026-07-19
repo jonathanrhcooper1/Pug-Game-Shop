@@ -1,5 +1,46 @@
 # Revision Log
 
+## 2026-07-18 - GitHub CI Hardening
+
+### What Changed
+
+- Applied the repository WordPress Coding Standards rules to the complete
+  plugin source and fixed all reported errors and warnings.
+- Replaced dynamic table and column interpolation in the affected customer,
+  event, portal, and product-image queries with WordPress identifier
+  placeholders.
+- Corrected the WordPress integration test's stale release assertion and made
+  one source-contract test insensitive to formatter whitespace.
+
+### Why
+
+The first full GitHub Actions run scanned the complete imported plugin history,
+while the earlier local release gate had covered lint and functional behavior.
+This checkpoint makes the local and pull-request quality gates agree.
+
+### Files Affected
+
+- WordPress plugin PHP source under `apps/wordpress-plugin/src/`
+- `apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php`
+- `apps/wordpress-plugin/tests/wordpress-integration-smoke.php`
+- `CHANGELOG.md`, `docs/CHANGELOG.md`, and `REVISION_LOG.md`
+
+### Migrations Added
+
+- None.
+
+### Tests Added Or Run
+
+- WordPress Coding Standards: 422 files, zero findings.
+- PHP lint: 680 files, zero failures.
+- WordPress plugin tests: 1,089 passing.
+- Full coordinated `npm test` suite and required matrix: passing.
+
+### Rollback Notes
+
+- Revert this checkpoint commit. No database or persistent-data rollback is
+  required.
+
 ## 2026-07-18 - End-To-End Production Repair 0.203.1
 
 ### What Changed

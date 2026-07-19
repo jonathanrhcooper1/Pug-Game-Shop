@@ -113,10 +113,10 @@ final class InventoryProductProjectionPlanner {
 						'woocommerce.grouped_product_projection_skipped',
 						$group_key,
 						array(
-							'row_count'                    => count( $rows ),
-							'available_visible_row_count'  => 0,
-							'woocommerce_write_deferred'   => true,
-							'network_request_deferred'     => true,
+							'row_count'                   => count( $rows ),
+							'available_visible_row_count' => 0,
+							'woocommerce_write_deferred'  => true,
+							'network_request_deferred'    => true,
 						)
 					),
 				)
@@ -139,9 +139,9 @@ final class InventoryProductProjectionPlanner {
 			);
 		}
 
-		$options   = $this->group_options( $visible_rows, $currency );
-		$price     = $this->lowest_option_price( $options );
-		$errors    = $this->group_errors( $card_name, $sku, $currency, $price, $context );
+		$options = $this->group_options( $visible_rows, $currency );
+		$price   = $this->lowest_option_price( $options );
+		$errors  = $this->group_errors( $card_name, $sku, $currency, $price, $context );
 
 		if ( array() !== $errors ) {
 			return InventoryProductProjectionPlan::failed(
@@ -178,13 +178,13 @@ final class InventoryProductProjectionPlanner {
 					'woocommerce.grouped_product_projection_ready',
 					$group_key,
 					array(
-						'product_operation_count'    => 1,
-						'requires_product_creation'  => $requires_product_creation,
-						'row_count'                  => count( $rows ),
+						'product_operation_count'     => 1,
+						'requires_product_creation'   => $requires_product_creation,
+						'row_count'                   => count( $rows ),
 						'available_visible_row_count' => count( $visible_rows ),
-						'option_count'               => count( $options ),
-						'woocommerce_write_deferred' => true,
-						'network_request_deferred'   => true,
+						'option_count'                => count( $options ),
+						'woocommerce_write_deferred'  => true,
+						'network_request_deferred'    => true,
 					)
 				),
 			),
@@ -242,11 +242,11 @@ final class InventoryProductProjectionPlanner {
 					'woocommerce.grouped_product_stockout_ready',
 					$group_key,
 					array(
-						'row_count'                    => $row_count,
-						'available_visible_row_count'  => 0,
-						'product_operation_count'      => 1,
-						'woocommerce_write_deferred'   => true,
-						'network_request_deferred'     => true,
+						'row_count'                   => $row_count,
+						'available_visible_row_count' => 0,
+						'product_operation_count'     => 1,
+						'woocommerce_write_deferred'  => true,
+						'network_request_deferred'    => true,
 					)
 				),
 			),
@@ -521,18 +521,18 @@ final class InventoryProductProjectionPlanner {
 
 			if ( ! isset( $options[ $option_key ] ) ) {
 				$options[ $option_key ] = array(
-					'option_key'     => $option_key,
-					'condition_code' => strtoupper( $this->string_value( $row, array( 'condition_code' ) ) ),
-					'condition_label' => $this->condition_label( $this->string_value( $row, array( 'condition_code' ) ) ),
-					'variant'        => $this->string_value( $row, array( 'variant' ) ),
-					'finish'         => $this->string_value( $row, array( 'finish' ) ),
-					'language'       => strtoupper( $this->string_value( $row, array( 'language' ) ) ),
-					'raw_or_graded'  => $this->string_value( $row, array( 'raw_or_graded' ) ),
-					'price'          => $price,
+					'option_key'        => $option_key,
+					'condition_code'    => strtoupper( $this->string_value( $row, array( 'condition_code' ) ) ),
+					'condition_label'   => $this->condition_label( $this->string_value( $row, array( 'condition_code' ) ) ),
+					'variant'           => $this->string_value( $row, array( 'variant' ) ),
+					'finish'            => $this->string_value( $row, array( 'finish' ) ),
+					'language'          => strtoupper( $this->string_value( $row, array( 'language' ) ) ),
+					'raw_or_graded'     => $this->string_value( $row, array( 'raw_or_graded' ) ),
+					'price'             => $price,
 					'price_minor_units' => $this->minor_units( $price ),
-					'currency'       => $currency,
-					'stock_quantity' => 0,
-					'inventory_ids'  => array(),
+					'currency'          => $currency,
+					'stock_quantity'    => 0,
+					'inventory_ids'     => array(),
 				);
 			}
 

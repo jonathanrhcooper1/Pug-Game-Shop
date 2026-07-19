@@ -872,27 +872,27 @@ final class ScryDexCardNormalizer {
 		}
 
 		return array(
-			'provider_name'               => self::PROVIDER,
-			'provider_card_id'            => $provider_card_id,
-			'provider_variant_id'         => $provider_variant_id,
-			'variant'                     => $variant,
-			'finish'                      => $finish,
-			'parallel_name'               => $parallel_name,
-			'edition'                     => $edition,
-			'language'                    => $language,
-			'front_image_url'             => $this->first_image_url(
+			'provider_name'              => self::PROVIDER,
+			'provider_card_id'           => $provider_card_id,
+			'provider_variant_id'        => $provider_variant_id,
+			'variant'                    => $variant,
+			'finish'                     => $finish,
+			'parallel_name'              => $parallel_name,
+			'edition'                    => $edition,
+			'language'                   => $language,
+			'front_image_url'            => $this->first_image_url(
 				$source['image_url'] ?? null,
 				$source['front_image_url'] ?? null,
 				$source['imageUrl'] ?? null,
 				$this->front_image_value( $images )
 			),
-			'back_image_url'              => $this->first_image_url(
+			'back_image_url'             => $this->first_image_url(
 				$source['back_image_url'] ?? null,
 				$source['backImageUrl'] ?? null,
 				$this->back_image_value( $images )
 			),
-			'raw_or_graded_support'       => $attributes['raw_or_graded_support'],
-			'normalized_attributes_json'  => $this->attributes_json( $attributes ),
+			'raw_or_graded_support'      => $attributes['raw_or_graded_support'],
+			'normalized_attributes_json' => $this->attributes_json( $attributes ),
 		);
 	}
 

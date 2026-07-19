@@ -14,8 +14,8 @@ use TCGStorePlatform\Reservations\ReservationService;
 use TCGStorePlatform\Reservations\WpdbReservationStorage;
 
 final class GroupedInventoryProductHooks {
-	public const STYLE_HANDLE = 'tcg-store-woocommerce-card-product';
-	public const EXPIRY_CRON_HOOK = 'tcg_store_expire_reservations';
+	public const STYLE_HANDLE            = 'tcg-store-woocommerce-card-product';
+	public const EXPIRY_CRON_HOOK        = 'tcg_store_expire_reservations';
 	private const EXPIRY_CRON_RECURRENCE = 'tcg_store_every_five_minutes';
 
 	public function register(): void {
@@ -51,26 +51,106 @@ final class GroupedInventoryProductHooks {
 	 */
 	public static function hook_contracts(): array {
 		return array(
-			array( 'type' => 'action', 'hook' => 'wp_enqueue_scripts', 'callback' => 'enqueue_assets' ),
-			array( 'type' => 'filter', 'hook' => 'cron_schedules', 'callback' => 'add_cron_schedule' ),
-			array( 'type' => 'filter', 'hook' => 'woocommerce_product_get_image', 'callback' => 'product_image' ),
-			array( 'type' => 'filter', 'hook' => 'woocommerce_single_product_image_thumbnail_html', 'callback' => 'single_product_image_html' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_before_single_product_summary', 'callback' => 'render_single_product_gallery' ),
-			array( 'type' => 'filter', 'hook' => 'woocommerce_cart_item_thumbnail', 'callback' => 'cart_item_thumbnail' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_before_add_to_cart_button', 'callback' => 'render_condition_selector' ),
-			array( 'type' => 'filter', 'hook' => 'woocommerce_add_to_cart_validation', 'callback' => 'validate_add_to_cart' ),
-			array( 'type' => 'filter', 'hook' => 'woocommerce_add_cart_item_data', 'callback' => 'reserve_add_to_cart_inventory' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_before_cart', 'callback' => 'release_expired_cart_reservations' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_before_checkout_form', 'callback' => 'release_expired_cart_reservations' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_before_calculate_totals', 'callback' => 'apply_exact_inventory_price_snapshots' ),
-			array( 'type' => 'action', 'hook' => self::EXPIRY_CRON_HOOK, 'callback' => 'expire_stale_reservations' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_checkout_create_order_line_item', 'callback' => 'attach_exact_inventory_order_line_metadata' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_payment_complete', 'callback' => 'convert_paid_order_reservations' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_order_refunded', 'callback' => 'move_refunded_inventory_to_return_review' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_cart_item_removed', 'callback' => 'release_removed_cart_item_reservation' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_product_set_stock', 'callback' => 'reconcile_product_stock_to_inventory' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_variation_set_stock', 'callback' => 'reconcile_product_stock_to_inventory' ),
-			array( 'type' => 'action', 'hook' => 'woocommerce_product_set_stock_status', 'callback' => 'reconcile_product_stock_to_inventory' ),
+			array(
+				'type'     => 'action',
+				'hook'     => 'wp_enqueue_scripts',
+				'callback' => 'enqueue_assets',
+			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'cron_schedules',
+				'callback' => 'add_cron_schedule',
+			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'woocommerce_product_get_image',
+				'callback' => 'product_image',
+			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'woocommerce_single_product_image_thumbnail_html',
+				'callback' => 'single_product_image_html',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_before_single_product_summary',
+				'callback' => 'render_single_product_gallery',
+			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'woocommerce_cart_item_thumbnail',
+				'callback' => 'cart_item_thumbnail',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_before_add_to_cart_button',
+				'callback' => 'render_condition_selector',
+			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'woocommerce_add_to_cart_validation',
+				'callback' => 'validate_add_to_cart',
+			),
+			array(
+				'type'     => 'filter',
+				'hook'     => 'woocommerce_add_cart_item_data',
+				'callback' => 'reserve_add_to_cart_inventory',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_before_cart',
+				'callback' => 'release_expired_cart_reservations',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_before_checkout_form',
+				'callback' => 'release_expired_cart_reservations',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_before_calculate_totals',
+				'callback' => 'apply_exact_inventory_price_snapshots',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => self::EXPIRY_CRON_HOOK,
+				'callback' => 'expire_stale_reservations',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_checkout_create_order_line_item',
+				'callback' => 'attach_exact_inventory_order_line_metadata',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_payment_complete',
+				'callback' => 'convert_paid_order_reservations',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_order_refunded',
+				'callback' => 'move_refunded_inventory_to_return_review',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_cart_item_removed',
+				'callback' => 'release_removed_cart_item_reservation',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_product_set_stock',
+				'callback' => 'reconcile_product_stock_to_inventory',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_variation_set_stock',
+				'callback' => 'reconcile_product_stock_to_inventory',
+			),
+			array(
+				'type'     => 'action',
+				'hook'     => 'woocommerce_product_set_stock_status',
+				'callback' => 'reconcile_product_stock_to_inventory',
+			),
 		);
 	}
 
@@ -105,8 +185,10 @@ final class GroupedInventoryProductHooks {
 			return;
 		}
 
-		while ( $timestamp = wp_next_scheduled( self::EXPIRY_CRON_HOOK ) ) {
+		$timestamp = wp_next_scheduled( self::EXPIRY_CRON_HOOK );
+		while ( false !== $timestamp ) {
 			wp_unschedule_event( (int) $timestamp, self::EXPIRY_CRON_HOOK );
+			$timestamp = wp_next_scheduled( self::EXPIRY_CRON_HOOK );
 		}
 	}
 
@@ -196,7 +278,10 @@ final class GroupedInventoryProductHooks {
 			$product,
 			'tcg-woocommerce-card-image tcg-woocommerce-card-cart-image',
 			'eager',
-			array( 'width' => 72, 'height' => 96 )
+			array(
+				'width'  => 72,
+				'height' => 96,
+			)
 		);
 	}
 
@@ -247,7 +332,7 @@ final class GroupedInventoryProductHooks {
 			return (bool) $passed;
 		}
 
-		if ( (int) $quantity !== 1 ) {
+		if ( 1 !== (int) $quantity ) {
 			$this->add_notice( __( 'Serialized card inventory must be added one card at a time.', 'tcg-store-platform' ) );
 			return false;
 		}
@@ -272,7 +357,7 @@ final class GroupedInventoryProductHooks {
 	 */
 	public function reserve_add_to_cart_inventory( array $cart_item_data, mixed $product_id, mixed $variation_id = 0, mixed $quantity = 1 ): array {
 		$product = $this->product( $product_id );
-		if ( null === $product || ! $this->is_grouped_inventory_product( $product ) || (int) $quantity !== 1 ) {
+		if ( null === $product || ! $this->is_grouped_inventory_product( $product ) || 1 !== (int) $quantity ) {
 			return $cart_item_data;
 		}
 
@@ -460,13 +545,14 @@ final class GroupedInventoryProductHooks {
 	}
 
 	public function release_order_reservations( mixed $order_id ): void {
+
 		$this->transition_order_reservations( (int) $order_id, 'release_reservation' );
 	}
 
 	public function move_refunded_inventory_to_return_review( mixed $order_id, mixed $refund_id ): void {
+
 		( new SerializedOrderRefundHandler() )->handle( (int) $order_id, (int) $refund_id );
 	}
-
 	public function reconcile_product_stock_to_inventory( mixed $product_or_id = null, mixed $stock_status = null, mixed $product_from_hook = null ): void {
 		unset( $stock_status );
 
@@ -878,7 +964,8 @@ final class GroupedInventoryProductHooks {
 		$image_url = $this->url(
 			$wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT front_image_remote_url FROM {$table} WHERE woocommerce_product_id = %d AND front_image_remote_url <> '' ORDER BY inventory_id DESC LIMIT 1",
+					"SELECT front_image_remote_url FROM %i WHERE woocommerce_product_id = %d AND front_image_remote_url <> '' ORDER BY inventory_id DESC LIMIT 1",
+					$table,
 					$product->get_id()
 				)
 			)
@@ -895,10 +982,10 @@ final class GroupedInventoryProductHooks {
 	 * @param array{width?: int, height?: int} $dimensions Optional stable dimensions.
 	 */
 	private function remote_image_html( \WC_Product $product, string $class_names, string $loading, array $dimensions = array() ): string {
-		$url = $this->esc_url( $this->remote_image_url( $product ) );
-		$alt = $this->esc_attr( $product->get_name() );
-		$width = max( 0, (int) ( $dimensions['width'] ?? 0 ) );
-		$height = max( 0, (int) ( $dimensions['height'] ?? 0 ) );
+		$url            = $this->esc_url( $this->remote_image_url( $product ) );
+		$alt            = $this->esc_attr( $product->get_name() );
+		$width          = max( 0, (int) ( $dimensions['width'] ?? 0 ) );
+		$height         = max( 0, (int) ( $dimensions['height'] ?? 0 ) );
 		$dimension_html = '';
 
 		if ( $width > 0 && $height > 0 ) {

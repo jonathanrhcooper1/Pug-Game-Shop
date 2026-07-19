@@ -135,7 +135,7 @@ final class ScryDexWebhookController {
 			return $this->response( $result, 503 );
 		}
 
-		$dispatch_result = $this->sync_dispatcher->dispatch( $event );
+		$dispatch_result   = $this->sync_dispatcher->dispatch( $event );
 		$dispatch_deferred = ! in_array( (string) $dispatch_result['status'], array( 'scheduled', 'scheduled_existing' ), true );
 		if ( $dispatch_deferred ) {
 			$this->logger->warning(
@@ -149,7 +149,6 @@ final class ScryDexWebhookController {
 				)
 			);
 		}
-
 		$result = array(
 			'status'                         => 'accepted',
 			'code'                           => 'scrydex_webhook_accepted',

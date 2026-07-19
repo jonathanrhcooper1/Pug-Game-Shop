@@ -27,12 +27,12 @@ final class ScryDexSyncPageProcessor {
 			);
 		}
 
-		$body           = $result->body();
-		$reference_rows = array();
-		$price_rows     = array();
-		$variant_rows   = array();
+		$body             = $result->body();
+		$reference_rows   = array();
+		$price_rows       = array();
+		$variant_rows     = array();
 		$price_point_rows = array();
-		$errors         = array();
+		$errors           = array();
 
 		foreach ( $this->cards_from_body( $body ) as $index => $card ) {
 			$normalized = $this->normalizer->normalize_card( $card );

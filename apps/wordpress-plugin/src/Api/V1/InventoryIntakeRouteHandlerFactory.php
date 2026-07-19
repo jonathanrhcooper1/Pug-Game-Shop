@@ -81,7 +81,7 @@ final class InventoryIntakeRouteHandlerFactory {
 		}
 
 		return array(
-			'create_inventory_item' => fn ( OfflineRestRequestData $data ): array => $handler->create_inventory_item( $data ),
+			'create_inventory_item'    => fn ( OfflineRestRequestData $data ): array => $handler->create_inventory_item( $data ),
 			'mark_inventory_item_sold' => fn ( OfflineRestRequestData $data ): array => $this->mark_sold_handler()?->mark_inventory_item_sold( $data )
 				?? array(
 					'status'      => 'disabled',

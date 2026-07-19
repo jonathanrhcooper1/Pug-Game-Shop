@@ -45,15 +45,15 @@ final class InventorySearchPresenter {
 	 * @param array<string, mixed> $payload Presented payload.
 	 */
 	public function render_html( array $payload ): string {
-		$brand  = is_array( $payload['brand']['company'] ?? null ) ? $payload['brand']['company'] : array();
-		$groups = is_array( $payload['groups'] ?? null ) ? $payload['groups'] : array();
-		$query  = (string) ( $payload['query'] ?? '' );
-		$game   = (string) ( $payload['game'] ?? '' );
-		$set_filter = (string) ( $payload['set_filter'] ?? '' );
+		$brand         = is_array( $payload['brand']['company'] ?? null ) ? $payload['brand']['company'] : array();
+		$groups        = is_array( $payload['groups'] ?? null ) ? $payload['groups'] : array();
+		$query         = (string) ( $payload['query'] ?? '' );
+		$game          = (string) ( $payload['game'] ?? '' );
+		$set_filter    = (string) ( $payload['set_filter'] ?? '' );
 		$raw_or_graded = (string) ( $payload['raw_or_graded'] ?? 'raw' );
-		$sort   = (string) ( $payload['sort'] ?? 'relevance' );
-		$page   = max( 1, (int) ( $payload['page'] ?? 1 ) );
-		$page_size = max( 1, (int) ( $payload['page_size'] ?? 24 ) );
+		$sort          = (string) ( $payload['sort'] ?? 'relevance' );
+		$page          = max( 1, (int) ( $payload['page'] ?? 1 ) );
+		$page_size     = max( 1, (int) ( $payload['page_size'] ?? 24 ) );
 
 		$html  = '<div class="tcg-public-inventory" data-resource="public_inventory_search">';
 		$html .= '<section class="tcg-public-inventory__hero">';
@@ -98,11 +98,11 @@ final class InventorySearchPresenter {
 
 	private function render_quick_game_filters( string $query, string $active_game, string $set_filter, string $raw_or_graded, string $sort, int $page_size ): string {
 		$games = array(
-			''                   => 'All games',
-			'pokemon'            => 'Pokemon',
-			'magicthegathering'  => 'MTG',
-			'lorcana'            => 'Lorcana',
-			'onepiece'           => 'One Piece',
+			''                  => 'All games',
+			'pokemon'           => 'Pokemon',
+			'magicthegathering' => 'MTG',
+			'lorcana'           => 'Lorcana',
+			'onepiece'          => 'One Piece',
 		);
 		$html  = '<nav class="tcg-public-inventory__quick-filters" aria-label="' . $this->esc_attr( 'Quick game filters' ) . '">';
 		$html .= '<span>' . $this->esc_html( 'Filter by game' ) . '</span>';
@@ -142,20 +142,20 @@ final class InventorySearchPresenter {
 			);
 
 			if ( ! isset( $groups[ $key ] ) ) {
-				$product_url = $this->product_url( $row['woocommerce_product_id'] ?? null, $context );
+				$product_url    = $this->product_url( $row['woocommerce_product_id'] ?? null, $context );
 				$groups[ $key ] = array(
-					'name'          => $this->clean_string( $row['card_name'] ?? '' ),
-					'game'          => $this->clean_string( $row['game'] ?? '' ),
-					'set_name'      => $this->clean_string( $row['set_name'] ?? '' ),
-					'set_code'      => $this->clean_string( $row['set_code'] ?? '' ),
+					'name'           => $this->clean_string( $row['card_name'] ?? '' ),
+					'game'           => $this->clean_string( $row['game'] ?? '' ),
+					'set_name'       => $this->clean_string( $row['set_name'] ?? '' ),
+					'set_code'       => $this->clean_string( $row['set_code'] ?? '' ),
 					'printed_number' => $this->clean_string( $row['printed_number'] ?? ( $row['card_number'] ?? '' ) ),
-					'condition'     => strtoupper( $this->clean_string( $row['condition_code'] ?? '' ) ),
-					'variant'       => $this->clean_string( $row['variant'] ?? ( $row['finish'] ?? '' ) ),
-					'image_url'     => $this->clean_url( $row['front_image_remote_url'] ?? '' ),
-					'price'         => $this->money( $row['sale_price'] ?? '0.00' ),
-					'currency'      => strtoupper( $this->clean_string( $row['sale_currency'] ?? 'USD' ) ),
-					'quantity'      => 0,
-					'product_url'   => $product_url,
+					'condition'      => strtoupper( $this->clean_string( $row['condition_code'] ?? '' ) ),
+					'variant'        => $this->clean_string( $row['variant'] ?? ( $row['finish'] ?? '' ) ),
+					'image_url'      => $this->clean_url( $row['front_image_remote_url'] ?? '' ),
+					'price'          => $this->money( $row['sale_price'] ?? '0.00' ),
+					'currency'       => strtoupper( $this->clean_string( $row['sale_currency'] ?? 'USD' ) ),
+					'quantity'       => 0,
+					'product_url'    => $product_url,
 				);
 			}
 
@@ -169,13 +169,25 @@ final class InventorySearchPresenter {
 		$html  = '<form class="tcg-public-inventory__search" method="get">';
 		$html .= '<label><span>' . $this->esc_html( 'Search' ) . '</span><input type="search" name="tcg_inventory_q" value="' . $this->esc_attr( $query ) . '" placeholder="' . $this->esc_attr( 'Card name, set, or number' ) . '" /></label>';
 		$html .= '<label><span>' . $this->esc_html( 'Game' ) . '</span><select name="tcg_inventory_game">';
-		foreach ( array( '' => 'All games', 'pokemon' => 'Pokemon', 'magicthegathering' => 'MTG', 'lorcana' => 'Lorcana', 'onepiece' => 'One Piece', 'riftbound' => 'Riftbound' ) as $value => $label ) {
+		foreach ( array(
+			''                  => 'All games',
+			'pokemon'           => 'Pokemon',
+			'magicthegathering' => 'MTG',
+			'lorcana'           => 'Lorcana',
+			'onepiece'          => 'One Piece',
+			'riftbound'         => 'Riftbound',
+		) as $value => $label ) {
 			$html .= '<option value="' . $this->esc_attr( $value ) . '"' . ( $game === $value ? ' selected' : '' ) . '>' . $this->esc_html( $label ) . '</option>';
 		}
 		$html .= '</select></label>';
 		$html .= '<label><span>' . $this->esc_html( 'Set / Expansion' ) . '</span><input type="search" name="tcg_inventory_set" value="' . $this->esc_attr( $set_filter ) . '" placeholder="' . $this->esc_attr( 'Base Set, TDM, or expansion code' ) . '" /></label>';
 		$html .= '<label><span>' . $this->esc_html( 'Sort' ) . '</span><select name="tcg_inventory_sort">';
-		foreach ( array( 'relevance' => 'Relevance', 'price_asc' => 'Price low', 'price_desc' => 'Price high', 'name_asc' => 'Name' ) as $value => $label ) {
+		foreach ( array(
+			'relevance'  => 'Relevance',
+			'price_asc'  => 'Price low',
+			'price_desc' => 'Price high',
+			'name_asc'   => 'Name',
+		) as $value => $label ) {
 			$html .= '<option value="' . $this->esc_attr( $value ) . '"' . ( $sort === $value ? ' selected' : '' ) . '>' . $this->esc_html( $label ) . '</option>';
 		}
 		$html .= '</select></label>';
@@ -337,13 +349,13 @@ final class InventorySearchPresenter {
 
 	private function page_url( string $query, string $game, string $set_filter, string $raw_or_graded, string $sort, int $page, int $page_size ): string {
 		$params = array(
-			'tcg_inventory_q'         => $query,
-			'tcg_inventory_game'      => $game,
-			'tcg_inventory_set'       => $set_filter,
-			'tcg_inventory_type'      => $raw_or_graded,
-			'tcg_inventory_sort'      => $sort,
-			'tcg_inventory_page'      => max( 1, $page ),
-			'tcg_inventory_page_size' => max( 1, $page_size ),
+			'tcg_inventory_q'          => $query,
+			'tcg_inventory_game'       => $game,
+			'tcg_inventory_set'        => $set_filter,
+			'tcg_inventory_type'       => $raw_or_graded,
+			'tcg_inventory_sort'       => $sort,
+			'tcg_inventory_page'       => max( 1, $page ),
+			'tcg_inventory_page_size'  => max( 1, $page_size ),
 			'tcg_inventory_cache_bust' => time(),
 		);
 
@@ -360,8 +372,9 @@ final class InventorySearchPresenter {
 	}
 
 	private function display_money( mixed $value, mixed $currency ): string {
-		$currency = strtoupper( $this->clean_string( $currency ) ?: 'USD' );
-		$amount   = $this->money( $value );
+		$clean_currency = $this->clean_string( $currency );
+		$currency       = strtoupper( '' !== $clean_currency ? $clean_currency : 'USD' );
+		$amount         = $this->money( $value );
 
 		return 'USD' === $currency ? '$' . $amount : $amount . ' ' . $currency;
 	}

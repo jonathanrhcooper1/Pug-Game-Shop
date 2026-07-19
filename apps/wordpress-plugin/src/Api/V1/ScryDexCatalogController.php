@@ -20,12 +20,12 @@ use TCGStorePlatform\ScryDex\ScryDexSyncExecutionGate;
 use TCGStorePlatform\ScryDex\ScryDexUsageBudgetPlanner;
 
 final class ScryDexCatalogController {
-	private const NAMESPACE     = 'tcg-store/v1';
-	private const MAX_PAGE_SIZE = 100;
-	private const MAX_EXPORT_PAGE_SIZE = 1000;
+	private const NAMESPACE                            = 'tcg-store/v1';
+	private const MAX_PAGE_SIZE                        = 100;
+	private const MAX_EXPORT_PAGE_SIZE                 = 1000;
 	private const DOCUMENTED_REQUESTS_PER_SECOND_LIMIT = 100;
 	private const USAGE_REQUEST_CREDIT_ESTIMATE        = 1;
-	private const EXPORT_TABLES = array(
+	private const EXPORT_TABLES                        = array(
 		'reference_sets'              => 'tcg_reference_sets',
 		'reference_cards'             => 'tcg_reference_cards',
 		'reference_variants'          => 'tcg_reference_variants',
@@ -33,7 +33,7 @@ final class ScryDexCatalogController {
 		'provider_price_points'       => 'tcg_provider_price_points',
 		'sync_checkpoints'            => 'tcg_sync_checkpoints',
 	);
-	private const EXPORT_ORDER_COLUMNS = array(
+	private const EXPORT_ORDER_COLUMNS                 = array(
 		'reference_sets'              => 'reference_set_id',
 		'reference_cards'             => 'reference_card_id',
 		'reference_variants'          => 'reference_variant_id',
@@ -181,13 +181,13 @@ final class ScryDexCatalogController {
 
 		$cards = $skip_cards
 			? array(
-				'status'                    => 'skipped',
-				'page_count'                => 0,
-				'provider_request_count'    => 0,
-				'continuation_available'    => false,
-				'cards_index_requested'     => false,
-				'database_writes_deferred'  => ! $execute_database_writes,
-				'provider_result_logged'    => false,
+				'status'                   => 'skipped',
+				'page_count'               => 0,
+				'provider_request_count'   => 0,
+				'continuation_available'   => false,
+				'cards_index_requested'    => false,
+				'database_writes_deferred' => ! $execute_database_writes,
+				'provider_result_logged'   => false,
 			)
 			: $this->worker( $settings, $factory, $gate_overrides )->run_cards_pages(
 				array(
@@ -205,27 +205,27 @@ final class ScryDexCatalogController {
 		return new \WP_REST_Response(
 			array(
 				'data' => array(
-					'resource'                       => 'scrydex_catalog_index',
-					'accepted'                       => true,
-					'game'                           => $game,
-					'expansion_id'                   => $expansion_id,
-					'page_size'                      => $page_size,
-					'max_pages'                      => $max_pages,
-					'expansions_page'                => $expansions_page,
-					'max_expansion_pages'            => $max_expansion_pages,
-					'include_usage_snapshot'         => $include_usage_snapshot,
-					'skip_cards'                     => $skip_cards,
-					'execute_database_writes'        => $execute_database_writes,
-					'usage_budget_plan'              => $usage_budget_plan,
-					'rate_limit_plan'                => $rate_limit_plan,
-					'usage_snapshot'                 => $usage['public_snapshot'],
-					'expansions'                     => $expansion_result,
-					'cards'                          => $cards,
-					'counts_after'                   => $this->catalog_counts(),
-					'credential_values_redacted'     => true,
-					'provider_result_bodies_logged'  => false,
-					'credentials_synced_to_client'   => false,
-					'next_action'                    => $this->next_action( $cards ),
+					'resource'                      => 'scrydex_catalog_index',
+					'accepted'                      => true,
+					'game'                          => $game,
+					'expansion_id'                  => $expansion_id,
+					'page_size'                     => $page_size,
+					'max_pages'                     => $max_pages,
+					'expansions_page'               => $expansions_page,
+					'max_expansion_pages'           => $max_expansion_pages,
+					'include_usage_snapshot'        => $include_usage_snapshot,
+					'skip_cards'                    => $skip_cards,
+					'execute_database_writes'       => $execute_database_writes,
+					'usage_budget_plan'             => $usage_budget_plan,
+					'rate_limit_plan'               => $rate_limit_plan,
+					'usage_snapshot'                => $usage['public_snapshot'],
+					'expansions'                    => $expansion_result,
+					'cards'                         => $cards,
+					'counts_after'                  => $this->catalog_counts(),
+					'credential_values_redacted'    => true,
+					'provider_result_bodies_logged' => false,
+					'credentials_synced_to_client'  => false,
+					'next_action'                   => $this->next_action( $cards ),
 				),
 			),
 			200
@@ -273,7 +273,7 @@ final class ScryDexCatalogController {
 			),
 			ARRAY_A
 		);
-		$rows   = is_array( $rows ) ? $rows : array();
+		$rows         = is_array( $rows ) ? $rows : array();
 
 		return new \WP_REST_Response(
 			array(
@@ -435,19 +435,19 @@ final class ScryDexCatalogController {
 	 */
 	private function enterprise_usage_budget_plan( string $game, int $page_size, int $provider_request_count, bool $include_usage_snapshot ): array {
 		return array(
-			'status'                           => 'ready',
-			'action'                           => 'scrydex_catalog_enterprise_usage_policy',
-			'provider'                         => 'scrydex',
-			'resource_type'                    => 'catalog_import',
-			'resource_key'                     => $game,
-			'page_size'                        => $page_size,
-			'planned_provider_request_count'   => $provider_request_count,
-			'estimated_credit_cost'            => $provider_request_count,
-			'usage_snapshot_requested'         => $include_usage_snapshot,
-			'daily_credit_budget_enforced'     => false,
+			'status'                            => 'ready',
+			'action'                            => 'scrydex_catalog_enterprise_usage_policy',
+			'provider'                          => 'scrydex',
+			'resource_type'                     => 'catalog_import',
+			'resource_key'                      => $game,
+			'page_size'                         => $page_size,
+			'planned_provider_request_count'    => $provider_request_count,
+			'estimated_credit_cost'             => $provider_request_count,
+			'usage_snapshot_requested'          => $include_usage_snapshot,
+			'daily_credit_budget_enforced'      => false,
 			'minimum_remaining_credit_enforced' => false,
-			'enterprise_overage_allowed'       => true,
-			'block_reasons'                    => array(),
+			'enterprise_overage_allowed'        => true,
+			'block_reasons'                     => array(),
 		);
 	}
 
@@ -469,14 +469,14 @@ final class ScryDexCatalogController {
 	 */
 	private function rate_limit_plan( int $provider_request_count ): array {
 		return array(
-			'status'                                => 'informational',
-			'allowed'                               => true,
-			'planned_provider_request_count'        => $provider_request_count,
-			'documented_requests_per_second_limit'  => self::DOCUMENTED_REQUESTS_PER_SECOND_LIMIT,
-			'max_provider_requests_per_rest_call'   => null,
+			'status'                                 => 'informational',
+			'allowed'                                => true,
+			'planned_provider_request_count'         => $provider_request_count,
+			'documented_requests_per_second_limit'   => self::DOCUMENTED_REQUESTS_PER_SECOND_LIMIT,
+			'max_provider_requests_per_rest_call'    => null,
 			'usage_request_credit_estimate_included' => $provider_request_count > 0,
-			'short_page_completion_rule'            => 'continue until provider returns fewer rows than page_size',
-			'block_reasons'                         => array(),
+			'short_page_completion_rule'             => 'continue until provider returns fewer rows than page_size',
+			'block_reasons'                          => array(),
 		);
 	}
 
@@ -525,17 +525,17 @@ final class ScryDexCatalogController {
 				);
 			}
 
-			$body   = $result->body();
-			$rows   = $this->expansion_rows( $body, $game );
-			$row_count += count( $rows );
-			$provider_set_ids = array_merge(
+			$body                   = $result->body();
+			$rows                   = $this->expansion_rows( $body, $game );
+			$row_count             += count( $rows );
+			$provider_set_ids       = array_merge(
 				$provider_set_ids,
 				array_map(
 					static fn ( array $row ): string => (string) $row['provider_set_id'],
 					$rows
 				)
 			);
-			$write_rows += $execute_database_writes ? $this->persist_expansions( $rows ) : 0;
+			$write_rows            += $execute_database_writes ? $this->persist_expansions( $rows ) : 0;
 			$continuation_available = $this->has_more_pages( $body, $current_page, $page_size, count( $rows ) );
 			$next_page              = $continuation_available ? $last_page_requested + 1 : null;
 
@@ -626,8 +626,8 @@ final class ScryDexCatalogController {
 			return 0;
 		}
 
-		$table    = $database->prefix . 'tcg_reference_sets';
-		$count    = 0;
+		$table = $database->prefix . 'tcg_reference_sets';
+		$count = 0;
 
 		foreach ( $rows as $row ) {
 			$result = $database->query(
@@ -683,7 +683,7 @@ final class ScryDexCatalogController {
 		}
 
 		$database = $this->database();
-		$tables = array(
+		$tables   = array(
 			'reference_sets'              => 'tcg_reference_sets',
 			'reference_cards'             => 'tcg_reference_cards',
 			'reference_variants'          => 'tcg_reference_variants',
@@ -691,7 +691,7 @@ final class ScryDexCatalogController {
 			'provider_price_points'       => 'tcg_provider_price_points',
 			'sync_checkpoints'            => 'tcg_sync_checkpoints',
 		);
-		$counts = array();
+		$counts   = array();
 
 		foreach ( $tables as $key => $table ) {
 			$counts[ $key ] = $this->table_count( $database->prefix . $table );
@@ -705,22 +705,22 @@ final class ScryDexCatalogController {
 	 */
 	private function catalog_integrity_summary(): array {
 		$empty = array(
-			'status'                    => 'empty',
-			'cards_checked'             => 0,
-			'cards_with_images'         => 0,
-			'cards_missing_images'      => 0,
-			'cards_with_variants'       => 0,
-			'cards_missing_variants'    => 0,
-			'cards_with_price_points'   => 0,
+			'status'                     => 'empty',
+			'cards_checked'              => 0,
+			'cards_with_images'          => 0,
+			'cards_missing_images'       => 0,
+			'cards_with_variants'        => 0,
+			'cards_missing_variants'     => 0,
+			'cards_with_price_points'    => 0,
 			'cards_missing_price_points' => 0,
-			'price_points_total'        => 0,
-			'condition_price_points'    => 0,
-			'image_coverage_percent'    => 0,
-			'variant_coverage_percent'  => 0,
-			'price_coverage_percent'    => 0,
-			'game_counts'               => array(),
-			'latest_cards'              => array(),
-			'missing_tables'            => array(),
+			'price_points_total'         => 0,
+			'condition_price_points'     => 0,
+			'image_coverage_percent'     => 0,
+			'variant_coverage_percent'   => 0,
+			'price_coverage_percent'     => 0,
+			'game_counts'                => array(),
+			'latest_cards'               => array(),
+			'missing_tables'             => array(),
 			'credential_values_redacted' => true,
 		);
 
@@ -760,7 +760,7 @@ final class ScryDexCatalogController {
 			return $empty;
 		}
 
-		$cards_with_images = $this->count_query(
+		$cards_with_images   = $this->count_query(
 			$database->prepare(
 				"SELECT COUNT(1) FROM {$cards_table} WHERE provider_name = %s AND front_image_url IS NOT NULL AND front_image_url <> ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'scrydex'
@@ -772,19 +772,19 @@ final class ScryDexCatalogController {
 				'scrydex'
 			)
 		);
-		$cards_with_prices = $this->count_query(
+		$cards_with_prices   = $this->count_query(
 			$database->prepare(
 				"SELECT COUNT(1) FROM {$cards_table} c WHERE c.provider_name = %s AND EXISTS (SELECT 1 FROM {$prices_table} p WHERE p.provider_name = c.provider_name AND p.provider_card_id = c.provider_card_id)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'scrydex'
 			)
 		);
-		$price_points_total = $this->count_query(
+		$price_points_total  = $this->count_query(
 			$database->prepare(
 				"SELECT COUNT(1) FROM {$prices_table} WHERE provider_name = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'scrydex'
 			)
 		);
-		$condition_prices = $this->count_query(
+		$condition_prices    = $this->count_query(
 			$database->prepare(
 				"SELECT COUNT(1) FROM {$prices_table} WHERE provider_name = %s AND condition_code IS NOT NULL AND condition_code <> ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				'scrydex'
@@ -792,22 +792,22 @@ final class ScryDexCatalogController {
 		);
 
 		return array(
-			'status'                    => $cards_with_images > 0 && $cards_with_prices > 0 ? 'usable' : 'partial',
-			'cards_checked'             => $total_cards,
-			'cards_with_images'         => $cards_with_images,
-			'cards_missing_images'      => max( 0, $total_cards - $cards_with_images ),
-			'cards_with_variants'       => $cards_with_variants,
-			'cards_missing_variants'    => max( 0, $total_cards - $cards_with_variants ),
-			'cards_with_price_points'   => $cards_with_prices,
+			'status'                     => $cards_with_images > 0 && $cards_with_prices > 0 ? 'usable' : 'partial',
+			'cards_checked'              => $total_cards,
+			'cards_with_images'          => $cards_with_images,
+			'cards_missing_images'       => max( 0, $total_cards - $cards_with_images ),
+			'cards_with_variants'        => $cards_with_variants,
+			'cards_missing_variants'     => max( 0, $total_cards - $cards_with_variants ),
+			'cards_with_price_points'    => $cards_with_prices,
 			'cards_missing_price_points' => max( 0, $total_cards - $cards_with_prices ),
-			'price_points_total'        => $price_points_total,
-			'condition_price_points'    => $condition_prices,
-			'image_coverage_percent'    => $this->coverage_percent( $cards_with_images, $total_cards ),
-			'variant_coverage_percent'  => $this->coverage_percent( $cards_with_variants, $total_cards ),
-			'price_coverage_percent'    => $this->coverage_percent( $cards_with_prices, $total_cards ),
-			'game_counts'               => $this->catalog_game_counts( $cards_table ),
-			'latest_cards'              => $this->latest_catalog_cards( $cards_table, $variants_table, $prices_table ),
-			'missing_tables'            => array(),
+			'price_points_total'         => $price_points_total,
+			'condition_price_points'     => $condition_prices,
+			'image_coverage_percent'     => $this->coverage_percent( $cards_with_images, $total_cards ),
+			'variant_coverage_percent'   => $this->coverage_percent( $cards_with_variants, $total_cards ),
+			'price_coverage_percent'     => $this->coverage_percent( $cards_with_prices, $total_cards ),
+			'game_counts'                => $this->catalog_game_counts( $cards_table ),
+			'latest_cards'               => $this->latest_catalog_cards( $cards_table, $variants_table, $prices_table ),
+			'missing_tables'             => array(),
 			'credential_values_redacted' => true,
 		);
 	}
@@ -944,7 +944,7 @@ final class ScryDexCatalogController {
 			return array();
 		}
 
-		$table    = $database->prefix . 'tcg_sync_checkpoints';
+		$table = $database->prefix . 'tcg_sync_checkpoints';
 
 		if ( ! $this->table_exists( $table ) ) {
 			return array();
@@ -977,10 +977,10 @@ final class ScryDexCatalogController {
 			return false;
 		}
 
-		$like = method_exists( $database, 'esc_like' )
+		$like  = method_exists( $database, 'esc_like' )
 			? $database->esc_like( $table_name )
 			: addcslashes( $table_name, '_%\\' );
-		$found    = $database->get_var(
+		$found = $database->get_var(
 			$database->prepare( 'SHOW TABLES LIKE %s', array( $like ) )
 		);
 

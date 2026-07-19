@@ -780,7 +780,7 @@ final class SettingsPage {
 
 		echo '<p class="description">';
 		echo esc_html(
-				sprintf(
+			sprintf(
 				/* translators: 1: status, 2: active key slot. */
 				__( 'Status: %1$s. Active key slot: %2$s. Network requests are enabled only when the ScryDex provider is configured and catalog sync is started.', 'tcg-store-platform' ),
 				(string) $status['status'],
@@ -838,7 +838,7 @@ final class SettingsPage {
 
 		echo '<p class="description">';
 		echo esc_html(
-				sprintf(
+			sprintf(
 				/* translators: 1: status. */
 				__( 'Status: %1$s. Usage endpoint requests are optional for manual enterprise indexing.', 'tcg-store-platform' ),
 				(string) $status['status']
@@ -891,7 +891,7 @@ final class SettingsPage {
 
 		echo '<p class="description">';
 		echo esc_html(
-				sprintf(
+			sprintf(
 				/* translators: 1: status. */
 				__( 'Status: %1$s. Scheduled sync runs when these gates and the ScryDex provider are enabled.', 'tcg-store-platform' ),
 				(string) $status['status']

@@ -8,7 +8,7 @@
 namespace TCGStorePlatform\Inventory;
 
 final class InventoryProjectionRepository {
-	private const STATUSES = array( 'available', 'reserved', 'sold', 'pending_intake', 'return_review', 'damaged', 'removed' );
+	private const STATUSES     = array( 'available', 'reserved', 'sold', 'pending_intake', 'return_review', 'damaged', 'removed' );
 	private const VISIBILITIES = array( 'hidden', 'visible', 'staff_only' );
 
 	public function __construct( private \wpdb $database ) {
@@ -18,7 +18,7 @@ final class InventoryProjectionRepository {
 	 * @return array<string, mixed>|null
 	 */
 	public function find( string $identity ): ?array {
-		$identity = $this->identity( $identity );
+		$identity   = $this->identity( $identity );
 		$table_name = $this->table_name();
 		if ( '' === $identity || '' === $table_name ) {
 			return null;
@@ -90,11 +90,11 @@ final class InventoryProjectionRepository {
 		$arguments[]   = (int) $current['row_version'];
 
 		$table_name = $this->table_name();
-		$query = $this->database->prepare(
+		$query      = $this->database->prepare(
 			"UPDATE `{$table_name}` SET " . implode( ', ', $assignments ) . ' WHERE `inventory_id` = %d AND `row_version` = %d LIMIT 1',
 			$arguments
 		);
-		$rows = is_string( $query ) ? $this->database->query( $query ) : false;
+		$rows       = is_string( $query ) ? $this->database->query( $query ) : false;
 
 		if ( 1 !== $rows ) {
 			$this->database->query( 'ROLLBACK' );
@@ -142,7 +142,7 @@ final class InventoryProjectionRepository {
 		}
 
 		$table_name = $this->table_name();
-		$rows = $this->database->get_results(
+		$rows       = $this->database->get_results(
 			"SELECT * FROM `{$table_name}` WHERE {$where} ORDER BY `condition_code`, `variant`, `finish`, `sale_price`, `inventory_id`",
 			$this->array_output_type()
 		);
@@ -216,7 +216,10 @@ final class InventoryProjectionRepository {
 		}
 
 		if ( array() !== $errors ) {
-			return array( 'fields' => array(), 'errors' => array_values( array_unique( $errors ) ) );
+			return array(
+				'fields' => array(),
+				'errors' => array_values( array_unique( $errors ) ),
+			);
 		}
 
 		$quantity = (int) $quantity;
@@ -227,24 +230,24 @@ final class InventoryProjectionRepository {
 			$status = 'available';
 		}
 
-		$now = gmdate( 'Y-m-d H:i:s.u' );
+		$now    = gmdate( 'Y-m-d H:i:s.u' );
 		$fields = array_merge(
 			array(
-				'quantity_on_hand'       => $quantity,
-				'status'                 => $status,
-				'barcode'                => $barcode,
-				'sku'                    => $barcode,
-				'sale_price'             => number_format( (int) $sale / 100, 2, '.', '' ),
-				'minimum_sale_price'     => number_format( (int) $floor / 100, 2, '.', '' ),
-				'sale_currency'          => 'USD',
-				'pricing_source'         => $this->text( $payload['pricing_source'] ?? 'local_sync_server' ),
-				'price_floor_hit'        => (int) $sale === (int) $floor ? 1 : 0,
-				'square_catalog_item_id' => $this->text( $payload['square_catalog_item_id'] ?? $current['square_catalog_item_id'] ?? '' ),
+				'quantity_on_hand'            => $quantity,
+				'status'                      => $status,
+				'barcode'                     => $barcode,
+				'sku'                         => $barcode,
+				'sale_price'                  => number_format( (int) $sale / 100, 2, '.', '' ),
+				'minimum_sale_price'          => number_format( (int) $floor / 100, 2, '.', '' ),
+				'sale_currency'               => 'USD',
+				'pricing_source'              => $this->text( $payload['pricing_source'] ?? 'local_sync_server' ),
+				'price_floor_hit'             => (int) $sale === (int) $floor ? 1 : 0,
+				'square_catalog_item_id'      => $this->text( $payload['square_catalog_item_id'] ?? $current['square_catalog_item_id'] ?? '' ),
 				'square_catalog_variation_id' => $this->text( $payload['square_catalog_variation_id'] ?? $current['square_catalog_variation_id'] ?? '' ),
-				'external_sync_state'    => 'pending',
-				'staff_notes'            => $this->text( $payload['staff_notes'] ?? $current['staff_notes'] ?? '', 1000 ),
-				'updated_by'             => $actor_user_id ?? (int) ( $current['updated_by'] ?? 0 ),
-				'updated_at'             => $now,
+				'external_sync_state'         => 'pending',
+				'staff_notes'                 => $this->text( $payload['staff_notes'] ?? $current['staff_notes'] ?? '', 1000 ),
+				'updated_by'                  => $actor_user_id ?? (int) ( $current['updated_by'] ?? 0 ),
+				'updated_at'                  => $now,
 			),
 			$visibilities
 		);
@@ -260,7 +263,10 @@ final class InventoryProjectionRepository {
 			}
 		}
 
-		return array( 'fields' => $fields, 'errors' => array() );
+		return array(
+			'fields' => $fields,
+			'errors' => array(),
+		);
 	}
 
 	/** @param array<string, mixed> $current @param array<string, mixed> $fields */
@@ -324,10 +330,10 @@ final class InventoryProjectionRepository {
 			return $this->database->prepare( '`provider_name` = %s AND `provider_card_id` = %s', array( $provider, $card_id ) );
 		}
 
-		$game    = $this->text( $seed['game'] ?? '' );
-		$name    = $this->text( $seed['card_name'] ?? '' );
-		$set     = $this->text( $seed['set_code'] ?? $seed['set_name'] ?? '' );
-		$number  = $this->text( $seed['printed_number'] ?? $seed['card_number'] ?? '' );
+		$game   = $this->text( $seed['game'] ?? '' );
+		$name   = $this->text( $seed['card_name'] ?? '' );
+		$set    = $this->text( $seed['set_code'] ?? $seed['set_name'] ?? '' );
+		$number = $this->text( $seed['printed_number'] ?? $seed['card_number'] ?? '' );
 		if ( '' === $game || '' === $name || ( '' === $set && '' === $number ) ) {
 			return null;
 		}
@@ -368,7 +374,13 @@ final class InventoryProjectionRepository {
 
 	/** @return array<string, mixed> */
 	private function failure( string $code, array $errors, int $status_code ): array {
-		return array( 'status' => 'invalid', 'code' => $code, 'status_code' => $status_code, 'errors' => $errors, 'row' => null );
+		return array(
+			'status'      => 'invalid',
+			'code'        => $code,
+			'status_code' => $status_code,
+			'errors'      => $errors,
+			'row'         => null,
+		);
 	}
 
 	private function array_output_type(): string {

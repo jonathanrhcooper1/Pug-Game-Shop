@@ -150,12 +150,12 @@ final class OfflineConflictResolutionRouteHandler {
 			'callback'    => 'resolve_offline_conflict',
 			'data'        => $write_result->response_payload(),
 			'meta'        => array(
-				'write_deferred'                   => false,
-				'route_still_gated'                => true,
-				'default_route_execution_deferred' => false,
-				'conflict_resolution_write_status' => $write_result->status(),
+				'write_deferred'                    => false,
+				'route_still_gated'                 => true,
+				'default_route_execution_deferred'  => false,
+				'conflict_resolution_write_status'  => $write_result->status(),
 				'conflict_resolution_rows_affected' => $write_result->rows_affected(),
-				'audit'                            => $write_result->audit_payload(),
+				'audit'                             => $write_result->audit_payload(),
 			),
 		);
 	}

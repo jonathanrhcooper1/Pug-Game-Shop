@@ -144,18 +144,18 @@ final class CustomerController {
 		return array(
 			'errors'   => array_values( array_unique( $errors ) ),
 			'customer' => array(
-				'public_id'          => $this->public_uuid( $source_public_id ),
-				'source_public_id'   => $source_public_id,
-				'first_name'         => $first_name,
-				'last_name'          => $last_name,
-				'display_name'       => $display_name,
-				'normalized_email'   => $email,
-				'normalized_phone'   => $this->normalize_phone( $phone ),
-				'display_phone'      => $phone,
-				'barcode'            => $barcode,
-				'credit_currency'    => $currency,
-				'status'             => $status,
-				'current_user_id'    => $this->current_user_id(),
+				'public_id'        => $this->public_uuid( $source_public_id ),
+				'source_public_id' => $source_public_id,
+				'first_name'       => $first_name,
+				'last_name'        => $last_name,
+				'display_name'     => $display_name,
+				'normalized_email' => $email,
+				'normalized_phone' => $this->normalize_phone( $phone ),
+				'display_phone'    => $phone,
+				'barcode'          => $barcode,
+				'credit_currency'  => $currency,
+				'status'           => $status,
+				'current_user_id'  => $this->current_user_id(),
 			),
 		);
 	}
@@ -256,14 +256,17 @@ final class CustomerController {
 			return null;
 		}
 
-		$placeholder = 'customer_id' === $field ? '%d' : '%s';
-		$row         = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$table} WHERE {$field} = {$placeholder} LIMIT 1",
-				$value
-			),
-			ARRAY_A
-		);
+		if ( 'customer_id' === $field ) {
+			$row = $wpdb->get_row(
+				$wpdb->prepare( 'SELECT * FROM %i WHERE customer_id = %d LIMIT 1', $table, $value ),
+				ARRAY_A
+			);
+		} else {
+			$row = $wpdb->get_row(
+				$wpdb->prepare( 'SELECT * FROM %i WHERE %i = %s LIMIT 1', $table, $field, $value ),
+				ARRAY_A
+			);
+		}
 
 		return is_array( $row ) ? $row : null;
 	}
@@ -276,18 +279,18 @@ final class CustomerController {
 		$row = is_array( $row ) ? $row : array();
 
 		return array(
-			'customer_id'                => max( 0, (int) ( $row['customer_id'] ?? 0 ) ),
-			'public_id'                  => (string) ( $row['public_id'] ?? '' ),
-			'display_name'               => (string) ( $row['display_name'] ?? '' ),
-			'first_name'                 => (string) ( $row['first_name'] ?? '' ),
-			'last_name'                  => (string) ( $row['last_name'] ?? '' ),
-			'email'                      => (string) ( $row['normalized_email'] ?? '' ),
-			'phone'                      => (string) ( $row['display_phone'] ?? '' ),
-			'status'                     => (string) ( $row['status'] ?? '' ),
-			'credit_balance'             => (string) ( $row['credit_balance'] ?? '0.0000' ),
-			'credit_currency'            => (string) ( $row['credit_currency'] ?? 'USD' ),
-			'row_version'                => max( 1, (int) ( $row['row_version'] ?? 1 ) ),
-			'private_contact_redacted'   => true,
+			'customer_id'                  => max( 0, (int) ( $row['customer_id'] ?? 0 ) ),
+			'public_id'                    => (string) ( $row['public_id'] ?? '' ),
+			'display_name'                 => (string) ( $row['display_name'] ?? '' ),
+			'first_name'                   => (string) ( $row['first_name'] ?? '' ),
+			'last_name'                    => (string) ( $row['last_name'] ?? '' ),
+			'email'                        => (string) ( $row['normalized_email'] ?? '' ),
+			'phone'                        => (string) ( $row['display_phone'] ?? '' ),
+			'status'                       => (string) ( $row['status'] ?? '' ),
+			'credit_balance'               => (string) ( $row['credit_balance'] ?? '0.0000' ),
+			'credit_currency'              => (string) ( $row['credit_currency'] ?? 'USD' ),
+			'row_version'                  => max( 1, (int) ( $row['row_version'] ?? 1 ) ),
+			'private_contact_redacted'     => true,
 			'credentials_synced_to_client' => false,
 		);
 	}

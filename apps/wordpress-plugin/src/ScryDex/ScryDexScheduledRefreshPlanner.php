@@ -34,33 +34,33 @@ final class ScryDexScheduledRefreshPlanner {
 		$ready             = array() === $block_reasons;
 
 		return array(
-			'status'                           => $ready ? 'ready' : 'blocked',
-			'action'                           => 'scrydex_scheduled_cards_refresh_plan',
-			'worker_resource'                  => 'cards',
-			'environment_type'                 => $environment,
-			'feature_enabled'                  => $scrydex_feature_enabled,
-			'feature_available'                => $feature_available,
-			'scheduled_refresh_configured'     => true === ( $schedule_status['configured'] ?? false ),
-			'production_execution_blocked'     => 'production' === $environment,
-			'network_requests_enabled'         => true === ( $schedule_status['network_requests_enabled'] ?? false ),
-			'database_writes_enabled'          => true === ( $schedule_status['database_writes_enabled'] ?? false ),
+			'status'                            => $ready ? 'ready' : 'blocked',
+			'action'                            => 'scrydex_scheduled_cards_refresh_plan',
+			'worker_resource'                   => 'cards',
+			'environment_type'                  => $environment,
+			'feature_enabled'                   => $scrydex_feature_enabled,
+			'feature_available'                 => $feature_available,
+			'scheduled_refresh_configured'      => true === ( $schedule_status['configured'] ?? false ),
+			'production_execution_blocked'      => 'production' === $environment,
+			'network_requests_enabled'          => true === ( $schedule_status['network_requests_enabled'] ?? false ),
+			'database_writes_enabled'           => true === ( $schedule_status['database_writes_enabled'] ?? false ),
 			'execute_database_writes_requested' => true === ( $schedule_status['execute_database_writes'] ?? false ),
 			'provider_result_bodies_not_logged' => true,
-			'credential_values_redacted'       => true,
-			'request'                          => array(
+			'credential_values_redacted'        => true,
+			'request'                           => array(
 				'game_keys'               => $schedule_status['game_keys'] ?? array(),
 				'page_size'               => (int) ( $schedule_status['cards_page_size'] ?? 100 ),
 				'max_pages_per_game_run'  => (int) ( $schedule_status['max_pages_per_game_run'] ?? 1 ),
 				'execute_database_writes' => true === ( $schedule_status['execute_database_writes'] ?? false ),
 			),
-			'gate_overrides'                   => array(
+			'gate_overrides'                    => array(
 				'network_requests_enabled'    => true === ( $schedule_status['network_requests_enabled'] ?? false ),
 				'database_writes_enabled'     => true === ( $schedule_status['database_writes_enabled'] ?? false ),
 				'scheduled_worker_configured' => true === ( $schedule_status['enabled'] ?? false ),
 			),
-			'schedule_status'                  => $schedule_status,
-			'configuration_issues'             => $block_reasons,
-			'block_reasons'                    => $block_reasons,
+			'schedule_status'                   => $schedule_status,
+			'configuration_issues'              => $block_reasons,
+			'block_reasons'                     => $block_reasons,
 		);
 	}
 

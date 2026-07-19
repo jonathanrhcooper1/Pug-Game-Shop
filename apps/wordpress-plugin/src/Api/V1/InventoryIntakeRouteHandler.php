@@ -134,7 +134,7 @@ final class InventoryIntakeRouteHandler {
 		InventoryIntakeRepositoryResult $result,
 		OfflineRestRequestData $data
 	): array {
-		$row = array_merge(
+		$row               = array_merge(
 			$plan->insert_row(),
 			array(
 				'inventory_id' => $result->insert_id(),
@@ -204,15 +204,15 @@ final class InventoryIntakeRouteHandler {
 	): array {
 		if ( ! $this->truthy( $data->body_params()['sync_woocommerce_product'] ?? false ) ) {
 			return array(
-				'action'                       => 'woocommerce_product_sync',
-				'status'                       => 'deferred',
-				'synced'                       => false,
-				'requested'                    => false,
-				'woocommerce_write_deferred'   => true,
-				'payment_capture_deferred'     => true,
-				'square_inventory_deferred'    => true,
-				'source_of_truth'              => 'tcg_store_platform',
-				'errors'                       => array(),
+				'action'                     => 'woocommerce_product_sync',
+				'status'                     => 'deferred',
+				'synced'                     => false,
+				'requested'                  => false,
+				'woocommerce_write_deferred' => true,
+				'payment_capture_deferred'   => true,
+				'square_inventory_deferred'  => true,
+				'source_of_truth'            => 'tcg_store_platform',
+				'errors'                     => array(),
 			);
 		}
 
@@ -233,19 +233,19 @@ final class InventoryIntakeRouteHandler {
 		}
 
 		return array(
-			'action'                    => 'woocommerce_product_sync',
-			'status'                    => $execution->status(),
-			'synced'                    => $execution->is_executed() && true === ( $mapping['synced'] ?? false ),
-			'requested'                 => true,
-			'execution'                 => $audit,
-			'mapping'                   => $mapping,
-			'grouped_product'           => true,
-			'group_row_count'           => count( $inventory_ids ),
+			'action'                     => 'woocommerce_product_sync',
+			'status'                     => $execution->status(),
+			'synced'                     => $execution->is_executed() && true === ( $mapping['synced'] ?? false ),
+			'requested'                  => true,
+			'execution'                  => $audit,
+			'mapping'                    => $mapping,
+			'grouped_product'            => true,
+			'group_row_count'            => count( $inventory_ids ),
 			'woocommerce_write_deferred' => ! $execution->is_executed(),
-			'payment_capture_deferred'  => true,
-			'square_inventory_deferred' => true,
-			'source_of_truth'           => 'tcg_store_platform',
-			'errors'                    => array_values(
+			'payment_capture_deferred'   => true,
+			'square_inventory_deferred'  => true,
+			'source_of_truth'            => 'tcg_store_platform',
+			'errors'                     => array_values(
 				array_unique(
 					array_merge(
 						$execution->errors(),

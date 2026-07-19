@@ -62,13 +62,13 @@ final class ScryDexWebhookSyncDispatcher {
 		$expansion_ids = is_array( $expansion_ids ) ? array_values( $expansion_ids ) : array();
 
 		return array(
-			'provider'                      => ScryDexSyncCheckpoint::PROVIDER,
-			'event_id'                      => (string) ( $event['event_id'] ?? '' ),
-			'event_name'                    => (string) ( $event['event_name'] ?? '' ),
-			'game'                          => (string) ( $event['game'] ?? '' ),
-			'update_type'                   => (string) ( $event['update_type'] ?? '' ),
-			'resource_type'                 => 'cards',
-			'expansion_ids'                 => array_values(
+			'provider'                       => ScryDexSyncCheckpoint::PROVIDER,
+			'event_id'                       => (string) ( $event['event_id'] ?? '' ),
+			'event_name'                     => (string) ( $event['event_name'] ?? '' ),
+			'game'                           => (string) ( $event['game'] ?? '' ),
+			'update_type'                    => (string) ( $event['update_type'] ?? '' ),
+			'resource_type'                  => 'cards',
+			'expansion_ids'                  => array_values(
 				array_filter(
 					array_map(
 						static fn ( mixed $value ): string => is_scalar( $value ) ? trim( (string) $value ) : '',
@@ -77,9 +77,9 @@ final class ScryDexWebhookSyncDispatcher {
 					static fn ( string $value ): bool => '' !== $value
 				)
 			),
-			'targeted_expansion_sync'       => true,
+			'targeted_expansion_sync'        => true,
 			'full_catalog_polling_requested' => false,
-			'credential_values_redacted'    => true,
+			'credential_values_redacted'     => true,
 		);
 	}
 

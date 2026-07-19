@@ -174,8 +174,8 @@ final class OfflinePushRouteProcessingResult {
 		}
 
 		if ( null !== $this->canonical_mutation_transaction_execution_result ) {
-			$executed                      = $this->canonical_mutation_transaction_execution_result->is_executed();
-			$canonical_mutations_deferred  = ! $executed && ! $this->canonical_transaction_execution_is_noop();
+			$executed                     = $this->canonical_mutation_transaction_execution_result->is_executed();
+			$canonical_mutations_deferred = ! $executed && ! $this->canonical_transaction_execution_is_noop();
 			$payload['canonical_mutation_transaction_execution_status']        = $this->canonical_mutation_transaction_execution_result->status();
 			$payload['canonical_mutation_transaction_execution_executed']      = $this->canonical_mutation_transaction_execution_result->is_executed();
 			$payload['canonical_mutation_transaction_execution_blocked']       = $this->canonical_mutation_transaction_execution_result->is_blocked();
@@ -185,11 +185,11 @@ final class OfflinePushRouteProcessingResult {
 			$payload['canonical_mutation_transaction_execution_block_reasons'] = $this->canonical_mutation_transaction_execution_result->block_reasons();
 			$payload['canonical_mutation_transaction_execution_errors']        = $this->canonical_mutation_transaction_execution_result->errors();
 			$payload['canonical_mutation_transaction_execution_deferred']      = false;
-			$payload['canonical_mutation_sql_execution_deferred']             = $canonical_mutations_deferred;
+			$payload['canonical_mutation_sql_execution_deferred']              = $canonical_mutations_deferred;
 			$payload['canonical_mutation_repository_execution_deferred']       = $canonical_mutations_deferred;
 			$payload['canonical_mutation_repository_transaction_deferred']     = $canonical_mutations_deferred;
 			$payload['canonical_mutation_repository_deferred']                 = $canonical_mutations_deferred;
-			$payload['canonical_mutations_deferred']                          = $canonical_mutations_deferred;
+			$payload['canonical_mutations_deferred']                           = $canonical_mutations_deferred;
 		}
 
 		return $payload;

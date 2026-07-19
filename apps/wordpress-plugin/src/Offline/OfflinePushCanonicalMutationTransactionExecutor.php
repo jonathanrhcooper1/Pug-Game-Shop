@@ -140,14 +140,14 @@ final class OfflinePushCanonicalMutationTransactionExecutor {
 			}
 
 			$mutation_results[] = array(
-				'client_operation_id'              => $operation_id,
-				'mutation_type'                    => (string) ( $query['mutation_type'] ?? '' ),
-				'query_kind'                       => (string) ( $query['query_kind'] ?? '' ),
-				'mutation_query_index'             => $index,
-				'rows_affected'                    => $rows_affected,
-				'execution_status'                 => 'executed',
+				'client_operation_id'                => $operation_id,
+				'mutation_type'                      => (string) ( $query['mutation_type'] ?? '' ),
+				'query_kind'                         => (string) ( $query['query_kind'] ?? '' ),
+				'mutation_query_index'               => $index,
+				'rows_affected'                      => $rows_affected,
+				'execution_status'                   => 'executed',
 				'inventory_write_execution_deferred' => false,
-				'route_connected_writes_deferred'  => false,
+				'route_connected_writes_deferred'    => false,
 			);
 		}
 

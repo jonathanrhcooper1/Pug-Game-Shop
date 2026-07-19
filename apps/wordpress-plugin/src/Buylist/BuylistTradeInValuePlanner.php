@@ -15,9 +15,9 @@ final class BuylistTradeInValuePlanner {
 	 * @return array{can_plan:bool,cash_total_minor_units:int,credit_total_minor_units:int,combined_total_minor_units:int,currency:string,line_items:list<array<string,mixed>>,errors:list<string>}
 	 */
 	public function plan( array $items, string $currency = 'USD' ): array {
-		$currency          = $this->currency( $currency );
-		$errors            = array();
-		$line_items        = array();
+		$currency           = $this->currency( $currency );
+		$errors             = array();
+		$line_items         = array();
 		$cash_total_units   = 0;
 		$credit_total_units = 0;
 
@@ -79,8 +79,8 @@ final class BuylistTradeInValuePlanner {
 		}
 
 		$calculated_unit_value = PriceRounding::trade_in_value_minor_units( $market_mid, $percentage );
-		$unit_value           = null === $override ? $calculated_unit_value : $override;
-		$final_value          = $unit_value * $quantity;
+		$unit_value            = null === $override ? $calculated_unit_value : $override;
+		$final_value           = $unit_value * $quantity;
 
 		return array(
 			'buylist_item_id'                   => $item_id,

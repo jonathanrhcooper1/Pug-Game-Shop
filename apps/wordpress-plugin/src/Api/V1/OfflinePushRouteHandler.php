@@ -56,7 +56,7 @@ final class OfflinePushRouteHandler {
 			);
 		}
 
-		$persistence = $route_result->persistence_result();
+		$persistence                     = $route_result->persistence_result();
 		$canonical_transaction_execution = $route_result->canonical_mutation_transaction_execution_result();
 
 		if ( $persistence->is_rejected() ) {

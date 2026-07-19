@@ -50,28 +50,28 @@ final class ScryDexUsageBudgetPlanner {
 		$allowed       = $configured && array() === $block_reasons;
 
 		return array(
-			'status'                           => $allowed ? 'ready' : 'blocked',
-			'action'                           => 'scrydex_cards_usage_budget_plan',
-			'provider_method'                  => 'get_usage',
-			'provider_endpoint'                => '/account/v1/usage',
-			'request'                          => $this->request_summary( $request ),
-			'budget_configured'                => $configured,
-			'usage_snapshot_provided'          => null !== $snapshot,
-			'usage_snapshot_required'          => true,
-			'usage_snapshot_max_age_minutes'   => (int) $status['usage_snapshot_max_age_minutes'],
-			'provider_usage_requests_deferred' => true,
-			'network_requests_deferred'        => true,
-			'estimated_credit_cost'            => $cost,
+			'status'                            => $allowed ? 'ready' : 'blocked',
+			'action'                            => 'scrydex_cards_usage_budget_plan',
+			'provider_method'                   => 'get_usage',
+			'provider_endpoint'                 => '/account/v1/usage',
+			'request'                           => $this->request_summary( $request ),
+			'budget_configured'                 => $configured,
+			'usage_snapshot_provided'           => null !== $snapshot,
+			'usage_snapshot_required'           => true,
+			'usage_snapshot_max_age_minutes'    => (int) $status['usage_snapshot_max_age_minutes'],
+			'provider_usage_requests_deferred'  => true,
+			'network_requests_deferred'         => true,
+			'estimated_credit_cost'             => $cost,
 			'estimated_credit_cost_per_request' => $cost_each,
-			'planned_provider_request_count'   => $request_count,
-			'daily_credit_budget'              => (int) $status['daily_credit_budget'],
-			'minimum_remaining_credits'        => (int) $status['minimum_remaining_credits'],
-			'remaining_after_estimate'         => null === $snapshot
+			'planned_provider_request_count'    => $request_count,
+			'daily_credit_budget'               => (int) $status['daily_credit_budget'],
+			'minimum_remaining_credits'         => (int) $status['minimum_remaining_credits'],
+			'remaining_after_estimate'          => null === $snapshot
 				? null
 				: max( 0, $snapshot['remaining_credits'] - $cost ),
-			'usage_snapshot'                   => $snapshot,
-			'configuration_issues'             => $this->configuration_issues( $status ),
-			'block_reasons'                    => $block_reasons,
+			'usage_snapshot'                    => $snapshot,
+			'configuration_issues'              => $this->configuration_issues( $status ),
+			'block_reasons'                     => $block_reasons,
 		);
 	}
 

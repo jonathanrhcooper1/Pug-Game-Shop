@@ -55,7 +55,7 @@ final class OfflineConflictRouteHandlerFactory {
 	 * @return array<string, callable(OfflineRestRequestData): array<string, mixed>>
 	 */
 	public function handlers(): array {
-		$handlers                              = ( $this->validation_handler_factory ?? new OfflineRouteValidationHandlerFactory() )->handlers();
+		$handlers                             = ( $this->validation_handler_factory ?? new OfflineRouteValidationHandlerFactory() )->handlers();
 		$handlers['resolve_offline_conflict'] = array( $this->resolution_handler(), 'handle' );
 
 		return array_intersect_key( $handlers, array_flip( self::HANDLER_CALLBACKS ) );
@@ -94,26 +94,26 @@ final class OfflineConflictRouteHandlerFactory {
 		}
 
 		return array(
-			'action'                                 => 'offline_conflict_route_handler_factory_ready',
-			'configured'                             => array() === $issues,
-			'handler_factory_ready'                  => true,
-			'handler_count'                          => count( $handlers ),
-			'controller_callbacks'                   => array_values( array_keys( $handlers ) ),
-			'list_handler_configured'                => is_callable( $handlers['list_offline_conflicts'] ?? null ),
-			'resolution_handler_configured'          => is_callable( $handlers['resolve_offline_conflict'] ?? null ),
-			'route_connected_execution_enabled'      => $this->route_connected_execution_enabled,
-			'database_configured'                    => $database_ready,
-			'table_prefix_ready'                     => $table_prefix_ready,
-			'current_conflict_provider_ready'        => method_exists( OfflineConflictResolutionCurrentRowProvider::class, '__invoke' ),
-			'resolution_repository_ready'            => method_exists( OfflineConflictResolutionRepository::class, 'apply' ),
-			'route_connected_handler_ready'          => $route_dependencies_ready,
-			'route_connected_handler_deferred'       => ! $route_dependencies_ready,
-			'route_connected_reads_deferred'         => ! $route_dependencies_ready,
-			'route_connected_writes_deferred'        => ! $route_dependencies_ready,
+			'action'                                  => 'offline_conflict_route_handler_factory_ready',
+			'configured'                              => array() === $issues,
+			'handler_factory_ready'                   => true,
+			'handler_count'                           => count( $handlers ),
+			'controller_callbacks'                    => array_values( array_keys( $handlers ) ),
+			'list_handler_configured'                 => is_callable( $handlers['list_offline_conflicts'] ?? null ),
+			'resolution_handler_configured'           => is_callable( $handlers['resolve_offline_conflict'] ?? null ),
+			'route_connected_execution_enabled'       => $this->route_connected_execution_enabled,
+			'database_configured'                     => $database_ready,
+			'table_prefix_ready'                      => $table_prefix_ready,
+			'current_conflict_provider_ready'         => method_exists( OfflineConflictResolutionCurrentRowProvider::class, '__invoke' ),
+			'resolution_repository_ready'             => method_exists( OfflineConflictResolutionRepository::class, 'apply' ),
+			'route_connected_handler_ready'           => $route_dependencies_ready,
+			'route_connected_handler_deferred'        => ! $route_dependencies_ready,
+			'route_connected_reads_deferred'          => ! $route_dependencies_ready,
+			'route_connected_writes_deferred'         => ! $route_dependencies_ready,
 			'route_connected_resolution_writes_ready' => $route_dependencies_ready,
-			'default_route_registration_deferred'    => true,
-			'default_route_execution_deferred'       => ! $route_dependencies_ready,
-			'configuration_issues'                   => array_values( array_unique( $issues ) ),
+			'default_route_registration_deferred'     => true,
+			'default_route_execution_deferred'        => ! $route_dependencies_ready,
+			'configuration_issues'                    => array_values( array_unique( $issues ) ),
 		);
 	}
 

@@ -34,21 +34,21 @@ final class OfflineConflictResolutionQueryBuilder {
 			$errors[] = 'table_prefix_invalid';
 		}
 
-		$row                   = $resolution_plan->conflict_update_row();
-		$conflict_id           = trim( (string) ( $row['conflict_id'] ?? '' ) );
-		$resolution_id         = trim( (string) ( $row['resolution_id'] ?? '' ) );
-		$target_status         = strtolower( trim( (string) ( $row['status'] ?? '' ) ) );
-		$resolution_action     = strtolower( trim( (string) ( $row['resolution_action'] ?? '' ) ) );
-		$resolution_note       = $this->normalize_text( (string) ( $row['resolution_note'] ?? '' ) );
-		$resolved_device_id    = trim( (string) ( $row['resolved_by_device_id'] ?? '' ) );
-		$manager_id            = $this->positive_int( $row['resolved_by_manager_id'] ?? null );
-		$expected_row_version  = $this->positive_int( $row['expected_conflict_version'] ?? null );
-		$previous_row_version  = $this->positive_int( $row['previous_row_version'] ?? null );
-		$next_row_version      = $this->positive_int( $row['row_version'] ?? null );
-		$resolved_at           = $this->mysql_datetime_utc( (string) ( $row['resolved_at_utc'] ?? '' ) );
-		$updated_at            = $this->mysql_datetime_utc( (string) ( $row['updated_at_utc'] ?? '' ) );
-		$resolution_payload    = $row['resolution_payload'] ?? array();
-		$resolution_json       = null;
+		$row                  = $resolution_plan->conflict_update_row();
+		$conflict_id          = trim( (string) ( $row['conflict_id'] ?? '' ) );
+		$resolution_id        = trim( (string) ( $row['resolution_id'] ?? '' ) );
+		$target_status        = strtolower( trim( (string) ( $row['status'] ?? '' ) ) );
+		$resolution_action    = strtolower( trim( (string) ( $row['resolution_action'] ?? '' ) ) );
+		$resolution_note      = $this->normalize_text( (string) ( $row['resolution_note'] ?? '' ) );
+		$resolved_device_id   = trim( (string) ( $row['resolved_by_device_id'] ?? '' ) );
+		$manager_id           = $this->positive_int( $row['resolved_by_manager_id'] ?? null );
+		$expected_row_version = $this->positive_int( $row['expected_conflict_version'] ?? null );
+		$previous_row_version = $this->positive_int( $row['previous_row_version'] ?? null );
+		$next_row_version     = $this->positive_int( $row['row_version'] ?? null );
+		$resolved_at          = $this->mysql_datetime_utc( (string) ( $row['resolved_at_utc'] ?? '' ) );
+		$updated_at           = $this->mysql_datetime_utc( (string) ( $row['updated_at_utc'] ?? '' ) );
+		$resolution_payload   = $row['resolution_payload'] ?? array();
+		$resolution_json      = null;
 
 		if ( ! $this->is_public_id( $conflict_id ) ) {
 			$errors[] = 'conflict_id_invalid';

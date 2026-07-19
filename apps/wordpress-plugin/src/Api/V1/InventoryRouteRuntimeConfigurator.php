@@ -10,10 +10,10 @@ namespace TCGStorePlatform\Api\V1;
 use TCGStorePlatform\Settings\InventoryRouteRuntimeSettings;
 
 final class InventoryRouteRuntimeConfigurator {
-	private const STAFF_SEARCH_ROUTE_KEY = 'GET /inventory/search';
+	private const STAFF_SEARCH_ROUTE_KEY     = 'GET /inventory/search';
 	private const REFERENCE_SEARCH_ROUTE_KEY = 'GET /reference/search';
-	private const STAFF_CREATE_ROUTE_KEY = 'POST /inventory';
-	private const STAFF_MARK_SOLD_ROUTE_KEY = 'POST /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold';
+	private const STAFF_CREATE_ROUTE_KEY     = 'POST /inventory';
+	private const STAFF_MARK_SOLD_ROUTE_KEY  = 'POST /inventory/(?P<inventory_id>[a-zA-Z0-9_-]+)/mark-sold';
 
 	/**
 	 * @param array<string, mixed>             $runtime_settings Runtime settings.

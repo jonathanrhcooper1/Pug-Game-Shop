@@ -73,11 +73,11 @@ final class InventoryMarkSoldRouteHandler {
 				'meta'        => array_merge(
 					$this->ready_meta(),
 					array(
-						'idempotent'                => true,
-						'woocommerce_product_sync'  => $this->woocommerce_sync_deferred_contract( false ),
-						'square_receipt_reference'  => $square_reference,
-						'provider_payment_capture'  => 'official_woocommerce_square_extension',
-						'square_payment_delegated'  => true,
+						'idempotent'               => true,
+						'woocommerce_product_sync' => $this->woocommerce_sync_deferred_contract( false ),
+						'square_receipt_reference' => $square_reference,
+						'provider_payment_capture' => 'official_woocommerce_square_extension',
+						'square_payment_delegated' => true,
 					)
 				),
 			);
@@ -98,7 +98,7 @@ final class InventoryMarkSoldRouteHandler {
 		$sold_at = $this->now_mysql();
 		$updated = $this->database->query(
 			$this->database->prepare(
-				"UPDATE `{$table_name}` SET `status` = %s, `date_sold` = %s, `external_sync_state` = %s, `updated_at` = %s, `row_version` = `row_version` + 1 WHERE " . $this->identity_where_sql( $inventory_identity ) . " AND `status` IN (%s, %s) LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"UPDATE `{$table_name}` SET `status` = %s, `date_sold` = %s, `external_sync_state` = %s, `updated_at` = %s, `row_version` = `row_version` + 1 WHERE " . $this->identity_where_sql( $inventory_identity ) . ' AND `status` IN (%s, %s) LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$this->identity_update_args(
 					$inventory_identity,
 					array(
@@ -117,12 +117,12 @@ final class InventoryMarkSoldRouteHandler {
 			return $this->rejected( 'inventory_mark_sold_update_failed', array( 'inventory_mark_sold_update_failed' ), 409 );
 		}
 
-		$updated_row = $this->inventory_row( $table_name, $inventory_identity ) ?? array_merge(
+		$updated_row      = $this->inventory_row( $table_name, $inventory_identity ) ?? array_merge(
 			$row,
 			array(
-				'status'     => InventoryStatus::SOLD,
-				'date_sold'  => $sold_at,
-				'updated_at' => $sold_at,
+				'status'      => InventoryStatus::SOLD,
+				'date_sold'   => $sold_at,
+				'updated_at'  => $sold_at,
 				'row_version' => (int) ( $row['row_version'] ?? 0 ) + 1,
 			)
 		);
@@ -139,13 +139,13 @@ final class InventoryMarkSoldRouteHandler {
 			'meta'        => array_merge(
 				$this->ready_meta(),
 				array(
-					'idempotent'                => false,
-					'square_receipt_reference'  => $square_reference,
-					'woocommerce_product_sync'  => $woocommerce_sync,
-					'provider_payment_capture'  => 'official_woocommerce_square_extension',
-					'square_payment_delegated'  => true,
+					'idempotent'                        => false,
+					'square_receipt_reference'          => $square_reference,
+					'woocommerce_product_sync'          => $woocommerce_sync,
+					'provider_payment_capture'          => 'official_woocommerce_square_extension',
+					'square_payment_delegated'          => true,
 					'provider_inventory_write_deferred' => true,
-					'source_of_truth'           => 'tcg_store_platform',
+					'source_of_truth'                   => 'tcg_store_platform',
 				)
 			),
 		);
@@ -216,16 +216,16 @@ final class InventoryMarkSoldRouteHandler {
 		$execution = $this->woocommerce_projection_executor( $context )->execute( $plan );
 
 		return array(
-			'action'                    => 'woocommerce_product_sync',
-			'status'                    => $execution->status(),
-			'synced'                    => $execution->is_executed(),
-			'requested'                 => true,
-			'execution'                 => $execution->audit_payload(),
+			'action'                     => 'woocommerce_product_sync',
+			'status'                     => $execution->status(),
+			'synced'                     => $execution->is_executed(),
+			'requested'                  => true,
+			'execution'                  => $execution->audit_payload(),
 			'woocommerce_write_deferred' => ! $execution->is_executed(),
-			'payment_capture_deferred'  => true,
-			'square_inventory_deferred' => true,
-			'source_of_truth'           => 'tcg_store_platform',
-			'errors'                    => array_values(
+			'payment_capture_deferred'   => true,
+			'square_inventory_deferred'  => true,
+			'source_of_truth'            => 'tcg_store_platform',
+			'errors'                     => array_values(
 				array_unique(
 					array_merge(
 						$execution->errors(),
@@ -255,8 +255,8 @@ final class InventoryMarkSoldRouteHandler {
 	private function woocommerce_context( array $row, OfflineRestRequestData $data ): array {
 		$body    = $data->body_params();
 		$context = array(
-			'environment'    => $this->environment_type(),
-			'store_currency' => (string) ( $row['sale_currency'] ?? 'USD' ),
+			'environment'     => $this->environment_type(),
+			'store_currency'  => (string) ( $row['sale_currency'] ?? 'USD' ),
 			'idempotency_key' => substr( 'woocommerce:mark-sold:' . (string) $data->idempotency_key(), 0, 191 ),
 		);
 
@@ -274,15 +274,15 @@ final class InventoryMarkSoldRouteHandler {
 	 */
 	private function woocommerce_sync_deferred_contract( bool $requested, array $errors = array() ): array {
 		return array(
-			'action'                    => 'woocommerce_product_sync',
-			'status'                    => 'deferred',
-			'synced'                    => false,
-			'requested'                 => $requested,
+			'action'                     => 'woocommerce_product_sync',
+			'status'                     => 'deferred',
+			'synced'                     => false,
+			'requested'                  => $requested,
 			'woocommerce_write_deferred' => true,
-			'payment_capture_deferred'  => true,
-			'square_inventory_deferred' => true,
-			'source_of_truth'           => 'tcg_store_platform',
-			'errors'                    => array_values( array_unique( $errors ) ),
+			'payment_capture_deferred'   => true,
+			'square_inventory_deferred'  => true,
+			'source_of_truth'            => 'tcg_store_platform',
+			'errors'                     => array_values( array_unique( $errors ) ),
 		);
 	}
 

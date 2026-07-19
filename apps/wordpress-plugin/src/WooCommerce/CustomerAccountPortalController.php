@@ -13,7 +13,7 @@ use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Version;
 
 final class CustomerAccountPortalController {
-	public const ENDPOINT = 'pug-portal';
+	public const ENDPOINT     = 'pug-portal';
 	public const STYLE_HANDLE = 'tcg-store-customer-account-portal';
 
 	private const ORDER_LIMIT  = 10;
@@ -202,10 +202,11 @@ final class CustomerAccountPortalController {
 		$table_name = $wpdb->prefix . 'tcg_customer_credit_ledger';
 		$rows       = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$table_name}
+				'SELECT * FROM %i
 				WHERE customer_id = %d
 				ORDER BY created_at DESC, credit_ledger_id DESC
-				LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				LIMIT %d',
+				$table_name,
 				$customer_id,
 				self::LEDGER_LIMIT
 			),
@@ -265,12 +266,14 @@ final class CustomerAccountPortalController {
 		$events_table        = $wpdb->prefix . 'tcg_events';
 		$rows                = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT registrations.*, events.title AS event_title, events.slug AS event_slug, events.start_datetime, events.end_datetime, events.timezone, events.location_id, events.game, events.format, events.entry_fee, events.currency
-				FROM {$registrations_table} registrations
-				INNER JOIN {$events_table} events ON events.event_id = registrations.event_id
+				'SELECT registrations.*, events.title AS event_title, events.slug AS event_slug, events.start_datetime, events.end_datetime, events.timezone, events.location_id, events.game, events.format, events.entry_fee, events.currency
+				FROM %i registrations
+				INNER JOIN %i events ON events.event_id = registrations.event_id
 				WHERE LOWER(registrations.email) = LOWER(%s)
 				ORDER BY events.start_datetime DESC, registrations.created_at DESC
-				LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				LIMIT %d',
+				$registrations_table,
+				$events_table,
 				$email,
 				self::EVENT_LIMIT
 			),
@@ -465,6 +468,7 @@ final class CustomerAccountPortalController {
 	}
 
 	private function label( string $text ): string {
+		// phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText -- Callers pass plugin-owned literal labels.
 		return function_exists( '__' ) ? __( $text, 'tcg-store-platform' ) : $text;
 	}
 }

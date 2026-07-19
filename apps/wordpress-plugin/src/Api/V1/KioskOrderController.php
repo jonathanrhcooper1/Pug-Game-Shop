@@ -10,7 +10,7 @@ namespace TCGStorePlatform\Api\V1;
 use TCGStorePlatform\Inventory\InventoryStatus;
 
 final class KioskOrderController {
-	private const NAMESPACE = 'tcg-store/v1';
+	private const NAMESPACE          = 'tcg-store/v1';
 	private const KIOSK_HOLD_SECONDS = 900;
 
 	public function register(): void {
@@ -81,17 +81,17 @@ final class KioskOrderController {
 		return new \WP_REST_Response(
 			array(
 				'data' => array(
-					'resource'                    => 'kiosk_order',
-					'accepted'                    => true,
-					'code'                        => 'kiosk_order_reserved',
-					'order'                       => array(
+					'resource'                     => 'kiosk_order',
+					'accepted'                     => true,
+					'code'                         => 'kiosk_order_reserved',
+					'order'                        => array(
 						'order_id'          => $order_id,
 						'first_name'        => $first_name,
 						'last_name'         => $last_name,
 						'status'            => 'reserved_for_pickup',
 						'reservation_count' => count( $result['reservations'] ),
 					),
-					'reservations'                => $result['reservations'],
+					'reservations'                 => $result['reservations'],
 					'credentials_synced_to_client' => false,
 				),
 			),
@@ -120,7 +120,7 @@ final class KioskOrderController {
 				),
 				ARRAY_A
 			);
-			$replayed_reservation    = $this->find_reservation_replay(
+			$replayed_reservation = $this->find_reservation_replay(
 				$reservations_table,
 				$reservation_idempotency,
 				$public_id
@@ -164,12 +164,12 @@ final class KioskOrderController {
 					'currency'            => (string) ( $inventory['sale_currency'] ?? 'USD' ),
 					'metadata_json'       => $this->json(
 						array(
-							'first_name'         => $first_name,
-							'last_name'          => $last_name,
-							'local_order_id'     => $order_id,
-							'local_line_index'   => $index,
+							'first_name'          => $first_name,
+							'last_name'           => $last_name,
+							'local_order_id'      => $order_id,
+							'local_line_index'    => $index,
 							'inventory_public_id' => $public_id,
-							'source'             => 'offline_lan_sync',
+							'source'              => 'offline_lan_sync',
 						)
 					),
 					'created_at'          => $this->now(),
@@ -199,8 +199,8 @@ final class KioskOrderController {
 			$updated = $wpdb->update(
 				$inventory_table,
 				array(
-					'status'     => InventoryStatus::RESERVED,
-					'updated_at' => $this->now(),
+					'status'      => InventoryStatus::RESERVED,
+					'updated_at'  => $this->now(),
 					'row_version' => (int) ( $inventory['row_version'] ?? 1 ) + 1,
 				),
 				array(

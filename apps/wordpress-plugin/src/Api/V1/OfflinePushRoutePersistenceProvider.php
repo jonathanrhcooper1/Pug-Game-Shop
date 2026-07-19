@@ -108,7 +108,7 @@ final class OfflinePushRoutePersistenceProvider {
 			throw new RuntimeException( 'offline_push_device_row_missing' );
 		}
 
-		$resolution           = $this->batch_resolver->resolve(
+		$resolution                      = $this->batch_resolver->resolve(
 			$payload,
 			$this->provider_payload(
 				$this->server_snapshots_provider,
@@ -130,7 +130,7 @@ final class OfflinePushRoutePersistenceProvider {
 				)
 			)
 		);
-		$plan                 = $this->persistence_planner->plan(
+		$plan                            = $this->persistence_planner->plan(
 			$payload,
 			$resolution,
 			$device_row,
@@ -145,18 +145,18 @@ final class OfflinePushRoutePersistenceProvider {
 				)
 			)
 		);
-		$canonical            = $this->canonical_mutation_planner->plan(
+		$canonical                       = $this->canonical_mutation_planner->plan(
 			$payload,
 			$resolution,
 			$this->row_operation_ids( $plan->operation_replay_rows() )
 		);
-		$canonical_sql        = $this->canonical_mutation_query_builder->build(
+		$canonical_sql                   = $this->canonical_mutation_query_builder->build(
 			$canonical,
 			$this->table_prefix
 		);
-		$canonical_repository = $this->canonical_mutation_repository->stage( $canonical_sql );
-		$canonical_execution  = $this->canonical_mutation_execution_gate->evaluate( $canonical_repository );
-		$canonical_preflight  = $this->canonical_mutation_transaction_preflight->evaluate(
+		$canonical_repository            = $this->canonical_mutation_repository->stage( $canonical_sql );
+		$canonical_execution             = $this->canonical_mutation_execution_gate->evaluate( $canonical_repository );
+		$canonical_preflight             = $this->canonical_mutation_transaction_preflight->evaluate(
 			$canonical_repository,
 			$canonical_execution
 		);

@@ -17,7 +17,7 @@ final class PriceRounding {
 			return $amount_minor_units;
 		}
 
-		return ( int ) ( ceil( $amount_minor_units / 100 ) * 100 );
+		return (int) ( ceil( $amount_minor_units / 100 ) * 100 );
 	}
 
 	public static function market_plus_basis_points_minor_units( int $market_minor_units, int $markup_basis_points ): int {

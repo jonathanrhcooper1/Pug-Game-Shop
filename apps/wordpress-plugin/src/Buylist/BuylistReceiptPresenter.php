@@ -28,28 +28,28 @@ final class BuylistReceiptPresenter {
 			}
 
 			$items[] = array(
-				'card_name'        => (string) ( $line['card_name'] ?? '' ),
-				'game'             => (string) ( $line['game'] ?? '' ),
-				'set_name'         => (string) ( $line['set_name'] ?? '' ),
+				'card_name'          => (string) ( $line['card_name'] ?? '' ),
+				'game'               => (string) ( $line['game'] ?? '' ),
+				'set_name'           => (string) ( $line['set_name'] ?? '' ),
 				'condition_or_grade' => (string) ( $line['condition_or_grade'] ?? '' ),
-				'quantity'         => (int) ( $line['accepted_quantity'] ?? 1 ),
-				'market_mid'       => $this->money( (int) ( $line['market_mid_minor_units'] ?? 0 ) ),
-				'percentage'       => $this->percentage( (int) ( $line['trade_in_percentage_basis_points'] ?? 0 ) ),
-				'final_value'      => $this->money( $value ),
-				'payout_type'      => (string) ( $line['payout_type'] ?? '' ),
+				'quantity'           => (int) ( $line['accepted_quantity'] ?? 1 ),
+				'market_mid'         => $this->money( (int) ( $line['market_mid_minor_units'] ?? 0 ) ),
+				'percentage'         => $this->percentage( (int) ( $line['trade_in_percentage_basis_points'] ?? 0 ) ),
+				'final_value'        => $this->money( $value ),
+				'payout_type'        => (string) ( $line['payout_type'] ?? '' ),
 			);
 		}
 
 		return array(
-			'store_name'          => $store_name,
-			'submission_id'       => (int) ( $submission['submission_id'] ?? 0 ),
-			'customer_name'       => trim( (string) ( $submission['customer_name'] ?? '' ) ),
-			'customer_email'      => trim( (string) ( $submission['customer_email'] ?? '' ) ),
-			'completed_at'        => (string) ( $submission['completed_at'] ?? $submission['updated_at'] ?? '' ),
-			'items'               => $items,
-			'cash_total'          => $this->money( $cash_total ),
-			'credit_total'        => $this->money( $credit_total ),
-			'grand_total'         => $this->money( $cash_total + $credit_total ),
+			'store_name'               => $store_name,
+			'submission_id'            => (int) ( $submission['submission_id'] ?? 0 ),
+			'customer_name'            => trim( (string) ( $submission['customer_name'] ?? '' ) ),
+			'customer_email'           => trim( (string) ( $submission['customer_email'] ?? '' ) ),
+			'completed_at'             => (string) ( $submission['completed_at'] ?? $submission['updated_at'] ?? '' ),
+			'items'                    => $items,
+			'cash_total'               => $this->money( $cash_total ),
+			'credit_total'             => $this->money( $credit_total ),
+			'grand_total'              => $this->money( $cash_total + $credit_total ),
 			'cash_total_minor_units'   => $cash_total,
 			'credit_total_minor_units' => $credit_total,
 		);

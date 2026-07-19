@@ -76,16 +76,16 @@ final class StagingSafety {
 	 */
 	public function health_summary(): array {
 		return array(
-			'status'                         => $this->is_active() ? 'staging' : 'inactive',
-			'environment'                    => $this->environment(),
-			'staging_mode_active'            => $this->is_active(),
-			'public_indexing_blocked'        => $this->blocks_public_indexing(),
-			'real_customer_emails_disabled'  => $this->blocks_real_emails(),
-			'payment_capture_deferred'       => true,
-			'provider_inventory_deferred'    => true,
-			'staff_banner_visible'           => $this->should_show_banner(),
-			'explicit_email_override'        => $this->constant_enabled( self::ALLOW_EMAILS_CONSTANT ),
-			'explicit_indexing_override'     => $this->constant_enabled( self::ALLOW_INDEXING_CONSTANT ),
+			'status'                          => $this->is_active() ? 'staging' : 'inactive',
+			'environment'                     => $this->environment(),
+			'staging_mode_active'             => $this->is_active(),
+			'public_indexing_blocked'         => $this->blocks_public_indexing(),
+			'real_customer_emails_disabled'   => $this->blocks_real_emails(),
+			'payment_capture_deferred'        => true,
+			'provider_inventory_deferred'     => true,
+			'staff_banner_visible'            => $this->should_show_banner(),
+			'explicit_email_override'         => $this->constant_enabled( self::ALLOW_EMAILS_CONSTANT ),
+			'explicit_indexing_override'      => $this->constant_enabled( self::ALLOW_INDEXING_CONSTANT ),
 			'production_side_effects_blocked' => $this->is_active()
 				&& $this->blocks_public_indexing()
 				&& $this->blocks_real_emails(),
@@ -132,8 +132,8 @@ final class StagingSafety {
 		}
 	}
 
-	public function filter_robots_txt( string $output, bool $public ): string {
-		unset( $public );
+	public function filter_robots_txt( string $output, bool $is_public ): string {
+		unset( $is_public );
 
 		if ( ! $this->blocks_public_indexing() ) {
 			return $output;
@@ -143,17 +143,17 @@ final class StagingSafety {
 	}
 
 	/**
-	 * @param mixed                $return Short-circuit return value.
+	 * @param mixed                $short_circuit Short-circuit return value.
 	 * @param array<string, mixed> $atts Mail arguments.
 	 */
-	public function filter_staging_email( mixed $return, array $atts = array() ): mixed {
+	public function filter_staging_email( mixed $short_circuit, array $atts = array() ): mixed {
 		unset( $atts );
 
 		if ( $this->blocks_real_emails() ) {
 			return true;
 		}
 
-		return $return;
+		return $short_circuit;
 	}
 
 	/**

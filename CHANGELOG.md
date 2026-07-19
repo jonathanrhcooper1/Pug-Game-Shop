@@ -4,6 +4,9 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Cleared the full WordPress Coding Standards gate across the imported plugin,
+  replaced trusted dynamic SQL identifiers with WordPress `%i` placeholders,
+  and aligned the WordPress integration smoke assertion with release `0.203.1`.
 - Prepared release `0.203.1` with a WordPress schema-18 repair for incomplete
   ScryDex webhook relay tables and fail-closed durable webhook logging.
 - Preserved Square sale receipt references through the WordPress mark-sold

@@ -49,7 +49,7 @@ final class ScryDexWebhookRelayController {
 	public function list_due( \WP_REST_Request $request ): \WP_REST_Response {
 		$requested_limit = (int) $request->get_param( 'limit' );
 		$limit           = max( 1, min( 100, $requested_limit > 0 ? $requested_limit : 25 ) );
-		$events = $this->repository()->due_for_lan( $limit );
+		$events          = $this->repository()->due_for_lan( $limit );
 
 		return new \WP_REST_Response(
 			array(

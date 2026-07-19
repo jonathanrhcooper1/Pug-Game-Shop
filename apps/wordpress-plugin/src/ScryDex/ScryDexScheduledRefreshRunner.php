@@ -169,19 +169,19 @@ final class ScryDexScheduledRefreshRunner {
 				continue;
 			}
 
-			$provider_requests    += (int) ( $run['provider_request_count'] ?? 0 );
-			$page_count           += (int) ( $run['page_count'] ?? 0 );
+			$provider_requests   += (int) ( $run['provider_request_count'] ?? 0 );
+			$page_count          += (int) ( $run['page_count'] ?? 0 );
 			$continuation_pending = $continuation_pending || true === ( $run['continuation_available'] ?? false );
 		}
 
 		return array(
-			'status'                       => (string) ( $result['status'] ?? 'unknown' ),
-			'game_count'                   => count( $runs ),
-			'page_count'                   => $page_count,
-			'provider_request_count'       => $provider_requests,
-			'continuation_available'       => $continuation_pending,
-			'credential_values_redacted'   => true,
-			'provider_bodies_not_logged'   => true,
+			'status'                     => (string) ( $result['status'] ?? 'unknown' ),
+			'game_count'                 => count( $runs ),
+			'page_count'                 => $page_count,
+			'provider_request_count'     => $provider_requests,
+			'continuation_available'     => $continuation_pending,
+			'credential_values_redacted' => true,
+			'provider_bodies_not_logged' => true,
 		);
 	}
 }

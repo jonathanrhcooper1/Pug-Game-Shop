@@ -86,7 +86,7 @@ final class ScryDexPersistenceRepository {
 			);
 		}
 
-		$transaction_commands              = array();
+		$transaction_commands             = array();
 		$reference_insert_results         = array();
 		$reference_update_results         = array();
 		$reference_variant_upsert_results = array();

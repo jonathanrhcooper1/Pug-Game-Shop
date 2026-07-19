@@ -15,9 +15,9 @@ use TCGStorePlatform\Settings\Settings;
 use TCGStorePlatform\Version;
 
 final class InventorySearchShortcode {
-	public const SHORTCODE    = 'tcg_inventory_search';
-	public const STYLE_HANDLE = 'tcg-store-public-inventory';
-	public const SCRIPT_HANDLE = 'tcg-store-public-storefront-links';
+	public const SHORTCODE             = 'tcg_inventory_search';
+	public const STYLE_HANDLE          = 'tcg-store-public-inventory';
+	public const SCRIPT_HANDLE         = 'tcg-store-public-storefront-links';
 	public const STOREFRONT_PAGE_SLUGS = array(
 		'shop-singles',
 		'shop-graded-cards',
@@ -143,8 +143,8 @@ final class InventorySearchShortcode {
 		}
 
 		if ( ! $should_redirect ) {
-			$path = trim( (string) ( $_SERVER['REQUEST_URI'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			$path = parse_url( $path, PHP_URL_PATH );
+			$path            = trim( (string) ( $_SERVER['REQUEST_URI'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$path            = parse_url( $path, PHP_URL_PATH );
 			$should_redirect = '/shop' === rtrim( (string) $path, '/' );
 		}
 
@@ -172,8 +172,8 @@ final class InventorySearchShortcode {
 					0,
 					array(
 						'settings' => Settings::all(),
-						'status'  => 'blocked',
-						'message' => 'Inventory search is temporarily unavailable.',
+						'status'   => 'blocked',
+						'message'  => 'Inventory search is temporarily unavailable.',
 					)
 				)
 			);
@@ -190,8 +190,8 @@ final class InventorySearchShortcode {
 					0,
 					array(
 						'settings' => Settings::all(),
-						'status'  => 'blocked',
-						'message' => 'Search filters need to be adjusted.',
+						'status'   => 'blocked',
+						'message'  => 'Search filters need to be adjusted.',
 					)
 				)
 			);
@@ -209,8 +209,8 @@ final class InventorySearchShortcode {
 					0,
 					array(
 						'settings' => Settings::all(),
-						'status'  => 'blocked',
-						'message' => 'Inventory search is temporarily unavailable.',
+						'status'   => 'blocked',
+						'message'  => 'Inventory search is temporarily unavailable.',
 					)
 				)
 			);
@@ -264,15 +264,15 @@ final class InventorySearchShortcode {
 	 */
 	private function query_values( array $attributes ): array {
 		return array(
-			'q'         => $this->request_value( 'tcg_inventory_q', $attributes['query'] ?? '' ),
-			'game'      => $this->request_value( 'tcg_inventory_game', $attributes['game'] ?? '' ),
-			'set_filter' => $this->request_value( 'tcg_inventory_set', $attributes['set'] ?? ( $attributes['set_filter'] ?? '' ) ),
+			'q'             => $this->request_value( 'tcg_inventory_q', $attributes['query'] ?? '' ),
+			'game'          => $this->request_value( 'tcg_inventory_game', $attributes['game'] ?? '' ),
+			'set_filter'    => $this->request_value( 'tcg_inventory_set', $attributes['set'] ?? ( $attributes['set_filter'] ?? '' ) ),
 			'raw_or_graded' => $this->request_value( 'tcg_inventory_type', $attributes['raw_or_graded'] ?? ( $attributes['product_type'] ?? 'raw' ) ),
-			'sort'      => $this->request_value( 'tcg_inventory_sort', $attributes['sort'] ?? 'relevance' ),
-			'visibility' => 'public',
-			'page'      => $this->request_positive_int( 'tcg_inventory_page', $attributes['page'] ?? 1, 1, 9999 ),
-			'page_size' => $this->request_positive_int( 'tcg_inventory_page_size', $attributes['limit'] ?? 24, 1, 48 ),
-			'status'    => 'available',
+			'sort'          => $this->request_value( 'tcg_inventory_sort', $attributes['sort'] ?? 'relevance' ),
+			'visibility'    => 'public',
+			'page'          => $this->request_positive_int( 'tcg_inventory_page', $attributes['page'] ?? 1, 1, 9999 ),
+			'page_size'     => $this->request_positive_int( 'tcg_inventory_page_size', $attributes['limit'] ?? 24, 1, 48 ),
+			'status'        => 'available',
 		);
 	}
 
@@ -283,14 +283,14 @@ final class InventorySearchShortcode {
 		$validation = ( new InventorySearchRequestParser() )->parse(
 			array_merge(
 				array(
-					'q'          => '',
-					'game'       => '',
-					'set_filter' => '',
+					'q'             => '',
+					'game'          => '',
+					'set_filter'    => '',
 					'raw_or_graded' => 'raw',
-					'sort'       => 'relevance',
-					'visibility' => 'public',
-					'page'       => 1,
-					'page_size'  => 24,
+					'sort'          => 'relevance',
+					'visibility'    => 'public',
+					'page'          => 1,
+					'page_size'     => 24,
 				),
 				$values
 			)
@@ -302,14 +302,14 @@ final class InventorySearchShortcode {
 
 		$fallback = ( new InventorySearchRequestParser() )->parse(
 			array(
-					'q'          => '',
-					'game'       => '',
-					'set_filter' => '',
-					'raw_or_graded' => 'raw',
-					'sort'       => 'relevance',
-				'visibility' => 'public',
-				'page'       => 1,
-				'page_size'  => 24,
+				'q'             => '',
+				'game'          => '',
+				'set_filter'    => '',
+				'raw_or_graded' => 'raw',
+				'sort'          => 'relevance',
+				'visibility'    => 'public',
+				'page'          => 1,
+				'page_size'     => 24,
 			)
 		)->request();
 

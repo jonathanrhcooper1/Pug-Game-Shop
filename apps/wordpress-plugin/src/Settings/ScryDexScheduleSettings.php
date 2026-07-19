@@ -15,13 +15,13 @@ final class ScryDexScheduleSettings {
 	 */
 	public static function defaults(): array {
 		return array(
-			'enabled'                   => false,
-			'game_keys'                 => array( 'pokemon' ),
-			'cards_page_size'           => 100,
-			'max_pages_per_game_run'    => 1,
-			'network_requests_enabled'  => false,
-			'database_writes_enabled'   => false,
-			'execute_database_writes'   => false,
+			'enabled'                  => false,
+			'game_keys'                => array( 'pokemon' ),
+			'cards_page_size'          => 100,
+			'max_pages_per_game_run'   => 1,
+			'network_requests_enabled' => false,
+			'database_writes_enabled'  => false,
+			'execute_database_writes'  => false,
 		);
 	}
 
@@ -96,18 +96,18 @@ final class ScryDexScheduleSettings {
 		}
 
 		return array(
-			'configured'                  => $configured,
-			'status'                      => $configured ? 'ready' : 'blocked',
-			'enabled'                     => true === $settings['enabled'],
-			'game_keys'                   => $game_keys,
-			'cards_page_size'             => (int) $settings['cards_page_size'],
-			'max_pages_per_game_run'      => (int) $settings['max_pages_per_game_run'],
-			'network_requests_enabled'    => true === $settings['network_requests_enabled'],
-			'database_writes_enabled'     => true === $settings['database_writes_enabled'],
-			'execute_database_writes'     => true === $settings['execute_database_writes'],
+			'configured'                        => $configured,
+			'status'                            => $configured ? 'ready' : 'blocked',
+			'enabled'                           => true === $settings['enabled'],
+			'game_keys'                         => $game_keys,
+			'cards_page_size'                   => (int) $settings['cards_page_size'],
+			'max_pages_per_game_run'            => (int) $settings['max_pages_per_game_run'],
+			'network_requests_enabled'          => true === $settings['network_requests_enabled'],
+			'database_writes_enabled'           => true === $settings['database_writes_enabled'],
+			'execute_database_writes'           => true === $settings['execute_database_writes'],
 			'provider_result_bodies_not_logged' => true,
-			'credential_values_redacted'  => true,
-			'configuration_issues'        => array_values( array_unique( $issues ) ),
+			'credential_values_redacted'        => true,
+			'configuration_issues'              => array_values( array_unique( $issues ) ),
 		);
 	}
 

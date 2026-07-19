@@ -72,7 +72,7 @@ final class AdminMenu {
 
 		global $wpdb;
 
-		$inventory_id         = absint( $this->posted_value( 'inventory_id' ) );
+		$inventory_id        = absint( $this->posted_value( 'inventory_id' ) );
 		$square_item_id      = $this->posted_value( 'square_catalog_item_id' );
 		$square_variation_id = $this->posted_value( 'square_catalog_variation_id' );
 		$result              = ( new InventoryExternalMappingRepository( $wpdb ) )->mark_square_catalog_synced(
@@ -126,7 +126,7 @@ final class AdminMenu {
 			add_query_arg(
 				array_filter(
 					array(
-						'page'                    => 'tcg-store-platform-inventory',
+						'page'                   => 'tcg-store-platform-inventory',
 						'tcg_woocommerce_status' => $status,
 						'tcg_woocommerce_error'  => $error,
 					),
@@ -147,13 +147,13 @@ final class AdminMenu {
 			$group_rows = array( $row );
 		}
 
-		$context   = array(
+		$context     = array(
 			'environment'               => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
 			'store_currency'            => (string) ( $row['sale_currency'] ?? 'USD' ),
 			'production_write_approval' => 'woocommerce-product-sync',
 		);
-		$plan      = ( new InventoryProductProjectionPlanner() )->plan_group( $group_rows, $context );
-		$execution = ( new InventoryProductProjectionExecutor(
+		$plan        = ( new InventoryProductProjectionPlanner() )->plan_group( $group_rows, $context );
+		$execution   = ( new InventoryProductProjectionExecutor(
 			true,
 			new WooCommerceInventoryProductWriter(),
 			new InventoryProductWriteRequestPlanner(),
@@ -171,18 +171,18 @@ final class AdminMenu {
 		}
 
 		return array(
-			'action'                     => 'woocommerce_product_admin_sync',
-			'status'                     => $execution->status(),
-			'synced'                     => $execution->is_executed() && true === ( $mapping['synced'] ?? false ),
-			'product_id'                 => $product_id,
-			'grouped_product'            => true,
-			'group_row_count'            => count( $group_rows ),
-			'execution'                  => $execution->audit_payload(),
-			'mapping'                    => $mapping,
-			'payment_capture_deferred'   => true,
-			'square_inventory_deferred'  => true,
-			'source_of_truth'            => 'tcg_store_platform',
-			'errors'                     => array_values(
+			'action'                    => 'woocommerce_product_admin_sync',
+			'status'                    => $execution->status(),
+			'synced'                    => $execution->is_executed() && true === ( $mapping['synced'] ?? false ),
+			'product_id'                => $product_id,
+			'grouped_product'           => true,
+			'group_row_count'           => count( $group_rows ),
+			'execution'                 => $execution->audit_payload(),
+			'mapping'                   => $mapping,
+			'payment_capture_deferred'  => true,
+			'square_inventory_deferred' => true,
+			'source_of_truth'           => 'tcg_store_platform',
+			'errors'                    => array_values(
 				array_unique(
 					array_merge(
 						$execution->errors(),
@@ -236,7 +236,7 @@ final class AdminMenu {
 			return array();
 		}
 
-		$sql = "SELECT * FROM `{$table_name}` WHERE {$where} ORDER BY `condition_code` ASC, `variant` ASC, `finish` ASC, `sale_price` ASC, `inventory_id` ASC"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$sql  = "SELECT * FROM `{$table_name}` WHERE {$where} ORDER BY `condition_code` ASC, `variant` ASC, `finish` ASC, `sale_price` ASC, `inventory_id` ASC"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $database->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		return is_array( $rows ) ? array_values( array_filter( $rows, 'is_array' ) ) : array();
@@ -1179,7 +1179,8 @@ final class AdminMenu {
 		echo '<div id="tcg-store-square-mapping-readiness" class="tcg-store-square-mapping-readiness" data-ready="';
 		echo esc_attr( $ready ? '1' : '0' );
 		echo '" data-summary="';
-		echo esc_attr( wp_json_encode( $summary ) ?: '{}' );
+		$encoded_summary = wp_json_encode( $summary );
+		echo esc_attr( false !== $encoded_summary ? $encoded_summary : '{}' );
 		echo '" data-update-action="';
 		echo esc_url( admin_url( 'admin-post.php' ) );
 		echo '" data-update-nonce="';
@@ -1450,13 +1451,13 @@ final class AdminMenu {
 		);
 		$configured_games = array_values( array_unique( $configured_games ) );
 		$defaults         = array(
-			'pokemon'              => __( 'Pokemon', 'tcg-store-platform' ),
-			'magicthegathering'    => __( 'Magic: The Gathering', 'tcg-store-platform' ),
-			'lorcana'              => __( 'Lorcana', 'tcg-store-platform' ),
-			'onepiece'             => __( 'One Piece', 'tcg-store-platform' ),
-			'gundam'               => __( 'Gundam', 'tcg-store-platform' ),
-			'yugioh'               => __( 'Yu-Gi-Oh!', 'tcg-store-platform' ),
-			'riftbound'            => __( 'Riftbound', 'tcg-store-platform' ),
+			'pokemon'           => __( 'Pokemon', 'tcg-store-platform' ),
+			'magicthegathering' => __( 'Magic: The Gathering', 'tcg-store-platform' ),
+			'lorcana'           => __( 'Lorcana', 'tcg-store-platform' ),
+			'onepiece'          => __( 'One Piece', 'tcg-store-platform' ),
+			'gundam'            => __( 'Gundam', 'tcg-store-platform' ),
+			'yugioh'            => __( 'Yu-Gi-Oh!', 'tcg-store-platform' ),
+			'riftbound'         => __( 'Riftbound', 'tcg-store-platform' ),
 		);
 		$options          = array();
 		$checked_games    = array() === $configured_games ? array( 'pokemon' ) : $configured_games;

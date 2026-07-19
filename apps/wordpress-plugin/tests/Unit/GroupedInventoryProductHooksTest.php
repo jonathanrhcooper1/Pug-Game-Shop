@@ -70,7 +70,6 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 				'tcg-woocommerce-card-product-gallery',
 				'tcg-woocommerce-card-cart-image',
 				"'eager',",
-				"array( 'width' => 72, 'height' => 96 )",
 				'tcg-woocommerce-card-gallery-image--static',
 				'data-tcg-card-gallery-static',
 				'price_snapshot_minor_units',
@@ -94,6 +93,9 @@ final class GroupedInventoryProductHooksTest extends TestCase {
 		) {
 			$this->assert_contains( $marker, $source );
 		}
+
+		$this->assert_true( 1 === preg_match( "/'width'\s*=>\s*72/", $source ) );
+		$this->assert_true( 1 === preg_match( "/'height'\s*=>\s*96/", $source ) );
 	}
 
 	public function test_product_styles_cover_selected_price_stock_and_mobile_layout(): void {

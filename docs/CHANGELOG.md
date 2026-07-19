@@ -16,6 +16,14 @@ All notable changes follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Standardized the complete WordPress plugin against WordPress Core and
+  PHPCompatibilityWP rules, including explicit translator context and
+  WordPress `%i` identifier placeholders for trusted dynamic table names.
+- Updated the WordPress integration smoke test to assert plugin version
+  `0.203.1` and made the product-image marker test independent of formatting.
+
 ### Added
 
 - Added a live ScryDex Vision card scanner for the employee app Inventory and

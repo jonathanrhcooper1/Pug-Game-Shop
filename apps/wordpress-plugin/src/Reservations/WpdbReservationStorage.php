@@ -108,7 +108,7 @@ final class WpdbReservationStorage implements ReservationStorage {
 	}
 
 	public function update_inventory_status( int $inventory_id, string $from_status, string $to_status ): bool {
-		$sql = $this->database->prepare(
+		$sql     = $this->database->prepare(
 			'UPDATE `' . $this->inventory_table() . '` SET `status` = %s, `updated_at` = %s, `row_version` = `row_version` + 1 WHERE `inventory_id` = %d AND `status` = %s LIMIT 1',
 			$to_status,
 			$this->now(),

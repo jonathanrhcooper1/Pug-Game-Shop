@@ -16,17 +16,17 @@ final class InventorySearchRequestParser {
 	 * @param array<string, mixed> $query Query string values.
 	 */
 	public function parse( array $query ): InventorySearchValidationResult {
-		$errors     = array();
-		$text_query = trim( (string) ( $query['q'] ?? ( $query['query'] ?? '' ) ) );
-		$game       = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
-		$set_filter = trim( (string) ( $query['set'] ?? ( $query['set_name'] ?? ( $query['set_filter'] ?? '' ) ) ) );
+		$errors        = array();
+		$text_query    = trim( (string) ( $query['q'] ?? ( $query['query'] ?? '' ) ) );
+		$game          = strtolower( trim( (string) ( $query['game'] ?? '' ) ) );
+		$set_filter    = trim( (string) ( $query['set'] ?? ( $query['set_name'] ?? ( $query['set_filter'] ?? '' ) ) ) );
 		$raw_or_graded = strtolower( trim( (string) ( $query['raw_or_graded'] ?? ( $query['product_type'] ?? '' ) ) ) );
-		$visibility = strtolower( trim( (string) ( $query['visibility'] ?? 'public' ) ) );
-		$sort       = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
-		$page       = $this->positive_int( $query['page'] ?? 1, 'page', $errors, 1 );
-		$page_size  = $this->positive_int( $query['page_size'] ?? 25, 'page_size', $errors, 25 );
-		$location   = $this->optional_positive_int( $query['location_id'] ?? null, 'location_id', $errors );
-		$statuses   = $this->statuses( $query['status'] ?? array(), $errors );
+		$visibility    = strtolower( trim( (string) ( $query['visibility'] ?? 'public' ) ) );
+		$sort          = strtolower( trim( (string) ( $query['sort'] ?? 'relevance' ) ) );
+		$page          = $this->positive_int( $query['page'] ?? 1, 'page', $errors, 1 );
+		$page_size     = $this->positive_int( $query['page_size'] ?? 25, 'page_size', $errors, 25 );
+		$location      = $this->optional_positive_int( $query['location_id'] ?? null, 'location_id', $errors );
+		$statuses      = $this->statuses( $query['status'] ?? array(), $errors );
 
 		if ( strlen( $text_query ) > 120 ) {
 			$errors[]   = 'query_too_long';
@@ -43,7 +43,7 @@ final class InventorySearchRequestParser {
 		}
 
 		if ( '' !== $raw_or_graded && ! in_array( $raw_or_graded, array( 'raw', 'graded' ), true ) ) {
-			$errors[]     = 'raw_or_graded_invalid';
+			$errors[]      = 'raw_or_graded_invalid';
 			$raw_or_graded = '';
 		}
 

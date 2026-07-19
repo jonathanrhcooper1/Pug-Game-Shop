@@ -58,11 +58,11 @@ final class InventorySearchRouteHandlerFactory {
 			return null;
 		}
 
-		$scrydex_provider = null;
+		$scrydex_provider   = null;
 		$scrydex_repository = null;
-		$scrydex_summary = $this->scrydex_provider_factory?->readiness_summary() ?? array();
+		$scrydex_summary    = $this->scrydex_provider_factory?->readiness_summary() ?? array();
 		if ( true === ( $scrydex_summary['configured'] ?? false ) ) {
-			$scrydex_provider = $this->scrydex_provider_factory?->provider();
+			$scrydex_provider   = $this->scrydex_provider_factory?->provider();
 			$scrydex_repository = new ScryDexPersistenceRepository( $database );
 		}
 
@@ -86,8 +86,8 @@ final class InventorySearchRouteHandlerFactory {
 		}
 
 		return array(
-			'search_inventory_items'  => fn ( OfflineRestRequestData $data ): array => $handler->search_inventory_items( $data ),
-			'search_reference_cards'  => fn ( OfflineRestRequestData $data ): array => $reference_handler->search_reference_cards( $data ),
+			'search_inventory_items' => fn ( OfflineRestRequestData $data ): array => $handler->search_inventory_items( $data ),
+			'search_reference_cards' => fn ( OfflineRestRequestData $data ): array => $reference_handler->search_reference_cards( $data ),
 		);
 	}
 
@@ -117,26 +117,26 @@ final class InventorySearchRouteHandlerFactory {
 		}
 
 		return array(
-			'action'                              => 'inventory_search_route_handler_factory_ready',
-			'configured'                          => true,
-			'handler_factory_ready'               => true,
-			'request_parser_ready'                => method_exists( InventorySearchRequestParser::class, 'parse' ),
-			'query_planner_ready'                 => method_exists( InventorySearchQueryPlanner::class, 'plan' ),
-			'repository_adapter_ready'            => method_exists( InventorySearchRepository::class, 'fetch' ),
-			'reference_search_handler_ready'      => $handler_ready,
+			'action'                               => 'inventory_search_route_handler_factory_ready',
+			'configured'                           => true,
+			'handler_factory_ready'                => true,
+			'request_parser_ready'                 => method_exists( InventorySearchRequestParser::class, 'parse' ),
+			'query_planner_ready'                  => method_exists( InventorySearchQueryPlanner::class, 'plan' ),
+			'repository_adapter_ready'             => method_exists( InventorySearchRepository::class, 'fetch' ),
+			'reference_search_handler_ready'       => $handler_ready,
 			'reference_search_live_fallback_ready' => $handler_ready
 				&& true === ( ( $this->scrydex_provider_factory?->readiness_summary() ?? array() )['configured'] ?? false ),
-			'route_connected_reads_enabled'       => $this->route_connected_reads_enabled,
-			'database_configured'                 => $database_ready,
-			'table_prefix_ready'                  => $prefix_ready,
-			'repository_configured'               => $handler_ready,
-			'route_connected_handler_ready'       => $handler_ready,
-			'route_connected_handler_deferred'    => ! $handler_ready,
-			'route_connected_reads_deferred'      => ! $handler_ready,
-			'route_connected_writes_deferred'     => true,
-			'default_route_registration_deferred' => true,
-			'default_route_execution_deferred'    => ! $handler_ready,
-			'configuration_issues'                => array_values( array_unique( $issues ) ),
+			'route_connected_reads_enabled'        => $this->route_connected_reads_enabled,
+			'database_configured'                  => $database_ready,
+			'table_prefix_ready'                   => $prefix_ready,
+			'repository_configured'                => $handler_ready,
+			'route_connected_handler_ready'        => $handler_ready,
+			'route_connected_handler_deferred'     => ! $handler_ready,
+			'route_connected_reads_deferred'       => ! $handler_ready,
+			'route_connected_writes_deferred'      => true,
+			'default_route_registration_deferred'  => true,
+			'default_route_execution_deferred'     => ! $handler_ready,
+			'configuration_issues'                 => array_values( array_unique( $issues ) ),
 		);
 	}
 

@@ -23,19 +23,19 @@ final class ScryDexSyncDryRunPlanner {
 	 * @return array<string, mixed>
 	 */
 	public function plan_cards_sync( array $request = array() ): array {
-		$provider_readiness = $this->provider_factory->readiness_summary();
-		$game               = $this->resource_key( $request['game'] ?? 'pokemon', 'pokemon' );
-		$checkpoint_row     = is_array( $request['checkpoint'] ?? null ) ? $request['checkpoint'] : array();
-		$expansion_id       = $this->expansion_id_from_request( $request, $checkpoint_row, $game );
-		$checkpoint_key     = '' === $expansion_id ? $game : $game . ':' . $expansion_id;
-		$page_size          = $this->page_size( $request['page_size'] ?? 100 );
-		$checkpoint         = $this->checkpoint( $request['checkpoint'] ?? null, $checkpoint_key );
-		$next_request       = $this->sync_planner->next_cards_request( $checkpoint, $page_size );
+		$provider_readiness   = $this->provider_factory->readiness_summary();
+		$game                 = $this->resource_key( $request['game'] ?? 'pokemon', 'pokemon' );
+		$checkpoint_row       = is_array( $request['checkpoint'] ?? null ) ? $request['checkpoint'] : array();
+		$expansion_id         = $this->expansion_id_from_request( $request, $checkpoint_row, $game );
+		$checkpoint_key       = '' === $expansion_id ? $game : $game . ':' . $expansion_id;
+		$page_size            = $this->page_size( $request['page_size'] ?? 100 );
+		$checkpoint           = $this->checkpoint( $request['checkpoint'] ?? null, $checkpoint_key );
+		$next_request         = $this->sync_planner->next_cards_request( $checkpoint, $page_size );
 		$next_request['game'] = $game;
 		if ( '' !== $expansion_id ) {
 			$next_request['expansion_id'] = $expansion_id;
 		}
-		$configured         = true === ( $provider_readiness['configured'] ?? false );
+		$configured = true === ( $provider_readiness['configured'] ?? false );
 
 		return array(
 			'status'                        => $configured ? 'ready' : 'blocked',

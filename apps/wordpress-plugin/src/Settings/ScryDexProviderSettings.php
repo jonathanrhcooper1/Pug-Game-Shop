@@ -113,11 +113,11 @@ final class ScryDexProviderSettings {
 	 * @return array<string, mixed>
 	 */
 	public static function webhook_context( array $settings ): array {
-		$settings      = self::from_settings( $settings );
-		$secret_ready  = '' !== $settings['webhook_secret'];
-		$receiver_on   = true === $settings['webhook_receiver_enabled'];
-		$configured    = $receiver_on && $secret_ready;
-		$issues        = array();
+		$settings     = self::from_settings( $settings );
+		$secret_ready = '' !== $settings['webhook_secret'];
+		$receiver_on  = true === $settings['webhook_receiver_enabled'];
+		$configured   = $receiver_on && $secret_ready;
+		$issues       = array();
 
 		if ( ! $receiver_on ) {
 			$issues[] = 'scrydex_webhook_receiver_disabled';
@@ -128,14 +128,14 @@ final class ScryDexProviderSettings {
 		}
 
 		return array(
-			'configured'                    => $configured,
-			'status'                        => $configured ? 'ready' : 'blocked',
-			'webhook_receiver_enabled'      => $receiver_on,
-			'webhook_secret'                => (string) $settings['webhook_secret'],
-			'webhook_secret_configured'     => $secret_ready,
+			'configured'                     => $configured,
+			'status'                         => $configured ? 'ready' : 'blocked',
+			'webhook_receiver_enabled'       => $receiver_on,
+			'webhook_secret'                 => (string) $settings['webhook_secret'],
+			'webhook_secret_configured'      => $secret_ready,
 			'webhook_secret_prefix_required' => 'whsec_',
-			'credential_values_redacted'    => true,
-			'configuration_issues'          => array_values( array_unique( $issues ) ),
+			'credential_values_redacted'     => true,
+			'configuration_issues'           => array_values( array_unique( $issues ) ),
 		);
 	}
 
@@ -173,35 +173,35 @@ final class ScryDexProviderSettings {
 		}
 
 		return array(
-			'configured'                    => $configured,
-			'status'                        => $configured ? 'ready' : 'blocked',
-			'enabled'                       => true === $settings['enabled'],
-			'environment'                   => $settings['environment'],
-			'base_url'                      => $settings['base_url'],
-			'team_id_configured'            => $team_configured,
-			'primary_key_configured'        => $primary_configured,
-			'secondary_key_configured'      => $secondary_configured,
-			'active_key_slot'               => $primary_configured
+			'configured'                              => $configured,
+			'status'                                  => $configured ? 'ready' : 'blocked',
+			'enabled'                                 => true === $settings['enabled'],
+			'environment'                             => $settings['environment'],
+			'base_url'                                => $settings['base_url'],
+			'team_id_configured'                      => $team_configured,
+			'primary_key_configured'                  => $primary_configured,
+			'secondary_key_configured'                => $secondary_configured,
+			'active_key_slot'                         => $primary_configured
 				? 'primary'
 				: ( $secondary_configured ? 'secondary' : 'none' ),
-			'active_key_fingerprint'        => self::fingerprint(
+			'active_key_fingerprint'                  => self::fingerprint(
 				$primary_configured
 					? (string) $settings['primary_api_key']
 					: (string) $settings['secondary_api_key']
 			),
-			'request_timeout_seconds'       => $settings['request_timeout_seconds'],
-			'webhook_receiver_enabled'      => true === $settings['webhook_receiver_enabled'],
-			'webhook_receiver_configured'   => true === $webhook_context['configured'],
-			'webhook_secret_configured'     => true === $webhook_context['webhook_secret_configured'],
-			'webhook_secret_fingerprint'    => self::fingerprint( (string) $settings['webhook_secret'] ),
-			'webhook_secret_prefix_required' => 'whsec_',
+			'request_timeout_seconds'                 => $settings['request_timeout_seconds'],
+			'webhook_receiver_enabled'                => true === $settings['webhook_receiver_enabled'],
+			'webhook_receiver_configured'             => true === $webhook_context['configured'],
+			'webhook_secret_configured'               => true === $webhook_context['webhook_secret_configured'],
+			'webhook_secret_fingerprint'              => self::fingerprint( (string) $settings['webhook_secret'] ),
+			'webhook_secret_prefix_required'          => 'whsec_',
 			'webhook_signature_verification_required' => true,
-			'credential_values_redacted'    => true,
-			'network_requests_deferred'     => true,
-			'webhook_registration_deferred' => true,
-			'webhook_registration_enabled'  => false,
-			'webhook_configuration_issues'  => $webhook_context['configuration_issues'],
-			'configuration_issues'          => array_values( array_unique( $issues ) ),
+			'credential_values_redacted'              => true,
+			'network_requests_deferred'               => true,
+			'webhook_registration_deferred'           => true,
+			'webhook_registration_enabled'            => false,
+			'webhook_configuration_issues'            => $webhook_context['configuration_issues'],
+			'configuration_issues'                    => array_values( array_unique( $issues ) ),
 		);
 	}
 

@@ -18,6 +18,7 @@ final class ScryDexWebhookEventRepository {
 	 * @return array<string, mixed>
 	 */
 	public function record( array $event, string $payload_hash, string $signature_status, string $processing_status ): array {
+
 		if ( null === $this->database ) {
 			return $this->result( 'deferred', array( 'scrydex_webhook_event_database_not_configured' ) );
 		}
@@ -78,11 +79,12 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 	}
 
 	/**
-	 * Mark a verified event ready for the authenticated LAN relay.
-	 *
+		* Mark a verified event ready for the authenticated LAN relay.
+		*
 	 * @return array<string, mixed>
-	 */
+		*/
 	public function mark_ready_for_lan( string $provider_event_id ): array {
+
 		if ( null === $this->database ) {
 			return $this->result( 'deferred', array( 'scrydex_webhook_event_database_not_configured' ) );
 		}
@@ -93,7 +95,7 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 			return $this->result( 'rejected', array( 'scrydex_webhook_event_relay_identifier_invalid' ) );
 		}
 
-		$sql = $this->database->prepare(
+		$sql  = $this->database->prepare(
 			"UPDATE {$table_name}
 			SET processing_status = 'ready_for_lan', next_attempt_at = NULL
 			WHERE provider_name = %s AND provider_event_id = %s AND processing_status = 'queued'", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -113,11 +115,12 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 	}
 
 	/**
-	 * Return due verified events for the authenticated LAN poller.
-	 *
+		* Return due verified events for the authenticated LAN poller.
+		*
 	 * @return list<array<string, mixed>>
 	 */
 	public function due_for_lan( int $limit = 25 ): array {
+
 		if ( null === $this->database ) {
 			return array();
 		}
@@ -179,10 +182,10 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 	}
 
 	/**
-	 * Claim, complete, retry, or dead-letter a LAN relay event.
-	 *
+		* Claim, complete, retry, or dead-letter a LAN relay event.
+		*
 	 * @return array<string, mixed>
-	 */
+		*/
 	public function transition_for_lan(
 		string $provider_event_id,
 		string $status,
@@ -190,6 +193,7 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 		string $error_code = '',
 		string $error_message = ''
 	): array {
+
 		if ( null === $this->database ) {
 			return $this->result( 'deferred', array( 'scrydex_webhook_event_database_not_configured' ) );
 		}
@@ -244,7 +248,7 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 			$event_id,
 			...( 'processing' === $status ? array( $now ) : array() )
 		);
-		$rows = is_string( $sql ) ? $this->database->query( $sql ) : false; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$rows        = is_string( $sql ) ? $this->database->query( $sql ) : false; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
 		return array(
 			'status'                     => false === $rows ? 'rejected' : ( 'processing' === $status && 0 === (int) $rows ? 'not_claimed' : 'ok' ),
@@ -258,7 +262,6 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 			'errors'                     => false === $rows ? array( 'scrydex_webhook_event_relay_transition_failed' ) : array(),
 		);
 	}
-
 	/**
 	 * @param list<string> $errors Repository errors.
 	 * @return array<string, mixed>
@@ -274,6 +277,7 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 	}
 
 	private function status_value( string $value, string $fallback ): string {
+
 		$value = strtolower( trim( $value ) );
 		$value = preg_replace( '/[^a-z0-9_-]+/', '_', $value ) ?? '';
 		$value = trim( $value, '_' );
@@ -282,23 +286,26 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 	}
 
 	private function table_name(): string {
+
 		$prefix = null === $this->database ? '' : trim( (string) $this->database->prefix );
 
-		return '' !== $prefix && 1 === preg_match( '/^[A-Za-z0-9_]+$/', $prefix )
+			return '' !== $prefix && 1 === preg_match( '/^[A-Za-z0-9_]+$/', $prefix )
 			? $prefix . 'tcg_webhook_events'
 			: '';
 	}
 
 	private function event_id( string $value ): string {
-		$value = trim( $value );
+
+			$value = trim( $value );
 
 		return 1 === preg_match( '/^[A-Za-z0-9_:-]{1,191}$/', $value ) ? $value : '';
 	}
 
 	/**
-	 * @return array<string, mixed>|null
-	 */
+		* @return array<string, mixed>|null
+		*/
 	private function event_row( string $table_name, string $event_id ): ?array {
+
 		$sql = $this->database?->prepare(
 			"SELECT provider_event_id, processing_status, relay_attempt_count
 			FROM {$table_name}
@@ -315,7 +322,6 @@ ON DUPLICATE KEY UPDATE provider_event_id = provider_event_id", // phpcs:ignore 
 
 		return is_array( $row ) ? $row : null;
 	}
-
 	private function json_encode( mixed $value ): string {
 		$json = function_exists( 'wp_json_encode' )
 			? wp_json_encode( $value, JSON_UNESCAPED_SLASHES )

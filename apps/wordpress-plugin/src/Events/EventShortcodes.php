@@ -362,7 +362,7 @@ final class EventShortcodes {
 	 * @param array<string, mixed> $event Public event.
 	 */
 	private function game_label( array $event ): string {
-		$game = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
+		$game       = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
 		$normalized = preg_replace( '/[^a-z0-9]+/', '', $game ) ?? '';
 
 		return match ( $normalized ) {
@@ -379,7 +379,7 @@ final class EventShortcodes {
 	 * @param array<string, mixed> $event Public event.
 	 */
 	private function game_mark( array $event ): string {
-		$game = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
+		$game       = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
 		$normalized = preg_replace( '/[^a-z0-9]+/', '', $game ) ?? '';
 
 		return match ( $normalized ) {
@@ -393,8 +393,9 @@ final class EventShortcodes {
 	}
 
 	private function game_initials( string $label ): string {
-		$words = preg_split( '/[^A-Za-z0-9]+/', trim( $label ) ) ?: array();
-		$mark  = '';
+		$split_words = preg_split( '/[^A-Za-z0-9]+/', trim( $label ) );
+		$words       = false !== $split_words ? $split_words : array();
+		$mark        = '';
 
 		foreach ( $words as $word ) {
 			if ( '' === $word ) {
@@ -415,7 +416,7 @@ final class EventShortcodes {
 	 * @param array<string, mixed> $event Public event.
 	 */
 	private function game_slug( array $event ): string {
-		$slug = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
+		$slug       = strtolower( trim( (string) ( $event['game'] ?? '' ) ) );
 		$normalized = preg_replace( '/[^a-z0-9]+/', '', $slug ) ?? '';
 
 		if ( in_array( $normalized, array( 'mtg', 'magic', 'magicthegathering' ), true ) ) {
@@ -424,7 +425,9 @@ final class EventShortcodes {
 
 		$slug = preg_replace( '/[^a-z0-9]+/', '-', $slug ) ?? '';
 
-		return trim( $slug, '-' ) ?: 'store-event';
+		$slug = trim( $slug, '-' );
+
+		return '' !== $slug ? $slug : 'store-event';
 	}
 
 	/**

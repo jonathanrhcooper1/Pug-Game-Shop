@@ -51,7 +51,7 @@ final class InventoryRouteDependencyFactory {
 		?callable $capability_checker = null,
 		?callable $register_route_callback = null
 	): self {
-		$configurator    = new InventoryRouteRuntimeConfigurator();
+		$configurator     = new InventoryRouteRuntimeConfigurator();
 		$runtime_settings = InventoryRouteRuntimeSettings::sanitize(
 			InventoryRouteRuntimeSettings::from_settings( $settings )
 		);

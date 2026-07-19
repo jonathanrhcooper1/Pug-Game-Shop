@@ -115,28 +115,28 @@ final class OfflineRegisteredDeviceSyncRouteHandlerFactory {
 			&& method_exists( OfflinePushExistingOperationRowsQueryBuilder::class, 'build' );
 		$push_existing_operation_rows_repository_ready = $push_existing_operation_rows_sql_ready
 			&& method_exists( OfflinePushExistingOperationRowsRepository::class, 'fetch' );
-		$push_existing_operation_rows_route_provider_ready = $push_existing_operation_rows_repository_ready
+		$push_existing_operation_rows_route_provider_ready  = $push_existing_operation_rows_repository_ready
 			&& method_exists( OfflinePushRouteExistingOperationRowsProvider::class, '__invoke' );
-		$push_persistence_planner_ready                    = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
-		$push_persistence_sql_ready                        = $push_persistence_planner_ready
+		$push_persistence_planner_ready                     = method_exists( OfflinePushPersistencePlanner::class, 'plan' );
+		$push_persistence_sql_ready                         = $push_persistence_planner_ready
 			&& method_exists( OfflinePushPersistenceQueryBuilder::class, 'build' );
-		$push_persistence_repo_ready                       = $push_persistence_sql_ready
+		$push_persistence_repo_ready                        = $push_persistence_sql_ready
 			&& method_exists( OfflinePushPersistenceRepository::class, 'persist' );
-		$push_canonical_mutation_planner_ready             = method_exists( OfflinePushCanonicalMutationPlanner::class, 'plan' );
-		$push_canonical_mutation_sql_ready                 = $push_canonical_mutation_planner_ready
+		$push_canonical_mutation_planner_ready              = method_exists( OfflinePushCanonicalMutationPlanner::class, 'plan' );
+		$push_canonical_mutation_sql_ready                  = $push_canonical_mutation_planner_ready
 			&& method_exists( OfflinePushCanonicalMutationQueryBuilder::class, 'build' );
-		$push_canonical_mutation_repository_ready          = $push_canonical_mutation_sql_ready
+		$push_canonical_mutation_repository_ready           = $push_canonical_mutation_sql_ready
 			&& method_exists( OfflinePushCanonicalMutationRepository::class, 'stage' );
-		$push_canonical_mutation_execution_gate_ready      = $push_canonical_mutation_repository_ready
+		$push_canonical_mutation_execution_gate_ready       = $push_canonical_mutation_repository_ready
 			&& method_exists( OfflinePushCanonicalMutationRepositoryExecutionGate::class, 'evaluate' );
-		$push_canonical_mutation_preflight_ready           = $push_canonical_mutation_execution_gate_ready
+		$push_canonical_mutation_preflight_ready            = $push_canonical_mutation_execution_gate_ready
 			&& method_exists( OfflinePushCanonicalMutationTransactionPreflight::class, 'evaluate' );
 		$push_canonical_mutation_transaction_executor_ready = $push_canonical_mutation_preflight_ready
 			&& method_exists( OfflinePushCanonicalMutationTransactionExecutor::class, 'execute' );
-		$pull_handler_factory                              = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
-		$pull_handler_dependencies                         = $pull_handler_factory->readiness_summary();
-		$push_handler_factory                              = $this->push_handler_factory ?? new OfflinePushRouteHandlerFactory();
-		$push_handler_dependencies                         = $push_handler_factory->readiness_summary();
+		$pull_handler_factory                               = $this->pull_handler_factory ?? new OfflinePullRouteHandlerFactory();
+		$pull_handler_dependencies                          = $pull_handler_factory->readiness_summary();
+		$push_handler_factory                               = $this->push_handler_factory ?? new OfflinePushRouteHandlerFactory();
+		$push_handler_dependencies                          = $push_handler_factory->readiness_summary();
 
 		foreach ( self::HANDLER_CALLBACKS as $callback ) {
 			if ( ! is_callable( $handlers[ $callback ] ?? null ) ) {

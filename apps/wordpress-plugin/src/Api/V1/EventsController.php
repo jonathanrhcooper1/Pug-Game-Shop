@@ -106,11 +106,11 @@ final class EventsController {
 		return new \WP_REST_Response(
 			array(
 				'data' => array(
-					'resource'                    => 'event',
-					'accepted'                    => true,
-					'code'                        => 'event_created',
-					'event'                       => $result['event'],
-					'woocommerce_product_created' => (int) ( $result['event']['woocommerce_product_id'] ?? 0 ) > 0,
+					'resource'                     => 'event',
+					'accepted'                     => true,
+					'code'                         => 'event_created',
+					'event'                        => $result['event'],
+					'woocommerce_product_created'  => (int) ( $result['event']['woocommerce_product_id'] ?? 0 ) > 0,
 					'credentials_synced_to_client' => false,
 				),
 			),
@@ -211,11 +211,11 @@ final class EventsController {
 		return new \WP_REST_Response(
 			array(
 				'data' => array(
-					'resource'                    => 'event_checkin',
-					'accepted'                    => true,
-					'code'                        => $result['code'],
-					'idempotent'                  => (bool) $result['idempotent'],
-					'checkin'                     => $result['checkin'],
+					'resource'                     => 'event_checkin',
+					'accepted'                     => true,
+					'code'                         => $result['code'],
+					'idempotent'                   => (bool) $result['idempotent'],
+					'checkin'                      => $result['checkin'],
 					'credentials_synced_to_client' => false,
 				),
 			),
@@ -236,7 +236,7 @@ final class EventsController {
 		$attendee_label         = $this->clean_name( $payload['attendee_label'] ?? '' );
 		$checkin_method         = $this->clean_method( $payload['checkin_method'] ?? 'manual_lookup' );
 		$local_checkin_id       = $this->clean_id( $payload['local_checkin_id'] ?? '' );
-		$idempotency_key        = $this->clean_id( $idempotency_key ?: $local_checkin_id );
+		$idempotency_key        = $this->clean_id( '' !== $idempotency_key ? $idempotency_key : $local_checkin_id );
 
 		if ( '' === $event_slug || ( '' === $registration_public_id && '' === $email && '' === $attendee_label ) || '' === $idempotency_key ) {
 			return $this->blocked( 'event_checkin_invalid', __( 'Event check-in requires an event, registration identity, and idempotency key.', 'tcg-store-platform' ) );
@@ -251,7 +251,8 @@ final class EventsController {
 
 		$event = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$events_table} WHERE public_visibility = %s AND (slug = %s OR public_id = %s) LIMIT 1 FOR UPDATE",
+				'SELECT * FROM %i WHERE public_visibility = %s AND (slug = %s OR public_id = %s) LIMIT 1 FOR UPDATE',
+				$events_table,
 				'published',
 				$event_slug,
 				$event_slug
@@ -267,9 +268,11 @@ final class EventsController {
 
 		$existing = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT c.* FROM {$checkins_table} c
-				INNER JOIN {$registrations_table} r ON r.registration_id = c.registration_id
-				WHERE r.event_id = %d AND c.notes = %s LIMIT 1",
+				'SELECT c.* FROM %i c
+				INNER JOIN %i r ON r.registration_id = c.registration_id
+				WHERE r.event_id = %d AND c.notes = %s LIMIT 1',
+				$checkins_table,
+				$registrations_table,
 				(int) $event['event_id'],
 				$idempotency_key
 			),
@@ -326,7 +329,8 @@ final class EventsController {
 		if ( false === $inserted ) {
 			$existing_for_registration = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT * FROM {$checkins_table} WHERE registration_id = %d LIMIT 1",
+					'SELECT * FROM %i WHERE registration_id = %d LIMIT 1',
+					$checkins_table,
 					(int) $registration['registration_id']
 				),
 				ARRAY_A
@@ -373,11 +377,11 @@ final class EventsController {
 				'message'         => substr( 'Checked in from offline LAN sync.', 0, 255 ),
 				'metadata_json'   => $this->json(
 					array(
-						'local_checkin_id'        => $local_checkin_id,
-						'idempotency_key'         => $idempotency_key,
-						'registration_public_id'  => $registration_public_id,
-						'email'                   => $email,
-						'attendee_label'          => $attendee_label,
+						'local_checkin_id'       => $local_checkin_id,
+						'idempotency_key'        => $idempotency_key,
+						'registration_public_id' => $registration_public_id,
+						'email'                  => $email,
+						'attendee_label'         => $attendee_label,
 					)
 				),
 				'created_at'      => $now,
@@ -387,7 +391,8 @@ final class EventsController {
 
 		$checkin = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$checkins_table} WHERE checkin_id = %d LIMIT 1",
+				'SELECT * FROM %i WHERE checkin_id = %d LIMIT 1',
+				$checkins_table,
 				$checkin_id
 			),
 			ARRAY_A
@@ -411,11 +416,11 @@ final class EventsController {
 		global $wpdb;
 
 		$title      = $this->clean_name( $payload['title'] ?? '' );
-		$start     = $this->mysql_datetime( $payload['starts_at_utc'] ?? ( $payload['start_datetime'] ?? '' ) );
-		$game      = $this->clean_method( $payload['game'] ?? 'other' );
+		$start      = $this->mysql_datetime( $payload['starts_at_utc'] ?? ( $payload['start_datetime'] ?? '' ) );
+		$game       = $this->clean_method( $payload['game'] ?? 'other' );
 		$event_type = $this->clean_method( $payload['event_type'] ?? 'tournament' );
-		$entry_fee = $this->money_amount( $payload['entry_fee'] ?? ( $payload['price'] ?? 0 ) );
-		$capacity  = $this->positive_int_or_null( $payload['capacity'] ?? ( $payload['player_cap'] ?? null ) );
+		$entry_fee  = $this->money_amount( $payload['entry_fee'] ?? ( $payload['price'] ?? 0 ) );
+		$capacity   = $this->positive_int_or_null( $payload['capacity'] ?? ( $payload['player_cap'] ?? null ) );
 
 		$errors = array();
 		if ( '' === $title ) {
@@ -424,7 +429,7 @@ final class EventsController {
 		if ( '' === $start ) {
 			$errors[] = 'start_datetime_required';
 		}
-		if ( $capacity !== null && $capacity <= 0 ) {
+		if ( null !== $capacity && 0 >= $capacity ) {
 			$errors[] = 'capacity_invalid';
 		}
 
@@ -437,10 +442,12 @@ final class EventsController {
 			);
 		}
 
-		$table = $wpdb->prefix . 'tcg_events';
-		$now   = gmdate( 'Y-m-d H:i:s' );
-		$slug  = $this->unique_event_slug( $this->clean_slug( (string) ( $payload['slug'] ?? $title ) ), $table );
-		$data  = array(
+		$table           = $wpdb->prefix . 'tcg_events';
+		$now             = gmdate( 'Y-m-d H:i:s' );
+		$slug            = $this->unique_event_slug( $this->clean_slug( (string) ( $payload['slug'] ?? $title ) ), $table );
+		$timezone        = $this->nullable_name( $payload['timezone'] ?? null );
+		$current_user_id = $this->current_user_id();
+		$data            = array(
 			'public_id'                   => $this->uuid(),
 			'title'                       => $title,
 			'slug'                        => $slug,
@@ -450,7 +457,7 @@ final class EventsController {
 			'rules_level'                 => $this->nullable_name( $payload['rules_level'] ?? null ),
 			'start_datetime'              => $start,
 			'end_datetime'                => $this->nullable_mysql_datetime( $payload['ends_at_utc'] ?? ( $payload['end_datetime'] ?? null ) ),
-			'timezone'                    => $this->nullable_name( $payload['timezone'] ?? null ) ?: 'America/New_York',
+			'timezone'                    => null !== $timezone ? $timezone : 'America/New_York',
 			'location_id'                 => $this->positive_int_or_null( $payload['location_id'] ?? null ),
 			'entry_fee'                   => number_format( $entry_fee, 4, '.', '' ),
 			'currency'                    => $this->currency( $payload['currency'] ?? 'USD' ),
@@ -458,7 +465,7 @@ final class EventsController {
 			'registered_count'            => 0,
 			'waitlist_enabled'            => $this->truthy( $payload['waitlist_enabled'] ?? false ) ? 1 : 0,
 			'registration_status'         => 'open',
-			'registration_mode'           => $entry_fee > 0 ? 'woocommerce' : 'local_only',
+			'registration_mode'           => 0 < $entry_fee ? 'woocommerce' : 'local_only',
 			'registration_deadline'       => $this->nullable_mysql_datetime( $payload['registration_deadline'] ?? null ),
 			'refund_deadline'             => $this->nullable_mysql_datetime( $payload['refund_deadline'] ?? null ),
 			'decklist_required'           => $this->truthy( $payload['decklist_required'] ?? false ) ? 1 : 0,
@@ -473,10 +480,10 @@ final class EventsController {
 			'header_image'                => $this->nullable_url( $payload['header_image'] ?? null ),
 			'woocommerce_product_id'      => null,
 			'allow_store_credit_payment'  => 0,
-			'allow_pay_at_store'          => $entry_fee > 0 ? 0 : 1,
+			'allow_pay_at_store'          => 0 < $entry_fee ? 0 : 1,
 			'offline_reservation_enabled' => 1,
-			'created_by'                  => $this->current_user_id() ?: null,
-			'updated_by'                  => $this->current_user_id() ?: null,
+			'created_by'                  => 0 < $current_user_id ? $current_user_id : null,
+			'updated_by'                  => 0 < $current_user_id ? $current_user_id : null,
 			'created_at'                  => $now,
 			'updated_at'                  => $now,
 			'row_version'                 => 1,
@@ -492,8 +499,8 @@ final class EventsController {
 			);
 		}
 
-		$event_id    = (int) $wpdb->insert_id;
-		$product_id  = $entry_fee > 0 ? $this->create_event_product( $title, $entry_fee, $capacity, $data['public_id'], $slug ) : 0;
+		$event_id   = (int) $wpdb->insert_id;
+		$product_id = $entry_fee > 0 ? $this->create_event_product( $title, $entry_fee, $capacity, $data['public_id'], $slug ) : 0;
 		if ( $product_id > 0 ) {
 			$wpdb->update(
 				$table,
@@ -509,7 +516,7 @@ final class EventsController {
 		}
 
 		$row = $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM {$table} WHERE event_id = %d LIMIT 1", $event_id ),
+			$wpdb->prepare( 'SELECT * FROM %i WHERE event_id = %d LIMIT 1', $table, $event_id ),
 			ARRAY_A
 		);
 
@@ -534,7 +541,8 @@ final class EventsController {
 		if ( '' !== $registration_public_id ) {
 			$row = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT * FROM {$registrations_table} WHERE event_id = %d AND public_id = %s LIMIT 1 FOR UPDATE",
+					'SELECT * FROM %i WHERE event_id = %d AND public_id = %s LIMIT 1 FOR UPDATE',
+					$registrations_table,
 					$event_id,
 					$registration_public_id
 				),
@@ -549,7 +557,8 @@ final class EventsController {
 		if ( '' !== $email ) {
 			$row = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT * FROM {$registrations_table} WHERE event_id = %d AND email = %s ORDER BY registration_id DESC LIMIT 1 FOR UPDATE",
+					'SELECT * FROM %i WHERE event_id = %d AND email = %s ORDER BY registration_id DESC LIMIT 1 FOR UPDATE',
+					$registrations_table,
 					$event_id,
 					$email
 				),
@@ -569,7 +578,7 @@ final class EventsController {
 
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$registrations_table}
+				"SELECT * FROM %i
 				WHERE event_id = %d
 				AND (
 					(first_name = %s AND last_name = %s)
@@ -577,6 +586,7 @@ final class EventsController {
 				)
 				ORDER BY registration_id DESC
 				LIMIT 1 FOR UPDATE",
+				$registrations_table,
 				$event_id,
 				$names['first_name'],
 				$names['last_name'],
@@ -770,8 +780,8 @@ final class EventsController {
 	private function unique_event_slug( string $slug, string $events_table ): string {
 		global $wpdb;
 
-		$base = '' === $slug ? 'event' : $slug;
-		$next = $base;
+		$base   = '' === $slug ? 'event' : $slug;
+		$next   = $base;
 		$suffix = 2;
 
 		while ( $this->event_slug_exists( $events_table, $next ) ) {
@@ -785,10 +795,11 @@ final class EventsController {
 	private function event_slug_exists( string $events_table, string $slug ): bool {
 		global $wpdb;
 
-		$sql = $wpdb->prepare( "SELECT event_id FROM {$events_table} WHERE slug = %s LIMIT 1", $slug );
-		$row = is_string( $sql ) ? $wpdb->get_row( $sql, ARRAY_A ) : null;
+		$row = $wpdb->get_var(
+			$wpdb->prepare( 'SELECT event_id FROM %i WHERE slug = %s LIMIT 1', $events_table, $slug )
+		);
 
-		return is_array( $row );
+		return null !== $row;
 	}
 
 	private function create_event_product( string $title, float $entry_fee, ?int $capacity, string $event_public_id, string $slug ): int {
