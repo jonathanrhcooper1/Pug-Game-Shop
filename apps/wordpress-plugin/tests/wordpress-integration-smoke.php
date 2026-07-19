@@ -93,7 +93,7 @@ global $wpdb;
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
 $assert( '0.203.1' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( Version::DATABASE >= 14, 'Unexpected database target version.' );
-$assert( 10 === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
+$assert( Version::DATABASE === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 3 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );
 
 $tables = array_merge(
@@ -163,9 +163,9 @@ $assert( 200 === $response->get_status(), 'Health REST route did not return HTTP
 
 $data = $response->get_data();
 $assert( is_array( $data ), 'Health response is not an array.' );
-$assert( '0.156.0' === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
-$assert( 10 === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
-$assert( 10 === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
+$assert( Version::PLUGIN === ( $data['version'] ?? null ), 'Health response reported the wrong plugin version.' );
+$assert( Version::DATABASE === (int) ( $data['database']['current'] ?? 0 ), 'Health response reported the wrong current schema.' );
+$assert( Version::DATABASE === (int) ( $data['database']['target'] ?? 0 ), 'Health response reported the wrong target schema.' );
 $assert( true === ( $data['features']['core']['enabled'] ?? null ), 'Core feature is not enabled.' );
 $assert( false === ( $data['features']['inventory_pricing']['enabled'] ?? null ), 'Inventory feature flag should remain disabled.' );
 $assert( is_array( $data['staging_safety'] ?? null ), 'Health response should expose staging safety status.' );

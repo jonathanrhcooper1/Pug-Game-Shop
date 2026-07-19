@@ -9,8 +9,9 @@
 - Replaced dynamic table and column interpolation in the affected customer,
   event, portal, and product-image queries with WordPress identifier
   placeholders.
-- Corrected the WordPress integration test's stale release assertion and made
-  one source-contract test insensitive to formatter whitespace.
+- Corrected the WordPress integration test's stale release and schema
+  assertions and made one source-contract test insensitive to formatter
+  whitespace.
 
 ### Why
 

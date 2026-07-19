@@ -22,7 +22,8 @@ All notable changes follow Semantic Versioning.
   PHPCompatibilityWP rules, including explicit translator context and
   WordPress `%i` identifier placeholders for trusted dynamic table names.
 - Updated the WordPress integration smoke test to assert plugin version
-  `0.203.1` and made the product-image marker test independent of formatting.
+  `0.203.1` and schema `18` through shared version constants, and made the
+  product-image marker test independent of formatting.
 
 ### Added
 
