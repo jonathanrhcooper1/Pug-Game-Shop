@@ -68,21 +68,21 @@ $assert( false === ( $runtime['public_search_route_enabled'] ?? null ), 'Public 
 
 global $wpdb;
 
-$now                 = '2026-06-07 12:00:00.000000';
-$locations_table     = $wpdb->prefix . 'tcg_inventory_locations';
-$inventory_table     = $wpdb->prefix . 'tcg_inventory_items';
-$price_log_table     = $wpdb->prefix . 'tcg_price_change_log';
-$reference_table     = $wpdb->prefix . 'tcg_reference_cards';
-$variants_table      = $wpdb->prefix . 'tcg_reference_variants';
-$observations_table  = $wpdb->prefix . 'tcg_provider_price_observations';
-$location_public_id  = '00000000-0000-4000-8000-000000000101';
-$inventory_public_id = '00000000-0000-4000-8000-000000000201';
-$reference_public_id = '00000000-0000-4000-8000-000000000301';
+$now                   = '2026-06-07 12:00:00.000000';
+$locations_table       = $wpdb->prefix . 'tcg_inventory_locations';
+$inventory_table       = $wpdb->prefix . 'tcg_inventory_items';
+$price_log_table       = $wpdb->prefix . 'tcg_price_change_log';
+$reference_table       = $wpdb->prefix . 'tcg_reference_cards';
+$variants_table        = $wpdb->prefix . 'tcg_reference_variants';
+$observations_table    = $wpdb->prefix . 'tcg_provider_price_observations';
+$location_public_id    = '00000000-0000-4000-8000-000000000101';
+$inventory_public_id   = '00000000-0000-4000-8000-000000000201';
+$reference_public_id   = '00000000-0000-4000-8000-000000000301';
 $reference_provider_id = 'scrydex-stage-charizard-004';
-$seed_barcode        = 'PUG-STAGE-PKM-BASE-058';
-$seed_sku            = 'PUG-STAGE-PKM-BASE-058';
-$create_barcode      = 'PUG-STAGE-PKM-BULBA-001';
-$create_sku          = 'PUG-STAGE-PKM-BULBA-001';
+$seed_barcode          = 'PUG-STAGE-PKM-BASE-058';
+$seed_sku              = 'PUG-STAGE-PKM-BASE-058';
+$create_barcode        = 'PUG-STAGE-PKM-BULBA-001';
+$create_sku            = 'PUG-STAGE-PKM-BULBA-001';
 
 $wpdb->query(
 	$wpdb->prepare(
@@ -361,7 +361,7 @@ $assert( true === ( $woo_projection['woocommerce_write_deferred'] ?? null ), 'Wo
 $woo_operations = is_array( $woo_projection['product_operations'] ?? null ) ? $woo_projection['product_operations'] : array();
 $assert( isset( $woo_operations[0] ) && is_array( $woo_operations[0] ), 'WooCommerce projection should expose a product operation.' );
 $assert( 'create_product' === ( $woo_operations[0]['operation'] ?? null ), 'WooCommerce projection should plan a product create.' );
-$assert( 'PUG-STAGE-PKM-BULBA-001' === ( $woo_operations[0]['product']['sku'] ?? null ), 'WooCommerce projection should use the created SKU.' );
+$assert( str_starts_with( (string) ( $woo_operations[0]['product']['sku'] ?? '' ), 'TCG-' ), 'WooCommerce grouped projection should use a stable card-group SKU.' );
 $square_projection = is_array( $projections['square_inventory_projection'] ?? null ) ? $projections['square_inventory_projection'] : array();
 $assert( 'square' === ( $square_projection['provider'] ?? null ), 'Inventory create should expose Square projection provider.' );
 $assert( true === ( $square_projection['network_request_deferred'] ?? null ), 'Square projection should keep network calls deferred.' );
