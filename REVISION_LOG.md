@@ -1,5 +1,53 @@
 # Revision Log
 
+## 2026-07-18 - LAN Upgrade And Barcode Repair 0.203.2
+
+### What Changed
+
+- Added a self-elevating Windows LAN upgrade launcher and CMD wrapper with
+  process-level execution-policy bypass.
+- Added targeted LAN task/process shutdown, verified SQLite and environment
+  backups, staged server replacement, silent Store App reinstall, startup task
+  restoration, health polling, and automatic server rollback on failure.
+- Integrated the existing scanner-safe barcode migration into deployment. It
+  preserves quantities, records old-to-new mappings, and queues WordPress,
+  Square, and kiosk projections for each replacement.
+- Packaged the launchers with the LAN deliverable and added a plan-mode contract
+  test.
+
+### Why
+
+Production LAN updates need to preserve the authoritative inventory ledger and
+server-only credentials while replacing application code. Existing barcodes
+longer than 13 characters also need a controlled repair path that updates the
+same mapped Square variation instead of creating duplicates.
+
+### Files Affected
+
+- `scripts/windows/Deploy-Pug-LAN-Server-Upgrade.ps1`
+- `scripts/windows/Deploy-Pug-LAN-Server-Upgrade.cmd`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/lan-server-upgrade-script-contract.mjs`
+- coordinated package, app, plugin, Tauri, changelog, and lockfile versions
+
+### Migrations Added
+
+- No schema migration. The deployment optionally runs the existing reversible,
+  backup-protected barcode alias data migration.
+
+### Tests Added Or Run
+
+- PowerShell parser validation.
+- Executable LAN upgrade plan-mode contract.
+- Barcode migration recovery tests and production packaging gates.
+
+### Rollback Notes
+
+- Every run retains the prior server tree, verified SQLite copy, environment
+  file, migration reports, and deployment report under the installation's
+  timestamped `backups` directory. A failed code replacement automatically
+  restores and restarts the prior server.
+
 ## 2026-07-18 - GitHub CI Hardening
 
 ### What Changed

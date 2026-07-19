@@ -263,7 +263,7 @@ const ACCESS_SECTIONS = [
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
 const HIDDEN_NORMAL_NAV_SECTIONS = new Set<string>(["Checkout"])
-const OFFLINE_APP_VERSION = "0.203.1"
+const OFFLINE_APP_VERSION = "0.203.2"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {

@@ -18,6 +18,10 @@ All notable changes follow Semantic Versioning.
 
 ### Changed
 
+- Prepared coordinated release `0.203.2` and added a rollback-capable Windows
+  LAN server upgrade that preserves the production SQLite ledger and local
+  environment, migrates unsafe barcodes, reinstalls the app, and verifies the
+  restarted server health endpoint.
 - Standardized the complete WordPress plugin against WordPress Core and
   PHPCompatibilityWP rules, including explicit translator context and
   WordPress `%i` identifier placeholders for trusted dynamic table names.

@@ -3,7 +3,7 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.203.1
+Version: 0.203.2
 Release date: 2026-07-18
 Last updated: 2026-07-18
 Document purpose: Entry point for the technical handover and production release package.
@@ -26,7 +26,7 @@ The installable handoff is organized as four deliverables:
 3. `Kiosk Page`
 4. `Pug Checkout App`
 
-The generated bundle is named `the-pug-store-deliverables-0.203.1.zip`. The LAN package contains the WordPress plugin ZIP, storefront theme ZIP, LAN server ZIP, Pug Store App installer, support documentation, manifests, and first-read instructions.
+The generated bundle is named `the-pug-store-deliverables-0.203.2.zip`. The LAN package contains the WordPress plugin ZIP, storefront theme ZIP, LAN server ZIP, Pug Store App installer, support documentation, manifests, and first-read instructions.
 
 ## Recommended Reading Order
 

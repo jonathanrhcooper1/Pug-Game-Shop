@@ -91,7 +91,7 @@ $has_hook_callback = static function (
 global $wpdb;
 
 $assert( class_exists( Version::class ), 'Plugin classes were not loaded.' );
-$assert( '0.203.1' === Version::PLUGIN, 'Unexpected plugin version.' );
+$assert( '0.203.2' === Version::PLUGIN, 'Unexpected plugin version.' );
 $assert( Version::DATABASE >= 14, 'Unexpected database target version.' );
 $assert( Version::DATABASE === (int) get_option( MigrationRunner::VERSION_OPTION, 0 ), 'Database version option was not updated.' );
 $assert( 3 === (int) get_option( RoleManager::VERSION_OPTION, 0 ), 'Role version option was not updated.' );

@@ -3,12 +3,12 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.203.1
+Version: 0.203.2
 Release date: 2026-07-18
 Last updated: 2026-07-18
 Document purpose: Client-facing release history for the handover documentation package.
 Audience: Owner, manager, support technician
-## 0.203.1 - 2026-07-18
+## 0.203.2 - 2026-07-18
 
 | Type | Summary |
 | --- | --- |

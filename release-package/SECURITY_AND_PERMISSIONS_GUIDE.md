@@ -3,7 +3,7 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.203.1
+Version: 0.203.2
 Release date: 2026-07-18
 Last updated: 2026-07-18
 Document purpose: Security, roles, permissions, credential storage, audit logging, and offboarding guide.

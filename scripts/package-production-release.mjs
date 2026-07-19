@@ -43,6 +43,18 @@ copyRequired(pluginZip, resolve(lanWebsiteDir, basename(pluginZip)))
 copyRequired(themeZip, resolve(lanWebsiteDir, basename(themeZip)))
 copyRequired(localServerZip, resolve(lanServerPlusAppDir, basename(localServerZip)))
 writeLanServerStartupFiles(lanServerPlusAppDir, basename(localServerZip))
+copyRequired(
+  resolve(root, "scripts/windows/Deploy-Pug-LAN-Server-Upgrade.ps1"),
+  resolve(lanServerPlusAppDir, "Deploy-Pug-LAN-Server-Upgrade.ps1"),
+)
+copyRequired(
+  resolve(root, "scripts/windows/Deploy-Pug-LAN-Server-Upgrade.cmd"),
+  resolve(lanServerPlusAppDir, "Deploy-Pug-LAN-Server-Upgrade.cmd"),
+)
+copyRequired(
+  resolve(root, "scripts/windows/README-LAN-UPGRADE.txt"),
+  resolve(lanServerPlusAppDir, "README-LAN-UPGRADE.txt"),
+)
 
 // Bundle client handover docs with the installable package so the ZIP is a
 // complete owner/admin/support handoff, not only an installer collection.

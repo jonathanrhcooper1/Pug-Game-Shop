@@ -4,6 +4,13 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Prepared release `0.203.2` with a one-click, self-elevating LAN upgrade
+  launcher that preserves `local-sync.env` and SQLite data, verifies a
+  timestamped backup, performs the scanner-safe barcode migration, reinstalls
+  the Store App, restores startup, checks server health, and retains rollback
+  material on every run.
+- Packaged the LAN upgrade PowerShell and execution-policy-bypass CMD launchers
+  in the production deliverable and added an executable plan-mode contract.
 - Cleared the full WordPress Coding Standards gate across the imported plugin,
   replaced trusted dynamic SQL identifiers with WordPress `%i` placeholders,
   and aligned the WordPress integration smoke assertion with release `0.203.1`.
