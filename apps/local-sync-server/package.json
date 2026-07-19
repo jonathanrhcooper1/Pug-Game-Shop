@@ -1,6 +1,6 @@
 {
   "name": "@pug-game-shop/local-sync-server",
-  "version": "0.203.0",
+  "version": "0.203.1",
   "private": true,
   "description": "LAN middleman sync server contract for Pug Game Shop clients.",
   "type": "module",

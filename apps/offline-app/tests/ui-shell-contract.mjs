@@ -334,6 +334,7 @@ for (const requiredText of [
   "Ready Square pull feed",
   "POS mapping review",
   "LAN inventory authority",
+  "Payment capture stays in Square; inventory authority stays with the LAN ledger.",
   "Provider count differences are reconciled against the authoritative LAN inventory ledger.",
   "Square count comparison",
   "Square inventory counts JSON",

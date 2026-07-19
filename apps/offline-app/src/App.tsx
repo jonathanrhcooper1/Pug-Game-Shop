@@ -263,7 +263,7 @@ const ACCESS_SECTIONS = [
 ] as const
 type AccessSection = (typeof ACCESS_SECTIONS)[number]
 const HIDDEN_NORMAL_NAV_SECTIONS = new Set<string>(["Checkout"])
-const OFFLINE_APP_VERSION = "0.203.0"
+const OFFLINE_APP_VERSION = "0.203.1"
 const OFFLINE_DEMO_PIN_FALLBACK_ENABLED = import.meta.env.DEV === true
 
 type OfflineAppUser = {
@@ -17683,7 +17683,7 @@ export function App() {
                             ))}
                           </div>
                         </div>
-                        <small>Payment capture stays in Square; inventory authority stays with WordPress.</small>
+                        <small>Payment capture stays in Square; inventory authority stays with the LAN ledger.</small>
                       </article>
                       <article className="reports-chart-card">
                         <div className="reports-card-heading">

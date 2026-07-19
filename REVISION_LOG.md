@@ -1,5 +1,65 @@
 # Revision Log
 
+## 2026-07-18 - End-To-End Production Repair 0.203.1
+
+### What Changed
+
+- Repaired Square sale projection so WordPress receives and verifies the exact
+  Square receipt reference instead of losing it in a generic projection.
+- Added WordPress migration 18 to repair missing ScryDex relay fields/indexes
+  on partially migrated tables even when the previous version marker was 17.
+- Made the public ScryDex receiver return a retryable 503 and skip dispatch when
+  the verified event cannot be durably recorded.
+- Added explicit authoritative SQLite schema-v2 SQL and backup-based rollback
+  notes for reservation/availability ledger snapshots and replay audit.
+- Added live-safe webhook, Square, ScryDex, WordPress/WooCommerce, migration,
+  reconciliation, and browser acceptance evidence.
+- Updated all coordinated deliverable versions to 0.203.1.
+
+### Why
+
+External test-site validation exposed a stale WordPress schema marker and a
+lost Square receipt field. Both could make a connector appear successful while
+durable state or readback was incomplete. The release now fails closed and
+repairs the actual schema shape.
+
+### Files Affected
+
+- `apps/wordpress-plugin/src/Api/V1/ScryDexWebhookController.php`
+- `apps/wordpress-plugin/src/Migrations/Version0018ScryDexWebhookRelayRepair.php`
+- `apps/wordpress-plugin/src/Migrations/MigrationRunner.php`
+- `apps/wordpress-plugin/src/Version.php`
+- `scripts/test-wordpress-scrydex-webhook-roundtrip.ps1`
+- `scripts/run-final-local-ui-acceptance.mjs`
+- `migrations/20260718_authoritative_inventory_sync_v2_*`
+- coordinated package/version manifests and release documentation
+
+### Migrations Added
+
+- WordPress database version 18: idempotent ScryDex relay schema repair.
+- LAN authoritative schema v2 reference SQL; runtime migration remains the
+  canonical idempotent installer. Automatic v2 rollback is intentionally
+  unsupported after writes; restore the verified pre-deployment backup.
+
+### Tests Added Or Run
+
+- 1,089 WordPress tests, bootstrap smoke, and 680 PHP lint checks.
+- Full `npm test` coordinated suite including 12/12 required matrix and Rust.
+- 21-screen Playwright local UI acceptance on desktop/mobile.
+- Signed test-site ScryDex webhook receive/claim/complete/cleanup.
+- Reversible live Square catalog/count/delete smoke.
+- Test-site WooCommerce card, inventory, Square sale, and pickup fulfillment.
+- Live ScryDex represented-set validation and read-only connected reconciliation.
+- Production secret scan.
+
+### Rollback Notes
+
+- Restore the matching pre-deployment SQLite backup before reverting LAN code.
+- WordPress migration 18 owns no business data and its `down()` is a no-op
+  because migration 16 owns the repaired fields.
+- Do not delete ledger, outbox, webhook, or replay-audit rows to simulate a
+  rollback. Disable workers, restore backups, then reconcile external facts.
+
 ## 2026-06-23 - Production Domain Sync Package Patch
 
 ### What Changed

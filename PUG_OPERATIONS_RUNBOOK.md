@@ -1,8 +1,8 @@
-# Pug 0.203.0 Operations Runbook
+# Pug 0.203.1 Operations Runbook
 
 ## Scope
 
-This runbook covers the `0.203.0` LAN sync server, employee/kiosk clients, and
+This runbook covers the `0.203.1` LAN sync server, employee/kiosk clients, and
 WordPress plugin. It assumes local SQLite is the inventory source of truth.
 Commands that contact WordPress, Square, or ScryDex require an approved test
 window and server-side credentials. Never place secrets in command history,
@@ -31,11 +31,11 @@ release ready.
 
 ## Release identity
 
-- Platform and app version: `0.203.0`
+- Platform and app version: `0.203.1`
 - LAN API contract: version 10
 - LAN authoritative schema: version 2,
   `20260718_authoritative_inventory_sync_v2`
-- WordPress plugin database target: 17
+- WordPress plugin database target: 18
 - Minimum WordPress plugin runtime: PHP 8.1, WordPress 6.5, WooCommerce 8.2
 - HPOS: not yet externally verified
 
@@ -84,7 +84,7 @@ Invoke-RestMethod -Headers $headers -Uri "$ServerUrl/server/maintenance/status"
 
 Confirm:
 
-- Version is `0.203.0` and the expected database path is open.
+- Version is `0.203.1` and the expected database path is open.
 - Setup points to the intended one website and correct LAN server URL.
 - Connector status is configured without returning raw credentials.
 - Authoritative schema is current.
@@ -92,6 +92,16 @@ Confirm:
   are understood.
 - No second LAN server is advertising authority on the same store network.
 - Client heartbeats identify the expected employee and kiosk devices.
+
+The WordPress schema version is not sufficient by itself. Confirm the
+`tcg_webhook_events` table has `relay_attempt_count`, `next_attempt_at`,
+`result_reference`, `last_error_code`, `last_error_message`, and the
+`relay_ready` index. Migration 18 repairs installations whose old version
+marker advanced without those fields.
+
+If `/scrydex/webhook-events?limit=100` returns 100 rows, treat it as a real FIFO
+backlog. Keep the relay worker running, review dead letters, and drain oldest
+events first. Do not delete event rows merely to make the count disappear.
 
 ## Routine health review
 
@@ -489,7 +499,7 @@ from the release report.
 
 ## External acceptance checklist
 
-Do not declare `0.203.0` ready until the exact artifacts complete all items:
+Do not declare `0.203.1` ready until the exact artifacts complete all items:
 
 - [ ] Full automated suite, PHP lint, JS/TS build, Rust tests, and package
   contracts pass from the release commit.

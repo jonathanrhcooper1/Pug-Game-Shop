@@ -4,6 +4,19 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 ## [Unreleased]
 
+- Prepared release `0.203.1` with a WordPress schema-18 repair for incomplete
+  ScryDex webhook relay tables and fail-closed durable webhook logging.
+- Preserved Square sale receipt references through the WordPress mark-sold
+  projection and verified the exact receipt by destination readback.
+- Added authoritative SQLite schema-v2 SQL/reference rollback documentation,
+  read-only connected reconciliation evidence, and full migration rehearsals.
+- Added a reusable signed ScryDex webhook round-trip harness with temporary
+  credential creation, authenticated claim/completion, and verified cleanup.
+- Updated browser acceptance to support continuous live polling and captured
+  21 final desktop/mobile staff, kiosk, checkout, reports, and diagnostics views.
+- Bumped WordPress, LAN, employee, kiosk, checkout, and Tauri release identity
+  consistently to `0.203.1`.
+
 - Rebuilt the production release package so the staff app, kiosk app, LAN
   server contract, tests, and release docs target `https://thepuggaming.com`
   instead of the GoDaddy preview host.

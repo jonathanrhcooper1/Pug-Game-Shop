@@ -3643,7 +3643,7 @@ dependencies = [
 
 [[package]]
 name = "tcg-store-offline"
-version = "0.203.0"
+version = "0.203.1"
 dependencies = [
  "keyring",
  "reqwest 0.12.28",

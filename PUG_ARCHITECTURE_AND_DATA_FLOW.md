@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-This document describes the `0.203.0` source architecture on the
+This document describes the `0.203.1` source architecture on the
 `feature/end-to-end-production-repair` branch as reviewed on 2026-07-18. It
 describes implemented behavior and automated verification in the repository.
 It does not certify a production deployment, real store hardware, live provider

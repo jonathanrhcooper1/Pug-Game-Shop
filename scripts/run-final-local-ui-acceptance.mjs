@@ -18,7 +18,7 @@ try {
   const desktop = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
   const employee = await desktop.newPage()
   observePage(employee, "employee-desktop")
-  await employee.goto(`${baseUrl}/`, { waitUntil: "networkidle" })
+  await employee.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" })
   await capture(employee, "01-login-desktop.png")
   await login(employee)
   await expectText(employee, "Store Operations")
@@ -69,7 +69,7 @@ try {
 
   const kiosk = await desktop.newPage()
   observePage(kiosk, "kiosk-desktop")
-  await kiosk.goto(`${baseUrl}/?mode=kiosk`, { waitUntil: "networkidle" })
+  await kiosk.goto(`${baseUrl}/?mode=kiosk`, { waitUntil: "domcontentloaded" })
   await expectText(kiosk, "Find cards in stock")
   await verifyResponsiveBounds(kiosk, "kiosk-desktop")
   await capture(kiosk, "16-kiosk-catalog-desktop.png")
@@ -89,7 +89,7 @@ try {
 
   const checkout = await desktop.newPage()
   observePage(checkout, "checkout-desktop")
-  await checkout.goto(`${checkoutBaseUrl}/`, { waitUntil: "networkidle" })
+  await checkout.goto(`${checkoutBaseUrl}/`, { waitUntil: "domcontentloaded" })
   await login(checkout)
   await expectText(checkout, "Sale Completion")
   for (const mode of ["Customer Sale", "Guest Sale", "Pay with Card", "Pay with Cash", "Split Cash/Card"]) {
@@ -117,7 +117,7 @@ try {
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true })
   const mobileEmployee = await mobile.newPage()
   observePage(mobileEmployee, "employee-mobile")
-  await mobileEmployee.goto(`${baseUrl}/`, { waitUntil: "networkidle" })
+  await mobileEmployee.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" })
   await login(mobileEmployee)
   await verifyResponsiveBounds(mobileEmployee, "employee-mobile-inventory")
   await capture(mobileEmployee, "20-inventory-mobile.png")
@@ -128,7 +128,7 @@ try {
 
   const mobileKiosk = await mobile.newPage()
   observePage(mobileKiosk, "kiosk-mobile")
-  await mobileKiosk.goto(`${baseUrl}/?mode=kiosk`, { waitUntil: "networkidle" })
+  await mobileKiosk.goto(`${baseUrl}/?mode=kiosk`, { waitUntil: "domcontentloaded" })
   await expectText(mobileKiosk, "Find cards in stock")
   await verifyResponsiveBounds(mobileKiosk, "kiosk-mobile")
   await capture(mobileKiosk, "22-kiosk-mobile.png")

@@ -1,8 +1,8 @@
-# Pug 0.203.0 Root Cause Report
+# Pug 0.203.1 Root Cause Report
 
 ## Purpose
 
-This report records the systemic causes addressed by the `0.203.0` repair work.
+This report records the systemic causes addressed by the `0.203.1` repair work.
 It is based on the current branch source and automated tests. It does not claim
 that the repaired build has completed external acceptance against the live
 store, WordPress host, Square account, ScryDex account, LAN workstations, or
@@ -25,7 +25,7 @@ exception handling.
 
 ## Findings and repairs
 
-| Area | Root cause | Repair present in `0.203.0` | Automated evidence |
+| Area | Root cause | Repair present in `0.203.1` | Automated evidence |
 | --- | --- | --- | --- |
 | Inventory authority | WordPress, Square, app state, and queue payloads could each appear canonical | LAN SQLite is the inventory authority; WordPress, Square, and kiosk are projections | Authority, inventory quantity, projection, and reconciliation suites |
 | Quantity growth and duplicate stock | Some paths interpreted an entered total as an amount to add, or replayed the same remote fact | Absolute `quantity_on_hand`, explicit delta audit, idempotency keys, and atomic Woo/Square sale application | Inventory quantity, Woo sale atomicity, Square reconciliation tests |
@@ -42,7 +42,7 @@ exception handling.
 | Barcode collisions and reuse | Current scanner values were not protected as durable historical identity | Alias table and triggers preserve current/historical identity and block duplicate or retired reuse | Barcode history and migration tests |
 | Kiosk double-sell exposure | Cart holds were not a durable part of available stock | Fifteen-minute reservations, explicit lifecycle, available/reserved ledger balances, and idempotent expiry/conversion | Hold expiry and kiosk payment tests |
 | Pricing ambiguity | Price selection could cross variant, condition, grade, company, or currency boundaries without enough provenance | Exact variant selection, attributed fallback, fresh FX requirement, floor clamp, and manager review | Pricing, graded provider, FX, and ScryDex reference tests |
-| ScryDex relay failure | The WordPress claim transition used an invalid guard variable | Claim guard restored; signed event inbox, LAN claim, idempotent refresh, retry, and acknowledgement remain separated | PHP relay contracts and LAN relay tests |
+| ScryDex relay failure | The WordPress claim transition used an invalid guard variable, and one site advanced its schema marker without relay columns | Claim guard restored; migration 18 repairs partial schemas; the receiver returns 503 instead of acknowledging an event that was not durably logged | PHP relay contracts, migration repair tests, and signed test-site round trip |
 | Catalog validation gaps | Fixture-only pagination could miss the sets represented by real inventory | Validator prioritizes represented sets, paginates deterministically, bounds requests, and emits a stable CSV | ScryDex validation harness and pagination tests |
 | Fulfillment state drift | Pulls could overwrite local picking state; illegal regressions and duplicate transitions were insufficiently guarded | Merge preserves local ownership/picks, transitions are monotonic/idempotent, all items must be checked, and past orders are separated | LAN and WordPress fulfillment tests plus app UI contracts |
 | Reconciliation risk | Operators lacked a safe cross-system repair plan | Read-only CSV compares local, WordPress, Square, kiosk, reservations, queue, and outbox; optional repair only queues local-to-remote projections | Reconciliation report tests |
@@ -93,32 +93,27 @@ The repository contains focused automated checks for:
   setup/cleanup, package contracts, and recovery-tool invariants.
 
 These checks demonstrate implemented logic under controlled inputs. The full
-suite must be rerun after all concurrent `0.203.0` changes are merged and before
+suite must be rerun after all concurrent `0.203.1` changes are merged and before
 the exact release artifact is signed off.
 
-## External acceptance still pending
+## External acceptance completed
 
-The following are not proven by source inspection or local tests:
+Timestamped sanitized evidence now confirms:
 
-1. Clean activation and WordPress database migration to schema 17 on the
-   approved test site, including WooCommerce product readback.
-2. Live website order, pickup, cancellation/refund, ready email, and serialized
-   inventory lifecycle.
-3. One reversible Square production acceptance item using a unique SKU,
-   absolute count and price verification, sale/count observation, and confirmed
-   deletion/cleanup. Square has no acceptable substitute environment for the
-   requested store workflow, so any live test must be minimal and reversible.
-4. Live ScryDex catalog validation using approved credentials and a signed
-   webhook received by public WordPress, claimed by LAN, refreshed, and
-   acknowledged.
-5. Multi-workstation discovery, manual server fallback, offline recovery, and
-   simultaneous kiosk/employee behavior on the store LAN.
-6. DYMO local-first printing and server fallback, receipt printer, cash drawer,
-   and Square Terminal device behavior.
-7. Backup restore on an isolated host followed by replay of every external fact
-   that occurred after the backup.
-8. Final desktop/mobile clickthrough, packaged Windows installers, release ZIP
-   contents, checksums, and owner approval.
+1. Test WordPress activation and database migration to schema 18, including
+   repair of the stale relay schema and WooCommerce product readback.
+2. Local pickup fulfillment, condition reservation/order conversion, and exact
+   Square receipt propagation through the test WordPress site.
+3. One reversible Square production acceptance item with unique SKU, price and
+   count readback, zeroing, deletion, and absent-SKU cleanup confirmation.
+4. Live ScryDex represented-set validation and a signed webhook received by
+   WordPress, durably recorded, claimed/completed through the authenticated LAN
+   relay, and removed after the test.
+5. Final desktop/mobile browser acceptance with 21 screenshots, zero page
+   errors, and zero horizontal overflow.
+
+Store-LAN hardware behavior, HPOS, backup/restore disaster rehearsal, and owner
+approval remain environmental deployment gates. See `PUG_TEST_EVIDENCE.md`.
 
 No external result should be marked passed without timestamped, sanitized
 evidence and confirmation that temporary WordPress/Square data was removed.
