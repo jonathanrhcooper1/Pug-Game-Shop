@@ -149,6 +149,7 @@ final class MigrationRunner {
 			new Version0015ProviderPriceReferenceBackfill(),
 			new Version0016ScryDexWebhookRelay(),
 			new Version0017InventoryProjectionQuantity(),
+			new Version0018ScryDexWebhookRelayRepair(),
 		);
 	}
 	/**

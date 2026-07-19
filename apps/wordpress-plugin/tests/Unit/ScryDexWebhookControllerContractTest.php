@@ -53,6 +53,14 @@ final class ScryDexWebhookControllerContractTest extends TestCase {
 		$this->assert_not_contains( '"webhook_secret" =>', $source );
 	}
 
+	public function test_receiver_does_not_acknowledge_an_event_that_was_not_durably_logged(): void {
+		$source = $this->source();
+
+		$this->assert_contains( "array( 'logged', 'duplicate' )", $source );
+		$this->assert_contains( 'scrydex_webhook_event_log_failed', $source );
+		$this->assert_contains( 'return $this->response( $result, 503 )', $source );
+	}
+
 	private function source(): string {
 		$path     = dirname( __DIR__, 2 ) . '/src/Api/V1/ScryDexWebhookController.php';
 		$contents = file_get_contents( $path );

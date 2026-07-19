@@ -119,7 +119,22 @@ final class ScryDexWebhookController {
 			);
 		}
 
-		$log_result      = $this->event_repository()->record( $event, (string) $verified['payload_hash'], 'verified', 'queued' );
+		$log_result = $this->event_repository()->record( $event, (string) $verified['payload_hash'], 'verified', 'queued' );
+		if ( ! in_array( (string) ( $log_result['status'] ?? '' ), array( 'logged', 'duplicate' ), true ) ) {
+			$result = array(
+				'status'                     => 'deferred',
+				'code'                       => 'scrydex_webhook_event_log_failed',
+				'event_id'                   => $event['event_id'],
+				'event_name'                 => $event['event_name'],
+				'payload_hash'               => $verified['payload_hash'],
+				'errors'                     => $log_result['errors'] ?? array( 'scrydex_webhook_event_log_failed' ),
+				'credential_values_redacted' => true,
+			);
+			$this->logger->error( 'scrydex.webhook_event_log_failed', $result );
+
+			return $this->response( $result, 503 );
+		}
+
 		$dispatch_result = $this->sync_dispatcher->dispatch( $event );
 		$dispatch_deferred = ! in_array( (string) $dispatch_result['status'], array( 'scheduled', 'scheduled_existing' ), true );
 		if ( $dispatch_deferred ) {
