@@ -81,8 +81,8 @@ $assert_table_state( false, $provider_price_tables, 'after rollback' );
 $applied_versions = $runner->migrate();
 
 $assert(
-	array( 2, 3, 4, 5, 6, 7, 8, 9, 10 ) === $applied_versions,
-	'Migration restore did not apply versions 2 through 10.'
+	range( 2, Version::DATABASE ) === $applied_versions,
+	'Migration restore did not apply every version through the current database target.'
 );
 $assert( Version::DATABASE === $runner->current_version(), 'Migration restore did not return to the current target.' );
 $assert_table_state( true, $inventory_tables, 'after restore' );
