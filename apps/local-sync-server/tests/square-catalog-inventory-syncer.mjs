@@ -9,6 +9,7 @@ const syncer = createSquareCatalogInventorySyncer({
   accessToken: "test-square-token",
   environment: "production",
   locationId: "LB1B9Z4GVG1BH",
+  now: () => "2026-07-18T18:00:00.000Z",
   readbackDelayMs: 0,
   fetcher: async (url, options = {}) => {
     if (String(url) === "https://images.example/card.png") {
@@ -262,6 +263,7 @@ assert.equal(catalogRequest.body.batches[0].objects[0].item_data.variations[0].i
 assert.equal(inventoryRequest.body.changes[0].physical_count.catalog_object_id, "SQUARE-VARIATION-1")
 assert.equal(inventoryRequest.body.changes[0].physical_count.location_id, "LB1B9Z4GVG1BH")
 assert.equal(inventoryRequest.body.changes[0].physical_count.quantity, "3")
+assert.equal(inventoryRequest.body.changes[0].physical_count.occurred_at, "2026-07-18T18:00:00.000Z")
 assert.equal(JSON.stringify(result).includes("test-square-token"), false)
 
 requests.length = 0

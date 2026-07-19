@@ -16,6 +16,7 @@ export function createSquareCatalogInventorySyncer(options = {}) {
   const imageSyncEnabled = options.imageSyncEnabled !== false
   const readbackAttempts = boundedInt(options.readbackAttempts, 1, 5, 3)
   const readbackDelayMs = boundedInt(options.readbackDelayMs, 0, 5_000, 250)
+  const now = typeof options.now === "function" ? options.now : () => new Date()
   const categoryCache = new Map()
 
   function status() {
@@ -100,7 +101,7 @@ export function createSquareCatalogInventorySyncer(options = {}) {
       )
     }
 
-    const plan = buildSquareSyncPlan(operation, item, configuredLocationId)
+    const plan = buildSquareSyncPlan(operation, item, configuredLocationId, now())
 
     if (plan.status !== "ok") {
       return plan
@@ -1013,7 +1014,7 @@ export function createSquareCatalogInventorySyncer(options = {}) {
   }
 }
 
-function buildSquareSyncPlan(operation, item, locationId) {
+function buildSquareSyncPlan(operation, item, locationId, occurredAt = new Date()) {
   const publicId = cleanExternalId(item?.public_id ?? operation?.entity_id)
   const rowVersion = positiveInt(item?.row_version) ?? 1
   const sku = cleanSku(item?.barcode ?? item?.sku)
@@ -1070,12 +1071,10 @@ function buildSquareSyncPlan(operation, item, locationId) {
 
   const operationId = cleanExternalId(operation?.operation_id)
   const idempotencySeed = cleanIdempotencyKey(operationId || `inventory-${publicId}-v${rowVersion}`)
-  const inventoryOccurredAtUtc =
-    cleanIsoTimestamp(operation?.payload?.occurred_at_utc) ||
-    cleanIsoTimestamp(operation?.payload?.queued_at_utc) ||
-    cleanIsoTimestamp(operation?.queued_at_utc) ||
-    cleanIsoTimestamp(item?.updated_at_utc) ||
-    "2000-01-01T00:00:00.000Z"
+  // A physical count describes the authoritative quantity at delivery time.
+  // Square rejects inventory history older than 24 hours, so queued event
+  // timestamps must not be reused for a delayed reconciliation write.
+  const inventoryOccurredAtUtc = cleanIsoTimestamp(occurredAt) || new Date().toISOString()
 
   return {
     status: "ok",

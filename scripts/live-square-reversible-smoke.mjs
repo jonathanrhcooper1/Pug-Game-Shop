@@ -77,9 +77,7 @@ try {
     item: testItem({ quantity: 1, priceMinorUnits: 100 }),
   })
   check("catalog_and_count_create_readback", createResult.status === "ok" && createResult.readback_verified === true, true, {
-    status: createResult.status,
-    code: createResult.code,
-    readback_verified: createResult.readback_verified === true,
+    ...safeConnectorResult(createResult),
   })
   if (createResult.status !== "ok" || !createResult.square_catalog_item_id || !createResult.square_catalog_variation_id) {
     throw new Error(`Square connector create/readback failed: ${createResult.code || createResult.status}`)
@@ -115,6 +113,8 @@ try {
   report.cleanup.attempted = true
   if (report.created_catalog_variation_id && !report.cleanup.inventory_zeroed) {
     report.cleanup.inventory_zeroed = await zeroInventoryDirect(report.created_catalog_variation_id)
+  } else if (!report.created_catalog_variation_id) {
+    report.cleanup.inventory_zeroed = true
   }
   if (report.created_catalog_item_id) {
     report.cleanup.catalog_item_deleted = await deleteCatalogObject(report.created_catalog_item_id)
@@ -233,4 +233,20 @@ async function squareRequest(path, { method = "GET", body } = {}) {
 
 function check(name, pass, expected, actual) {
   report.checks.push({ name, pass: Boolean(pass), expected, actual })
+}
+
+function safeConnectorResult(result = {}) {
+  return {
+    status: String(result.status ?? ""),
+    code: String(result.code ?? ""),
+    http_status: Number(result.http_status ?? 0),
+    endpoint: String(result.endpoint ?? ""),
+    errors: (Array.isArray(result.errors) ? result.errors : []).map((error) => ({
+      category: String(error?.category ?? ""),
+      code: String(error?.code ?? ""),
+      detail: String(error?.detail ?? "").slice(0, 500),
+      field: String(error?.field ?? ""),
+    })),
+    readback_verified: result.readback_verified === true,
+  }
 }
