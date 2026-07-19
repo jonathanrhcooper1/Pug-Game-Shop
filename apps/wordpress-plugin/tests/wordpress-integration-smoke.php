@@ -371,7 +371,8 @@ $assert( 16 === (int) ( $data['inventory_route_dependencies']['route_contract_co
 $assert( 4 === (int) ( $data['inventory_route_dependencies']['staged_handler_route_count'] ?? 0 ), 'Inventory route dependencies should report every staged inventory handler.' );
 $assert( 0 === (int) ( $data['inventory_route_dependencies']['controller_handler_count'] ?? -1 ), 'Inventory route handlers should remain uninjected by default.' );
 $assert( false === ( $data['inventory_route_dependencies']['controller_handlers_configured'] ?? null ), 'Inventory route handlers should not be configured by default.' );
-$assert( false === ( $data['inventory_route_dependencies']['capability_permission_callbacks_configured'] ?? null ), 'Inventory capability callbacks should remain unconfigured outside explicit route setup.' );
+$assert( 9 === (int) ( $data['inventory_route_dependencies']['permission_callback_count'] ?? 0 ), 'Inventory route dependencies should expose every protected capability callback inside WordPress.' );
+$assert( true === ( $data['inventory_route_dependencies']['capability_permission_callbacks_configured'] ?? null ), 'Inventory capability callbacks should use the WordPress capability checker.' );
 $assert( false === ( $data['inventory_route_dependencies']['public_read_routes_enabled'] ?? null ), 'Inventory public reads should remain disabled by default.' );
 $assert( true === ( $data['inventory_route_dependencies']['registrar_ready'] ?? null ), 'Inventory registrar dependency should be staged ready.' );
 $assert( 0 === (int) ( $data['inventory_route_dependencies']['registerable_route_count'] ?? -1 ), 'Inventory dependencies should not report registerable routes by default.' );
