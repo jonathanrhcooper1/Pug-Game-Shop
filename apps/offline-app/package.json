@@ -1,0 +1,28 @@
+{
+  "name": "@pug-game-shop/offline-app",
+  "version": "0.203.2",
+  "private": true,
+  "description": "Windows local store app with live sync and offline fallback for the TCG Store Platform.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1420",
+    "build": "vite build",
+    "build:windows": "node ../../scripts/run-offline-app-windows-build.mjs",
+    "package:windows": "npm run build:windows",
+    "typecheck": "tsc --noEmit",
+    "test:package-contract": "npm run typecheck && node tests/windows-package-contract.mjs && node tests/sqlite-schema-contract.mjs && node tests/workspace-state-contract.mjs && node tests/pull-inventory-cache-contract.mjs && node tests/queue-bridge-contract.mjs && node tests/local-queue-persistence-contract.mjs && node tests/local-sync-client-contract.mjs && node tests/tauri-command-contract.mjs && node tests/ui-shell-contract.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.5.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.5.0",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "@vitejs/plugin-react": "4.5.0",
+    "typescript": "5.8.3",
+    "vite": "6.4.3"
+  }
+}

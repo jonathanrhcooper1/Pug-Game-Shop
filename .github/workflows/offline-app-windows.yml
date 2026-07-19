@@ -1,0 +1,80 @@
+name: Offline App Windows Package
+
+on:
+  push:
+    paths:
+      - ".github/workflows/offline-app-windows.yml"
+      - "apps/offline-app/**"
+      - "package.json"
+  pull_request:
+    paths:
+      - ".github/workflows/offline-app-windows.yml"
+      - "apps/offline-app/**"
+      - "package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Windows package contract
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install app dependencies
+        run: npm ci
+        working-directory: apps/offline-app
+
+      - name: Verify package metadata
+        run: npm run test:package-contract
+        working-directory: apps/offline-app
+
+      - name: Verify Tauri command tests
+        run: cargo test
+        working-directory: apps/offline-app/src-tauri
+
+  build:
+    name: Manual Windows EXE build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install app dependencies
+        run: npm ci
+        working-directory: apps/offline-app
+
+      - name: Verify Tauri command tests
+        run: cargo test
+        working-directory: apps/offline-app/src-tauri
+
+      - name: Build Windows EXE installer
+        run: npm run build:windows
+        working-directory: apps/offline-app
+
+      - name: Upload unsigned installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcg-store-offline-windows-unsigned
+          path: apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: error

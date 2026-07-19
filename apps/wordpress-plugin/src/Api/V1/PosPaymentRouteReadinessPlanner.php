@@ -1,0 +1,443 @@
+<?php
+/**
+ * Staged readiness summary for planned POS/payment routes.
+ *
+ * @package TCGStorePlatform
+ */
+
+namespace TCGStorePlatform\Api\V1;
+
+use TCGStorePlatform\Square\SquarePaymentDelegationPolicy;
+
+final class PosPaymentRouteReadinessPlanner {
+	private const DEFAULT_DEPENDENCIES = array(
+		'route_handlers_configured'                  => false,
+		'permission_callbacks_configured'            => false,
+		'route_transaction_executor_configured'      => false,
+		'webhook_verifier_configured'                => false,
+		'sandbox_provider_credentials_configured'    => false,
+		'production_provider_credentials_configured' => false,
+		'provider_capture_enabled'                   => false,
+		'provider_inventory_writes_enabled'          => false,
+		'woocommerce_gateway_capture_enabled'        => false,
+	);
+
+	private ?PosPaymentRoutePermissionCallbackFactory $permission_callback_factory;
+	private ?PosPaymentController $controller;
+
+	public function __construct(
+		?PosPaymentRoutePermissionCallbackFactory $permission_callback_factory = null,
+		?PosPaymentController $controller = null
+	) {
+		$this->permission_callback_factory = $permission_callback_factory;
+		$this->controller                  = $controller;
+	}
+
+	/**
+	 * @param null|list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @param array<string, mixed>            $dependency_overrides Dependency readiness overrides for tests/staging.
+	 * @return array<string, mixed>
+	 */
+	public function plan(
+		bool $pos_payments_feature_enabled = false,
+		?array $route_contracts = null,
+		array $dependency_overrides = array()
+	): array {
+		$route_contracts      = $route_contracts ?? PosPaymentRouteContracts::route_contracts();
+		$permission_callbacks = $this->permission_callbacks( $route_contracts );
+		$controller_handlers  = $this->controller_handlers( $route_contracts );
+		$payment_policy       = SquarePaymentDelegationPolicy::audit_payload();
+		$dependencies         = $this->dependencies(
+			$dependency_overrides,
+			$route_contracts,
+			$permission_callbacks,
+			$controller_handlers
+		);
+		$route_plans          = array();
+
+		foreach ( $route_contracts as $route_contract ) {
+			$route_plan                              = $this->route_plan( $route_contract, $dependencies );
+			$route_plans[ $route_plan['route_key'] ] = $route_plan;
+		}
+
+		$registerable_route_keys = array_keys(
+			array_filter(
+				$route_plans,
+				static fn ( array $route_plan ): bool => true === $route_plan['should_register']
+			)
+		);
+		$should_register_routes  = $pos_payments_feature_enabled && array() !== $registerable_route_keys;
+		$block_reasons           = $this->readiness_block_reasons(
+			$pos_payments_feature_enabled,
+			$registerable_route_keys
+		);
+
+		return array(
+			'feature_enabled'                              => $pos_payments_feature_enabled,
+			'status'                                       => $this->status_from_plan(
+				$pos_payments_feature_enabled,
+				$should_register_routes
+			),
+			'planned_route_count'                          => count( $route_plans ),
+			'registerable_route_count'                     => count( $registerable_route_keys ),
+			'should_register_routes'                       => $should_register_routes,
+			'registration_deferred'                        => ! $should_register_routes,
+			'route_readiness_block_reasons'                => $block_reasons,
+			'registerable_route_keys'                      => $registerable_route_keys,
+			'route_registration_summary'                   => $route_plans,
+			'route_handlers_configured'                    => true === $dependencies['route_handlers_configured'],
+			'controller_handler_count'                     => count( $controller_handlers ),
+			'controller_handler_keys'                      => $controller_handlers,
+			'permission_callbacks_configured'              => true === $dependencies['permission_callbacks_configured'],
+			'permission_callback_count'                    => count( $permission_callbacks ),
+			'permission_callback_keys'                     => array_keys( $permission_callbacks ),
+			'route_transaction_executor_configured'        => true === $dependencies['route_transaction_executor_configured'],
+			'webhook_verifier_configured'                  => true === $dependencies['webhook_verifier_configured'],
+			'sandbox_provider_credentials_configured'      => true === $dependencies['sandbox_provider_credentials_configured'],
+			'production_provider_credentials_configured'   => true === $dependencies['production_provider_credentials_configured'],
+			'provider_capture_enabled'                     => true === $dependencies['provider_capture_enabled'],
+			'provider_inventory_writes_enabled'            => true === $dependencies['provider_inventory_writes_enabled'],
+			'woocommerce_gateway_capture_enabled'          => true === $dependencies['woocommerce_gateway_capture_enabled'],
+			'payment_capture_authority'                    => $payment_policy['payment_capture_authority'],
+			'official_square_payment_extension'            => $payment_policy['official_square_payment_extension'],
+			'official_woocommerce_square_extension_status' => $payment_policy['official_woocommerce_square_extension_status'],
+			'official_woocommerce_square_extension_active' => $payment_policy['official_woocommerce_square_extension_active'],
+			'plugin_square_payment_capture_allowed'        => $payment_policy['plugin_square_payment_capture_allowed'],
+			'plugin_square_custom_gateway_allowed'         => $payment_policy['plugin_square_custom_gateway_allowed'],
+			'square_payment_delegation_policy'             => $payment_policy,
+			'route_registration_deferred'                  => $this->any_route_flag( $route_plans, 'route_registration_deferred' ),
+			'route_connected_reads_deferred'               => $this->any_route_flag( $route_plans, 'route_connected_reads_deferred' ),
+			'route_connected_writes_deferred'              => $this->any_route_flag( $route_plans, 'route_connected_writes_deferred' ),
+			'transaction_execution_deferred'               => $this->any_route_flag( $route_plans, 'transaction_execution_deferred' ),
+			'provider_capture_deferred'                    => $this->any_route_flag( $route_plans, 'provider_capture_deferred' )
+				|| true !== $dependencies['provider_capture_enabled'],
+			'provider_inventory_write_deferred'            => $this->any_route_flag( $route_plans, 'provider_inventory_write_deferred' )
+				|| true !== $dependencies['provider_inventory_writes_enabled'],
+			'webhook_registration_deferred'                => $this->any_route_flag( $route_plans, 'webhook_registration_deferred' ),
+			'woocommerce_gateway_capture_deferred'         => $this->any_route_flag( $route_plans, 'woocommerce_gateway_capture_deferred' )
+				|| true !== $dependencies['woocommerce_gateway_capture_enabled'],
+			'production_safety_ready'                      => true !== $dependencies['production_provider_credentials_configured']
+				&& true !== $dependencies['provider_capture_enabled']
+				&& true !== $dependencies['provider_inventory_writes_enabled']
+				&& true !== $dependencies['woocommerce_gateway_capture_enabled'],
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $route_contract Planned route contract.
+	 * @param array<string, bool>  $dependencies Dependency readiness flags.
+	 * @return array<string, mixed>
+	 */
+	private function route_plan( array $route_contract, array $dependencies ): array {
+		$method                  = strtoupper( $this->route_value( $route_contract, 'method' ) );
+		$path                    = $this->route_value( $route_contract, 'path' );
+		$is_read_workflow        = 'GET' === $method;
+		$is_write_workflow       = ! $is_read_workflow;
+		$is_webhook_workflow     = str_starts_with( $path, '/payments/webhooks/' );
+		$registration_deferred   = true === ( $route_contract['route_registration_deferred'] ?? false );
+		$route_reads_deferred    = true === ( $route_contract['route_connected_reads_deferred'] ?? false );
+		$route_writes_deferred   = true === ( $route_contract['route_connected_writes_deferred'] ?? false );
+		$transaction_deferred    = true === ( $route_contract['transaction_execution_deferred'] ?? false );
+		$webhook_deferred        = true === ( $route_contract['webhook_registration_deferred'] ?? false );
+		$live_enabled_by_default = true === ( $route_contract['live_enabled_by_default'] ?? false );
+		$block_reasons           = $this->route_block_reasons(
+			$live_enabled_by_default,
+			$registration_deferred,
+			$is_read_workflow,
+			$is_write_workflow,
+			$is_webhook_workflow,
+			$route_reads_deferred,
+			$route_writes_deferred,
+			$transaction_deferred,
+			$webhook_deferred,
+			$dependencies
+		);
+		$safety_reasons          = $this->route_safety_reasons( $route_contract, $dependencies );
+
+		return array(
+			'route_key'                            => $method . ' ' . $path,
+			'namespace'                            => $this->route_value( $route_contract, 'namespace' ),
+			'path'                                 => $path,
+			'method'                               => $method,
+			'methods'                              => $method,
+			'callback'                             => $this->route_value( $route_contract, 'callback' ),
+			'permission'                           => $this->route_value( $route_contract, 'permission' ),
+			'workflow'                             => $this->route_value( $route_contract, 'workflow' ),
+			'read_workflow'                        => $is_read_workflow,
+			'write_workflow'                       => $is_write_workflow,
+			'webhook_workflow'                     => $is_webhook_workflow,
+			'permission_callback_ready'            => true === $dependencies['permission_callbacks_configured'],
+			'controller_callback_ready'            => true === $dependencies['route_handlers_configured'],
+			'transaction_executor_ready'           => true === $dependencies['route_transaction_executor_configured'],
+			'webhook_verifier_ready'               => true === $dependencies['webhook_verifier_configured'],
+			'live_enabled_by_default'              => $live_enabled_by_default,
+			'route_registration_deferred'          => $registration_deferred,
+			'route_connected_reads_deferred'       => $route_reads_deferred,
+			'route_connected_writes_deferred'      => $route_writes_deferred,
+			'transaction_execution_deferred'       => $transaction_deferred,
+			'provider_capture_deferred'            => true === ( $route_contract['provider_capture_deferred'] ?? false ),
+			'provider_inventory_write_deferred'    => true === ( $route_contract['provider_inventory_write_deferred'] ?? false ),
+			'webhook_registration_deferred'        => $webhook_deferred,
+			'woocommerce_gateway_capture_deferred' => true === ( $route_contract['woocommerce_gateway_capture_deferred'] ?? false ),
+			'should_register'                      => array() === $block_reasons,
+			'registration_block_reasons'           => $block_reasons,
+			'safety_block_reasons'                 => $safety_reasons,
+		);
+	}
+
+	/**
+	 * @param array<string, bool> $dependencies Dependency readiness flags.
+	 * @return list<string>
+	 */
+	private function route_block_reasons(
+		bool $live_enabled_by_default,
+		bool $registration_deferred,
+		bool $is_read_workflow,
+		bool $is_write_workflow,
+		bool $is_webhook_workflow,
+		bool $route_reads_deferred,
+		bool $route_writes_deferred,
+		bool $transaction_deferred,
+		bool $webhook_deferred,
+		array $dependencies
+	): array {
+		$reasons = array();
+
+		if ( ! $live_enabled_by_default ) {
+			$reasons[] = 'route_disabled_by_default';
+		}
+
+		if ( $registration_deferred ) {
+			$reasons[] = 'route_registration_deferred';
+		}
+
+		if ( true !== $dependencies['route_handlers_configured'] ) {
+			$reasons[] = 'route_handlers_not_configured';
+		}
+
+		if ( true !== $dependencies['permission_callbacks_configured'] ) {
+			$reasons[] = 'permission_callbacks_not_configured';
+		}
+
+		if ( $is_read_workflow && $route_reads_deferred ) {
+			$reasons[] = 'route_connected_reads_deferred';
+		}
+
+		if ( $is_webhook_workflow && $webhook_deferred ) {
+			$reasons[] = 'webhook_registration_deferred';
+		}
+
+		if ( $is_webhook_workflow && true !== $dependencies['webhook_verifier_configured'] ) {
+			$reasons[] = 'webhook_verifier_not_configured';
+		}
+
+		if ( $is_write_workflow && $route_writes_deferred ) {
+			$reasons[] = 'route_connected_writes_deferred';
+		}
+
+		if ( $is_write_workflow && $transaction_deferred ) {
+			$reasons[] = 'transaction_execution_deferred';
+		}
+
+		if ( $is_write_workflow && true !== $dependencies['route_transaction_executor_configured'] ) {
+			$reasons[] = 'route_transaction_executor_not_configured';
+		}
+
+		return array_values( array_unique( $reasons ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $route_contract Planned route contract.
+	 * @param array<string, bool>  $dependencies Dependency readiness flags.
+	 * @return list<string>
+	 */
+	private function route_safety_reasons( array $route_contract, array $dependencies ): array {
+		$reasons = array();
+
+		if (
+			true === ( $route_contract['provider_capture_deferred'] ?? false )
+			|| true !== $dependencies['provider_capture_enabled']
+		) {
+			$reasons[] = 'provider_capture_deferred';
+		}
+
+		if (
+			true === ( $route_contract['provider_inventory_write_deferred'] ?? false )
+			|| true !== $dependencies['provider_inventory_writes_enabled']
+		) {
+			$reasons[] = 'provider_inventory_write_deferred';
+		}
+
+		if (
+			true === ( $route_contract['woocommerce_gateway_capture_deferred'] ?? false )
+			|| true !== $dependencies['woocommerce_gateway_capture_enabled']
+		) {
+			$reasons[] = 'woocommerce_gateway_capture_deferred';
+		}
+
+		if ( true !== $dependencies['sandbox_provider_credentials_configured'] ) {
+			$reasons[] = 'sandbox_provider_credentials_not_configured';
+		}
+
+		if ( true !== $dependencies['production_provider_credentials_configured'] ) {
+			$reasons[] = 'production_provider_credentials_disabled';
+		}
+
+		return array_values( array_unique( $reasons ) );
+	}
+
+	/**
+	 * @param array<string, mixed> $dependency_overrides Dependency readiness overrides.
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @param array<string, callable>    $permission_callbacks Resolved permission callbacks.
+	 * @param list<string>               $controller_handlers Resolved controller handler route keys.
+	 * @return array<string, bool>
+	 */
+	private function dependencies(
+		array $dependency_overrides,
+		array $route_contracts,
+		array $permission_callbacks,
+		array $controller_handlers
+	): array {
+		$dependencies = self::DEFAULT_DEPENDENCIES;
+
+		foreach ( $dependency_overrides as $key => $value ) {
+			if ( array_key_exists( $key, $dependencies ) ) {
+				$dependencies[ $key ] = true === $value;
+			}
+		}
+
+		if (
+			! array_key_exists( 'route_handlers_configured', $dependency_overrides )
+			&& null !== $this->controller
+		) {
+			$dependencies['route_handlers_configured'] = count( $controller_handlers ) === count( $route_contracts );
+		}
+
+		if (
+			! array_key_exists( 'permission_callbacks_configured', $dependency_overrides )
+			&& null !== $this->permission_callback_factory
+		) {
+			$dependencies['permission_callbacks_configured'] = count( $permission_callbacks ) === count( $route_contracts );
+		}
+
+		if (
+			! array_key_exists( 'webhook_verifier_configured', $dependency_overrides )
+			&& null !== $this->permission_callback_factory
+		) {
+			$dependencies['webhook_verifier_configured'] = $this->webhook_callbacks_ready(
+				$route_contracts,
+				$permission_callbacks
+			);
+		}
+
+		return $dependencies;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @return array<string, callable>
+	 */
+	private function permission_callbacks( array $route_contracts ): array {
+		if ( null === $this->permission_callback_factory ) {
+			return array();
+		}
+
+		return $this->permission_callback_factory->callbacks_for_contracts( $route_contracts );
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @return list<string>
+	 */
+	private function controller_handlers( array $route_contracts ): array {
+		if ( null === $this->controller ) {
+			return array();
+		}
+
+		$route_keys = array();
+
+		foreach ( $route_contracts as $route_contract ) {
+			if ( $this->controller->has_handler( $this->route_value( $route_contract, 'callback' ) ) ) {
+				$route_keys[] = PosPaymentRoutePermissionCallbackFactory::route_key( $route_contract );
+			}
+		}
+
+		return $route_keys;
+	}
+
+	/**
+	 * @param list<array<string, mixed>> $route_contracts Planned route contracts.
+	 * @param array<string, callable>    $permission_callbacks Resolved permission callbacks.
+	 */
+	private function webhook_callbacks_ready( array $route_contracts, array $permission_callbacks ): bool {
+		$webhook_route_seen = false;
+
+		foreach ( $route_contracts as $route_contract ) {
+			if ( 'signed_provider_webhook' !== strtolower( $this->route_value( $route_contract, 'permission' ) ) ) {
+				continue;
+			}
+
+			$webhook_route_seen = true;
+
+			if ( ! isset( $permission_callbacks[ PosPaymentRoutePermissionCallbackFactory::route_key( $route_contract ) ] ) ) {
+				return false;
+			}
+		}
+
+		return $webhook_route_seen;
+	}
+
+	/**
+	 * @param list<string> $registerable_route_keys Registerable route keys.
+	 * @return list<string>
+	 */
+	private function readiness_block_reasons(
+		bool $pos_payments_feature_enabled,
+		array $registerable_route_keys
+	): array {
+		$reasons = array();
+
+		if ( ! $pos_payments_feature_enabled ) {
+			$reasons[] = 'pos_payments_feature_disabled';
+		}
+
+		if ( array() === $registerable_route_keys ) {
+			$reasons[] = 'no_registerable_pos_payment_routes';
+		}
+
+		return $reasons;
+	}
+
+	private function status_from_plan( bool $feature_enabled, bool $should_register_routes ): string {
+		if ( $should_register_routes ) {
+			return 'ready';
+		}
+
+		if ( ! $feature_enabled ) {
+			return 'blocked';
+		}
+
+		return 'gated';
+	}
+
+	/**
+	 * @param array<string, array<string, mixed>> $route_plans Route readiness plans.
+	 */
+	private function any_route_flag( array $route_plans, string $flag ): bool {
+		foreach ( $route_plans as $route_plan ) {
+			if ( true === ( $route_plan[ $flag ] ?? false ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param array<string, mixed> $route_contract Planned route contract.
+	 */
+	private function route_value( array $route_contract, string $key ): string {
+		return trim( (string) ( $route_contract[ $key ] ?? '' ) );
+	}
+}

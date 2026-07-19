@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Pug Store App",
+  "version": "0.203.2",
+  "identifier": "com.thepug.storeapp",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://127.0.0.1:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Pug Store App",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 720,
+        "resizable": false,
+        "fullscreen": true,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Configured per deployment",
+    "category": "Business",
+    "shortDescription": "Local store app with live sync and offline fallback for trading-card store operations.",
+    "longDescription": "Local store app with live sync and offline fallback for inventory, kiosk, customer credit, buylist, event, and staff workflows.",
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}

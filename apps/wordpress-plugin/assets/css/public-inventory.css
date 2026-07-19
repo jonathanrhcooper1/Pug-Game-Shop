@@ -1,0 +1,955 @@
+.tcg-public-inventory {
+  --pug-midnight: #05080b;
+  --pug-vault: var(--tcg-primary, #0a2639);
+  --pug-sapphire: #103c5a;
+  --pug-cyan: #26d9f0;
+  --pug-ice: #b9f4ff;
+  --pug-gold: var(--tcg-accent, #f6c635);
+  --pug-amber: #c78110;
+  --pug-paper: var(--tcg-background, #f5f9fc);
+  --pug-ink: var(--tcg-text, #0b1116);
+  --pug-muted: #5b6872;
+  --pug-panel: var(--tcg-surface, #ffffff);
+  --pug-line: #d9e6ee;
+  --pug-success: var(--tcg-success, #168a55);
+  color: #f8fbff;
+  font-family: inherit;
+  margin-top: 0;
+}
+
+body:has(.tcg-public-inventory),
+body:has(.tcg-storefront-shelf) {
+  overflow-x: hidden;
+}
+
+body.page .site-main.content-shell:has(.tcg-public-inventory),
+body.page .site-main.content-shell:has(.tcg-storefront-shelf) {
+  width: min(1880px, calc(100vw - 16px));
+  max-width: min(1880px, calc(100vw - 16px));
+  margin-inline: auto;
+  padding-inline: clamp(8px, 1.5vw, 24px);
+}
+
+body.page .content-card:has(.tcg-public-inventory),
+body.page .content-card:has(.tcg-storefront-shelf) {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+body.page .content-card:has(.tcg-public-inventory) .entry-title,
+body.page .content-card:has(.tcg-storefront-shelf) .entry-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+body.page .entry-content:has(.tcg-public-inventory),
+body.page .entry-content:has(.tcg-storefront-shelf) {
+  margin: 0;
+}
+
+body.page .entry-content:has(.tcg-public-inventory),
+body.page .entry-content:has(.tcg-storefront-shelf) {
+  color: #bdc9e7;
+}
+
+.tcg-storefront-shelf {
+  --pug-midnight: #05080b;
+  --pug-vault: var(--tcg-primary, #0a2639);
+  --pug-cyan: #26d9f0;
+  --pug-pink: #ff4fd8;
+  --pug-gold: var(--tcg-accent, #f6c635);
+  --pug-white: #f8fbff;
+  display: grid;
+  gap: clamp(18px, 2.4vw, 28px);
+  width: 100%;
+  color: var(--pug-white);
+}
+
+.tcg-storefront-shelf__hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 320px);
+  gap: clamp(18px, 3vw, 34px);
+  min-height: clamp(420px, 58vh, 680px);
+  align-items: end;
+  padding: clamp(28px, 5vw, 76px);
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 44px),
+    linear-gradient(162deg, transparent 0 58%, rgba(38, 217, 240, 0.14) 58% 61%, transparent 61%),
+    linear-gradient(24deg, transparent 0 66%, rgba(255, 79, 216, 0.12) 66% 69%, transparent 69%),
+    linear-gradient(135deg, rgba(8, 13, 28, 0.98), rgba(17, 29, 58, 0.94) 58%, rgba(5, 8, 11, 0.98));
+  border: 1px solid rgba(126, 212, 255, 0.24);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3), inset 0 0 42px rgba(38, 217, 240, 0.07);
+}
+
+.tcg-storefront-shelf__hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tcg-storefront-shelf__hero-copy {
+  display: grid;
+  gap: 18px;
+  max-width: 980px;
+}
+
+.tcg-storefront-shelf__badge {
+  display: grid;
+  gap: 10px;
+  justify-self: end;
+  width: min(100%, 300px);
+  padding: 20px;
+  color: #06101e;
+  background:
+    linear-gradient(135deg, #f6c635, #ffef88 48%, #2adde0),
+    repeating-linear-gradient(135deg, rgba(5, 8, 11, 0.12) 0 2px, transparent 2px 16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+  text-transform: uppercase;
+}
+
+.tcg-storefront-shelf__badge span {
+  color: #06101e;
+  font-family: "Barlow Condensed", Impact, sans-serif;
+  font-size: clamp(36px, 5vw, 62px);
+  font-weight: 900;
+  line-height: 0.85;
+}
+
+.tcg-storefront-shelf__badge strong {
+  color: #06101e;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.tcg-storefront-shelf__kicker,
+.tcg-storefront-shelf__stat span {
+  color: var(--pug-gold);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.tcg-storefront-shelf h2 {
+  max-width: 880px;
+  margin: 0;
+  color: #ffffff;
+  font-family: "Barlow Condensed", Impact, sans-serif;
+  font-size: clamp(42px, 6vw, 86px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.tcg-storefront-shelf__hero p:not(.tcg-storefront-shelf__kicker) {
+  max-width: 760px;
+  margin: 0;
+  color: #c8d6f4;
+  font-size: clamp(16px, 1.4vw, 20px);
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.tcg-storefront-shelf__nav,
+.tcg-storefront-shelf__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tcg-storefront-shelf__nav a,
+.tcg-storefront-shelf__stat {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 14px;
+  color: #f8fbff;
+  background: rgba(13, 22, 48, 0.76);
+  border: 1px solid rgba(126, 212, 255, 0.22);
+  border-radius: 8px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.tcg-storefront-shelf .tcg-public-inventory__hero {
+  display: none;
+}
+
+.tcg-storefront-shelf--singles .tcg-storefront-shelf__nav a[href="/shop-singles/"],
+.tcg-storefront-shelf--graded .tcg-storefront-shelf__nav a[href="/shop-graded-cards/"] {
+  color: #06101e;
+  background: linear-gradient(135deg, var(--pug-gold), #ffef88 48%, var(--pug-cyan));
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.tcg-storefront-shelf__nav a:hover,
+.tcg-storefront-shelf__nav a:focus {
+  color: #06101e;
+  background: linear-gradient(135deg, var(--pug-gold), #ffef88 48%, var(--pug-cyan));
+  border-color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+}
+
+.tcg-storefront-shelf__stat {
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 150px;
+  padding: 10px 14px;
+}
+
+.tcg-storefront-shelf__stat strong {
+  color: #ffffff;
+  font-family: "Barlow Condensed", Impact, sans-serif;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.tcg-storefront-shelf .woocommerce {
+  width: 100%;
+}
+
+.tcg-storefront-shelf .woocommerce ul.products {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+}
+
+.tcg-storefront-shelf .woocommerce ul.products li.product {
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.tcg-product-shelf {
+  margin-top: 24px;
+  color: #f8fbff;
+}
+
+.tcg-product-shelf__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 11px 14px;
+  border: 1px solid rgba(96, 214, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(5, 8, 15, 0.68);
+  color: rgba(248, 251, 255, 0.78);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.tcg-product-shelf__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 18px;
+}
+
+.tcg-product-shelf__card,
+.tcg-product-shelf__empty {
+  overflow: hidden;
+  border: 1px solid rgba(96, 214, 255, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(150deg, rgba(18, 31, 61, 0.9), rgba(6, 9, 18, 0.96)),
+    rgba(5, 8, 15, 0.86);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.32);
+}
+
+.tcg-product-shelf__card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.tcg-product-shelf__media {
+  display: grid;
+  min-height: 230px;
+  place-items: center;
+  padding: 14px;
+  background:
+    linear-gradient(148deg, rgba(246, 198, 53, 0.18) 0 18%, transparent 18% 100%),
+    linear-gradient(32deg, transparent 0 66%, rgba(42, 221, 224, 0.22) 66% 100%),
+    linear-gradient(145deg, rgba(4, 9, 20, 0.88), rgba(15, 28, 51, 0.92));
+  text-decoration: none;
+}
+
+.tcg-product-shelf__media img {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.tcg-product-shelf__image-placeholder {
+  display: grid;
+  width: min(190px, 78%);
+  min-height: 152px;
+  place-items: center;
+  padding: 18px;
+  border: 1px solid rgba(96, 214, 255, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, #ffe45f, #bdf684 46%, #28e0e7 100%),
+    #f6c635;
+  color: #05080b;
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  box-shadow: 0 18px 34px rgba(42, 221, 224, 0.16);
+}
+
+.tcg-product-shelf__image-placeholder strong {
+  display: block;
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  line-height: 0.9;
+}
+
+.tcg-product-shelf__image-placeholder small {
+  display: block;
+  max-width: 14ch;
+  color: rgba(5, 8, 11, 0.82);
+  font-size: 0.68rem;
+  line-height: 1.1;
+}
+
+.tcg-product-shelf__body {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.tcg-product-shelf__category {
+  margin: 0;
+  color: #2adde0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tcg-product-shelf__body h3 {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  line-height: 1.12;
+}
+
+.tcg-product-shelf__body h3 a {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.tcg-product-shelf__summary {
+  margin: 0;
+  color: rgba(248, 251, 255, 0.72);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.tcg-product-shelf__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tcg-product-shelf__meta strong {
+  color: #f6c635;
+}
+
+.tcg-product-shelf__meta span {
+  color: rgba(248, 251, 255, 0.74);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.tcg-product-shelf__button,
+.tcg-product-shelf__empty-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid rgba(246, 198, 53, 0.28);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f6c635, #2adde0);
+  color: #05080b !important;
+  font-weight: 900;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.tcg-product-shelf__empty {
+  padding: clamp(24px, 5vw, 44px);
+}
+
+.tcg-product-shelf__empty-kicker {
+  margin: 0 0 8px;
+  color: #f6c635;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tcg-product-shelf__empty h3 {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: clamp(1.35rem, 3vw, 2.15rem);
+  line-height: 1.05;
+}
+
+.tcg-product-shelf__empty p {
+  max-width: 680px;
+  margin: 0;
+  color: rgba(248, 251, 255, 0.75);
+}
+
+.tcg-product-shelf__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.tcg-product-shelf__empty-actions a {
+  min-width: 142px;
+  padding-inline: 16px;
+}
+
+.tcg-public-inventory__hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+  color: #ffffff;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 42px),
+    linear-gradient(28deg, transparent 0 68%, rgba(246, 198, 53, 0.18) 68% 100%),
+    linear-gradient(135deg, rgba(5, 8, 11, 0.96), rgba(10, 38, 57, 0.92) 58%, rgba(31, 20, 55, 0.86));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+}
+
+.tcg-public-inventory__hero h2,
+.tcg-public-inventory__hero p {
+  margin: 0;
+}
+
+.tcg-public-inventory__hero h2 {
+  font-size: clamp(28px, 3vw, 44px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.tcg-public-inventory__hero p {
+  max-width: 760px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.tcg-public-inventory__eyebrow {
+  color: var(--pug-gold);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__logo,
+.tcg-public-inventory__mark {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+}
+
+.tcg-public-inventory__mark {
+  display: grid;
+  place-items: center;
+  color: var(--pug-gold);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.tcg-public-inventory__search {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(140px, 180px) minmax(180px, 0.8fr) minmax(140px, 180px) auto;
+  gap: 10px;
+  align-items: end;
+  margin: 16px 0;
+  padding: 14px;
+  color: #f8fbff;
+  background:
+    linear-gradient(180deg, rgba(15, 37, 58, 0.94), rgba(5, 8, 11, 0.9)),
+    rgba(5, 8, 11, 0.88);
+  border: 1px solid rgba(185, 244, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.tcg-public-inventory__quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 10px;
+  color: rgba(248, 251, 255, 0.74);
+  background: rgba(6, 13, 25, 0.78);
+  border: 1px solid rgba(126, 212, 255, 0.16);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__quick-filters span {
+  margin-right: 4px;
+  color: var(--pug-gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__quick-filters a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  color: #e5fbff;
+  background: rgba(16, 34, 62, 0.78);
+  border: 1px solid rgba(126, 212, 255, 0.18);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.tcg-public-inventory__quick-filters a[aria-current="page"],
+.tcg-public-inventory__quick-filters a:hover,
+.tcg-public-inventory__quick-filters a:focus {
+  color: #05080b;
+  background: linear-gradient(135deg, var(--pug-gold), #fff198 48%, var(--pug-cyan));
+  border-color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+}
+
+.tcg-public-inventory__search label {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: rgba(248, 251, 255, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__search input,
+.tcg-public-inventory__search select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  color: #f8fbff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(185, 244, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(5, 8, 11, 0.03);
+}
+
+.tcg-public-inventory__search input::placeholder {
+  color: rgba(248, 251, 255, 0.5);
+}
+
+.tcg-public-inventory__search input:focus,
+.tcg-public-inventory__search select:focus {
+  outline: 2px solid rgba(246, 198, 53, 0.38);
+  border-color: rgba(246, 198, 53, 0.72);
+}
+
+.tcg-public-inventory__search select option {
+  color: #0b1116;
+}
+
+.tcg-public-inventory__search button,
+.tcg-public-inventory__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  color: #111111;
+  background: linear-gradient(180deg, #ffe376, var(--pug-gold) 62%, var(--pug-amber));
+  border: 1px solid rgba(16, 24, 32, 0.16);
+  border-radius: 8px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-decoration: none;
+  box-shadow: 0 9px 20px rgba(199, 129, 16, 0.2);
+}
+
+.tcg-public-inventory__search button:hover,
+.tcg-public-inventory__search button:focus,
+.tcg-public-inventory__button:hover,
+.tcg-public-inventory__button:focus {
+  color: #05080b;
+  transform: translateY(-1px);
+}
+
+.tcg-public-inventory__toolbar {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 10px;
+  color: rgba(248, 251, 255, 0.74);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.tcg-public-inventory__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: clamp(14px, 1.5vw, 22px);
+}
+
+.tcg-public-inventory__card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  color: #f8fbff;
+  background: linear-gradient(180deg, rgba(15, 28, 54, 0.96), rgba(5, 8, 11, 0.94));
+  border: 1px solid rgba(185, 244, 255, 0.16);
+  border-radius: 8px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.25);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.tcg-public-inventory__card:hover {
+  border-color: rgba(38, 217, 240, 0.55);
+  box-shadow: 0 18px 45px rgba(5, 8, 11, 0.16);
+  transform: translateY(-2px);
+}
+
+.tcg-public-inventory__media {
+  display: grid;
+  position: relative;
+  height: 304px;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px;
+  background:
+    linear-gradient(22deg, transparent 0 66%, rgba(246, 198, 53, 0.18) 66% 100%),
+    linear-gradient(135deg, rgba(38, 217, 240, 0.14), rgba(15, 38, 57, 0.64)),
+    #071321;
+}
+
+.tcg-public-inventory__card img,
+.tcg-public-inventory__image-placeholder {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(10, 38, 57, 0.08);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__image-placeholder::after {
+  content: "Image pending";
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--pug-muted);
+  font-weight: 800;
+}
+
+.tcg-public-inventory__card-body {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.tcg-public-inventory__game {
+  color: var(--pug-gold);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__card h3,
+.tcg-public-inventory__card p {
+  margin: 0;
+}
+
+.tcg-public-inventory__card h3 {
+  font-size: 18px;
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.tcg-public-inventory__card p {
+  color: rgba(248, 251, 255, 0.72);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.tcg-public-inventory__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tcg-public-inventory__chips li {
+  padding: 5px 8px;
+  color: #dffbff;
+  background: rgba(38, 217, 240, 0.14);
+  border: 1px solid rgba(38, 217, 240, 0.42);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.tcg-public-inventory__card-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.tcg-public-inventory__card-meta strong {
+  color: var(--pug-gold);
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.tcg-public-inventory__card-meta span {
+  padding: 5px 8px;
+  color: #d9ffe9;
+  background: rgba(22, 138, 85, 0.18);
+  border: 1px solid rgba(121, 215, 143, 0.36);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.tcg-public-inventory__notice,
+.tcg-public-inventory__empty {
+  padding: 18px;
+  color: #f8fbff;
+  background:
+    linear-gradient(27deg, transparent 0 68%, rgba(246, 198, 53, 0.2) 68% 100%),
+    linear-gradient(135deg, rgba(15, 95, 143, 0.24), rgba(5, 8, 11, 0.92));
+  border: 1px solid rgba(246, 198, 53, 0.34);
+  border-radius: 8px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.tcg-public-inventory__empty {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.tcg-public-inventory__empty h3,
+.tcg-public-inventory__empty p {
+  margin: 0;
+}
+
+.tcg-public-inventory__empty h3 {
+  font-size: 24px;
+  line-height: 1.12;
+}
+
+.tcg-public-inventory__empty p {
+  max-width: 720px;
+  color: rgba(248, 251, 255, 0.78);
+}
+
+.tcg-public-inventory__empty-kicker {
+  color: var(--pug-gold) !important;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.tcg-public-inventory__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.tcg-public-inventory__empty-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 13px;
+  color: #05080b !important;
+  background: linear-gradient(180deg, #ffe376, var(--pug-gold));
+  border: 1px solid rgba(16, 24, 32, 0.14);
+  border-radius: 8px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.tcg-public-inventory__empty-actions a:visited,
+.tcg-public-inventory__empty-actions a:hover,
+.tcg-public-inventory__empty-actions a:focus {
+  color: #05080b !important;
+  text-decoration: none;
+}
+
+.tcg-public-inventory__pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  padding: 12px;
+  color: rgba(248, 251, 255, 0.74);
+  background: linear-gradient(180deg, rgba(15, 37, 58, 0.94), rgba(5, 8, 11, 0.9));
+  border: 1px solid rgba(185, 244, 255, 0.16);
+  border-radius: 8px;
+}
+
+.tcg-public-inventory__pagination a,
+.tcg-public-inventory__pagination span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.tcg-public-inventory__pagination a {
+  color: #05080b;
+  background: var(--pug-gold);
+  border: 1px solid rgba(16, 24, 32, 0.14);
+  text-decoration: none;
+}
+
+.tcg-public-inventory__pagination span {
+  color: #dffbff;
+  background: rgba(38, 217, 240, 0.1);
+  border: 1px solid rgba(38, 217, 240, 0.22);
+}
+
+@media (max-width: 760px) {
+  body.page .site-main.content-shell:has(.tcg-public-inventory),
+  body.page .site-main.content-shell:has(.tcg-storefront-shelf) {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 0;
+  }
+
+  body.page .content-card:has(.tcg-public-inventory),
+  body.page .content-card:has(.tcg-storefront-shelf) {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .tcg-storefront-shelf__hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .tcg-storefront-shelf__badge {
+    justify-self: stretch;
+  }
+
+  .tcg-storefront-shelf__nav a,
+  .tcg-storefront-shelf__stat {
+    width: 100%;
+  }
+
+  .tcg-product-shelf__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tcg-product-shelf__media {
+    min-height: 210px;
+  }
+
+  .tcg-product-shelf__empty-actions a {
+    width: 100%;
+  }
+
+  .tcg-public-inventory__hero,
+  .tcg-public-inventory__search {
+    grid-template-columns: 1fr;
+  }
+
+  .tcg-public-inventory__search button,
+  .tcg-public-inventory__button {
+    width: 100%;
+  }
+
+  .tcg-public-inventory__quick-filters {
+    align-items: stretch;
+  }
+
+  .tcg-public-inventory__quick-filters span {
+    width: 100%;
+  }
+
+  .tcg-public-inventory__quick-filters a {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .tcg-public-inventory__logo,
+  .tcg-public-inventory__mark {
+    width: 72px;
+    height: 72px;
+  }
+
+  .tcg-public-inventory__card {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .tcg-public-inventory__media {
+    height: clamp(360px, 112vw, 520px);
+    padding: 18px;
+  }
+
+  .tcg-public-inventory__card-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

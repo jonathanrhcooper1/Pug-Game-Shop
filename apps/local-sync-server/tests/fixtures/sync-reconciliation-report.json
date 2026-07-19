@@ -1,0 +1,204 @@
+{
+  "generated_at_utc": "2026-07-18T20:00:00.000Z",
+  "inventory_items": [
+    {
+      "public_id": "inv-matched",
+      "wordpress_public_id": "wp-matched",
+      "card_name": "Matched Card",
+      "barcode": "MATCH-1",
+      "status": "available",
+      "quantity_on_hand": 2,
+      "kiosk_visibility": "visible",
+      "online_visibility": "visible",
+      "square_catalog_variation_id": "SQ-MATCHED",
+      "external_sync_state": "synced"
+    },
+    {
+      "public_id": "inv-reserved",
+      "wordpress_public_id": "wp-reserved",
+      "card_name": "=2+2",
+      "barcode": "RESERVED-1",
+      "status": "reserved",
+      "quantity_on_hand": 1,
+      "kiosk_visibility": "visible",
+      "online_visibility": "visible",
+      "square_catalog_variation_id": "SQ-RESERVED",
+      "external_sync_state": "pending"
+    },
+    {
+      "public_id": "inv-repair",
+      "wordpress_public_id": "wp-repair",
+      "row_version": 7,
+      "game": "MTG",
+      "card_name": "Sanitized Repair Card",
+      "set_name": "Fixture Set",
+      "condition": "NM",
+      "barcode": "REPAIR-1",
+      "status": "available",
+      "quantity_on_hand": 3,
+      "price_minor_units": 1200,
+      "minimum_sale_price_minor_units": 900,
+      "currency": "USD",
+      "location": "Fixture Case",
+      "kiosk_visibility": "visible",
+      "online_visibility": "visible",
+      "pos_visibility": "visible",
+      "square_catalog_variation_id": "SQ-REPAIR",
+      "square_location_id": "LOC-FIXTURE",
+      "external_sync_state": "synced"
+    }
+  ],
+  "inventory_reservations": [
+    {
+      "reservation_id": "reservation-1",
+      "inventory_public_id": "inv-reserved",
+      "quantity": 1,
+      "status": "active",
+      "expires_at_utc": "2026-07-18T21:00:00.000Z"
+    }
+  ],
+  "operation_queue": [
+    {
+      "operation_id": "op-reserved",
+      "operation_type": "inventory_update",
+      "entity_id": "inv-reserved",
+      "payload_json": "{\"inventory_public_id\":\"inv-reserved\"}",
+      "queued_at_utc": "2026-07-18T19:00:00.000Z",
+      "sync_status": "pending"
+    }
+  ],
+  "sync_outbox_events": [
+    {
+      "event_id": "event-matched",
+      "idempotency_key": "op-matched",
+      "aggregate_type": "inventory",
+      "aggregate_id": "inv-matched",
+      "event_type": "inventory_update",
+      "created_at_utc": "2026-07-18T18:00:00.000Z",
+      "updated_at_utc": "2026-07-18T18:03:00.000Z"
+    },
+    {
+      "event_id": "event-reserved",
+      "idempotency_key": "op-reserved",
+      "aggregate_type": "inventory",
+      "aggregate_id": "inv-reserved",
+      "event_type": "inventory_update",
+      "created_at_utc": "2026-07-18T19:00:00.000Z",
+      "updated_at_utc": "2026-07-18T19:03:00.000Z"
+    }
+  ],
+  "sync_outbox_deliveries": [
+    {
+      "event_id": "event-matched",
+      "destination": "wordpress",
+      "status": "verified",
+      "verified_at_utc": "2026-07-18T18:01:00.000Z",
+      "updated_at_utc": "2026-07-18T18:01:00.000Z"
+    },
+    {
+      "event_id": "event-matched",
+      "destination": "square",
+      "status": "verified",
+      "verified_at_utc": "2026-07-18T18:03:00.000Z",
+      "updated_at_utc": "2026-07-18T18:03:00.000Z"
+    },
+    {
+      "event_id": "event-matched",
+      "destination": "kiosk",
+      "status": "verified",
+      "verified_at_utc": "2026-07-18T18:02:00.000Z",
+      "updated_at_utc": "2026-07-18T18:02:00.000Z"
+    },
+    {
+      "event_id": "event-reserved",
+      "destination": "wordpress",
+      "status": "retry",
+      "last_error_code": "wordpress_timeout",
+      "last_attempt_at_utc": "2026-07-18T19:01:00.000Z",
+      "updated_at_utc": "2026-07-18T19:01:00.000Z"
+    },
+    {
+      "event_id": "event-reserved",
+      "destination": "square",
+      "status": "dead_letter",
+      "last_error_code": "square_count_failed",
+      "last_attempt_at_utc": "2026-07-18T19:02:00.000Z",
+      "updated_at_utc": "2026-07-18T19:02:00.000Z"
+    },
+    {
+      "event_id": "event-reserved",
+      "destination": "kiosk",
+      "status": "verified",
+      "verified_at_utc": "2026-07-18T19:00:30.000Z",
+      "updated_at_utc": "2026-07-18T19:00:30.000Z"
+    }
+  ],
+  "website_inventory": [
+    {
+      "public_id": "wp-matched",
+      "card_name": "Matched Card",
+      "barcode": "MATCH-1",
+      "status": "available",
+      "quantity_on_hand": 2,
+      "online_visibility": "visible",
+      "kiosk_visibility": "visible",
+      "square_catalog_variation_id": "SQ-MATCHED"
+    },
+    {
+      "public_id": "wp-reserved",
+      "card_name": "Reserved Card",
+      "barcode": "RESERVED-1",
+      "status": "available",
+      "quantity_on_hand": 2,
+      "online_visibility": "visible",
+      "kiosk_visibility": "visible",
+      "square_catalog_variation_id": "SQ-RESERVED"
+    },
+    {
+      "public_id": "wp-repair",
+      "card_name": "Sanitized Repair Card",
+      "barcode": "REPAIR-1",
+      "status": "available",
+      "quantity_on_hand": 1,
+      "online_visibility": "visible",
+      "kiosk_visibility": "visible",
+      "square_catalog_variation_id": "SQ-REPAIR"
+    },
+    {
+      "public_id": "wp-only",
+      "card_name": "@SUM(1+1)",
+      "barcode": "WP-ONLY",
+      "status": "available",
+      "quantity_on_hand": 1,
+      "online_visibility": "visible",
+      "kiosk_visibility": "visible",
+      "square_catalog_variation_id": "SQ-WP-ONLY"
+    }
+  ],
+  "square_counts": [
+    {
+      "catalog_object_id": "SQ-MATCHED",
+      "state": "IN_STOCK",
+      "quantity": "2",
+      "calculated_at": "2026-07-18T19:30:00.000Z"
+    },
+    {
+      "catalog_object_id": "SQ-RESERVED",
+      "state": "IN_STOCK",
+      "quantity": "1",
+      "calculated_at": "2026-07-18T19:30:00.000Z"
+    },
+    {
+      "catalog_object_id": "SQ-WP-ONLY",
+      "state": "IN_STOCK",
+      "quantity": "1",
+      "calculated_at": "2026-07-18T19:30:00.000Z"
+    },
+    {
+      "catalog_object_id": "SQ-REPAIR",
+      "state": "IN_STOCK",
+      "quantity": "1",
+      "calculated_at": "2026-07-18T19:30:00.000Z"
+    }
+  ]
+}

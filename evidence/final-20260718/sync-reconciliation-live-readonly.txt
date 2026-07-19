@@ -1,0 +1,46 @@
+(node:38104) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{
+  "status": "ok",
+  "code": "sync_reconciliation_report_written",
+  "report_schema_version": "1",
+  "report_mode": "connected",
+  "output_path": "C:\\pug022\\Pug_Full_Current_Package_0.202.22_20260718-140201\\source-current\\Pug-Game-Shop-clone\\PUG_SYNC_RECONCILIATION_REPORT.csv",
+  "generated_at_utc": "2026-07-19T01:18:49.786Z",
+  "local_table_statuses": {
+    "inventory_items": {
+      "status": "ok",
+      "row_count": 2895
+    },
+    "inventory_reservations": {
+      "status": "missing_table",
+      "row_count": 0
+    },
+    "operation_queue": {
+      "status": "ok",
+      "row_count": 31
+    },
+    "sync_outbox_events": {
+      "status": "missing_table",
+      "row_count": 0
+    },
+    "sync_outbox_deliveries": {
+      "status": "missing_table",
+      "row_count": 0
+    }
+  },
+  "connectors": {
+    "website": {
+      "status": "ok",
+      "code": "ok"
+    },
+    "square": {
+      "status": "ok",
+      "code": "square_inventory_counts_pulled"
+    }
+  },
+  "rows_written": 2915,
+  "mismatch_rows": 2915,
+  "credentials_printed": false,
+  "raw_credentials_returned": false
+}

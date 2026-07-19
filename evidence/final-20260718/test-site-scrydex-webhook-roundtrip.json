@@ -1,0 +1,22 @@
+﻿{
+    "test":  "wordpress_scrydex_webhook_roundtrip",
+    "site":  "https://2vd.cc4.myftpupload.com",
+    "passed":  true,
+    "schema_version":  18,
+    "receive_http_status":  202,
+    "receive_status":  "accepted",
+    "durable_event_log_status":  "logged",
+    "relay_poll_http_status":  200,
+    "relay_matching_event_count":  0,
+    "relay_backlog_at_limit":  true,
+    "relay_claim_status":  "ok",
+    "relay_complete_status":  "ok",
+    "event_due_after_completion":  0,
+    "targeted_expansion_sync":  true,
+    "full_catalog_polling_requested":  false,
+    "credentials_written_to_evidence":  false,
+    "reversible_temporary_state_only":  true,
+    "cleanup_backup_option_exists":  false,
+    "cleanup_event_rows":  0,
+    "cleanup_passed":  true
+}

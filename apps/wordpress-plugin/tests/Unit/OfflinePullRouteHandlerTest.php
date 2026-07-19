@@ -1,0 +1,322 @@
+<?php
+/**
+ * Offline pull route handler tests.
+ *
+ * @package TCGStorePlatform
+ */
+
+namespace TCGStorePlatform\Tests\Unit;
+
+use RuntimeException;
+use TCGStorePlatform\Api\V1\OfflinePullRouteHandler;
+use TCGStorePlatform\Api\V1\OfflineRestRequestData;
+use TCGStorePlatform\Offline\OfflinePullCursorAdvancePlan;
+use TCGStorePlatform\Offline\OfflinePullCursorAdvanceQueryBuilder;
+use TCGStorePlatform\Offline\OfflinePullCursorAdvanceRepositoryResult;
+use TCGStorePlatform\Offline\OfflinePullRequest;
+use TCGStorePlatform\Tests\TestCase;
+
+final class OfflinePullRouteHandlerTest extends TestCase {
+	public function test_handler_returns_empty_pull_response_without_live_queries(): void {
+		$response = $this->handler()->handle(
+			new OfflineRestRequestData( $this->pull_payload(), array(), array(), array() )
+		);
+
+		$this->assert_same( 'ready', $response['status'] );
+		$this->assert_same( 200, $response['status_code'] );
+		$this->assert_same( 'offline_pull_response_ready', $response['code'] );
+		$this->assert_same( 'pull_offline_changes', $response['callback'] );
+		$this->assert_same( 'device-main-01', $response['data']['device_id'] );
+		$this->assert_same( 1, $response['data']['schema_version'] );
+		$this->assert_same( '2026-06-06T20:00:00Z', $response['data']['server_time_utc'] );
+		$this->assert_same( 'inv-cursor-01', $response['data']['domains']['inventory']['cursor'] );
+		$this->assert_same( array(), $response['data']['domains']['inventory']['data'] );
+		$this->assert_same( array(), $response['data']['domains']['inventory']['tombstones'] );
+		$this->assert_true( $response['meta']['query_deferred'] );
+		$this->assert_true( $response['meta']['cursor_advance_deferred'] );
+		$this->assert_true( $response['meta']['write_deferred'] );
+		$this->assert_true( $response['meta']['route_still_gated'] );
+		$this->assert_false( $response['meta']['cursor_advance_attempted'] );
+		$this->assert_same( 'deferred', $response['meta']['cursor_advance_status'] );
+	}
+
+	public function test_handler_uses_injected_change_sets_without_advancing_cursors(): void {
+		$handler = new OfflinePullRouteHandler(
+			null,
+			null,
+			static fn ( OfflinePullRequest $request ): array => array(
+				'inventory' => array(
+					'cursor'   => 'inv-cursor-02',
+					'has_more' => true,
+					'data'     => array(
+						array(
+							'entity_id'      => 'inv-1001',
+							'row_version'    => 7,
+							'updated_at_utc' => '2026-06-06T20:01:00Z',
+							'payload'        => array(
+								'status' => 'available',
+							),
+						),
+					),
+				),
+			),
+			static fn (): string => '2026-06-06T20:02:00Z'
+		);
+		$response = $handler->handle(
+			new OfflineRestRequestData( $this->pull_payload(), array(), array(), array() )
+		);
+
+		$this->assert_same( 'ready', $response['status'] );
+		$this->assert_same( 'inv-cursor-02', $response['data']['domains']['inventory']['cursor'] );
+		$this->assert_true( $response['data']['domains']['inventory']['has_more'] );
+		$this->assert_same( 'inventory_item', $response['data']['domains']['inventory']['data'][0]['entity_type'] );
+		$this->assert_same( 'available', $response['data']['domains']['inventory']['data'][0]['payload']['status'] );
+		$this->assert_true( $response['meta']['cursor_advance_deferred'] );
+	}
+
+	public function test_handler_passes_request_data_to_route_aware_provider(): void {
+		$provider_headers = array();
+		$handler          = new OfflinePullRouteHandler(
+			null,
+			null,
+			static function ( OfflinePullRequest $request, OfflineRestRequestData $data ) use ( &$provider_headers ): array {
+				$provider_headers = $data->headers();
+
+				return array(
+					'inventory' => array(
+						'cursor'   => 'inv-route-aware-01',
+						'has_more' => false,
+						'data'     => array(),
+					),
+				);
+			},
+			static fn (): string => '2026-06-06T20:03:00Z'
+		);
+		$response         = $handler->handle(
+			new OfflineRestRequestData(
+				$this->pull_payload(),
+				array(),
+				array(),
+				array(
+					'authorization' => 'Bearer test-device-token',
+				)
+			)
+		);
+
+		$this->assert_same( 'ready', $response['status'] );
+		$this->assert_same( 'inv-route-aware-01', $response['data']['domains']['inventory']['cursor'] );
+		$this->assert_same( 'Bearer test-device-token', $provider_headers['authorization'] );
+		$this->assert_true( $response['meta']['write_deferred'] );
+	}
+
+	public function test_handler_can_advance_cursors_with_explicit_provider(): void {
+		$advanced_change_sets = array();
+		$handler              = new OfflinePullRouteHandler(
+			null,
+			null,
+			fn ( OfflinePullRequest $request ): array => $this->complete_change_sets(),
+			static fn (): string => '2026-06-06T20:04:00Z',
+			function (
+				OfflinePullRequest $request,
+				OfflineRestRequestData $data,
+				array $change_sets
+			) use ( &$advanced_change_sets ): OfflinePullCursorAdvanceRepositoryResult {
+				$advanced_change_sets = $change_sets;
+
+				return $this->advanced_cursor_result();
+			}
+		);
+		$response             = $handler->handle(
+			new OfflineRestRequestData( $this->pull_payload(), array(), array(), array() )
+		);
+
+		$this->assert_same( 'ready', $response['status'] );
+		$this->assert_same( 'inv-cursor-advance-01', $response['data']['domains']['inventory']['cursor'] );
+		$this->assert_false( $response['meta']['cursor_advance_deferred'] );
+		$this->assert_false( $response['meta']['write_deferred'] );
+		$this->assert_true( $response['meta']['route_still_gated'] );
+		$this->assert_true( $response['meta']['cursor_advance_attempted'] );
+		$this->assert_same( 'advanced', $response['meta']['cursor_advance_status'] );
+		$this->assert_same( 1, $response['meta']['cursor_advance_rows_affected'] );
+		$this->assert_same( 'offline_pull_cursor_advance_repository', $response['meta']['cursor_advance_audit']['action'] );
+		$this->assert_same( 'inv-cursor-advance-01', $advanced_change_sets['inventory']['cursor'] );
+	}
+
+	public function test_handler_fails_closed_when_cursor_advance_rejects(): void {
+		$handler  = new OfflinePullRouteHandler(
+			null,
+			null,
+			fn ( OfflinePullRequest $request ): array => $this->complete_change_sets(),
+			static fn (): string => '2026-06-06T20:05:00Z',
+			fn (): OfflinePullCursorAdvanceRepositoryResult => $this->rejected_cursor_result()
+		);
+		$response = $handler->handle(
+			new OfflineRestRequestData( $this->pull_payload(), array(), array(), array() )
+		);
+
+		$this->assert_same( 'invalid', $response['status'] );
+		$this->assert_same( 400, $response['status_code'] );
+		$this->assert_same( 'offline_pull_cursor_advance_failed', $response['code'] );
+		$this->assert_true( in_array( 'cursor_advance_plan_invalid', $response['errors'], true ) );
+		$this->assert_true( in_array( 'inventory_change_set_missing', $response['errors'], true ) );
+		$this->assert_true( $response['meta']['cursor_advance_deferred'] );
+	}
+
+	public function test_handler_fails_closed_when_cursor_advance_provider_returns_wrong_type(): void {
+		$handler  = new OfflinePullRouteHandler(
+			null,
+			null,
+			fn ( OfflinePullRequest $request ): array => $this->complete_change_sets(),
+			static fn (): string => '2026-06-06T20:06:00Z',
+			static fn (): array => array()
+		);
+		$response = $handler->handle(
+			new OfflineRestRequestData( $this->pull_payload(), array(), array(), array() )
+		);
+
+		$this->assert_same( 'invalid', $response['status'] );
+		$this->assert_same( 'offline_pull_cursor_advance_invalid', $response['code'] );
+		$this->assert_same(
+			array( 'Offline pull cursor advance provider must return a repository result.' ),
+			$response['errors']
+		);
+	}
+
+	public function test_handler_rejects_invalid_pull_payload_before_provider(): void {
+		$called  = false;
+		$handler = new OfflinePullRouteHandler(
+			null,
+			null,
+			static function () use ( &$called ): array {
+				$called = true;
+
+				return array();
+			},
+			static fn (): string => '2026-06-06T20:00:00Z'
+		);
+		$response = $handler->handle(
+			new OfflineRestRequestData( array(), array(), array(), array() )
+		);
+
+		$this->assert_same( 'invalid', $response['status'] );
+		$this->assert_same( 400, $response['status_code'] );
+		$this->assert_same( 'offline_pull_request_invalid', $response['code'] );
+		$this->assert_true( in_array( 'device_id_required', $response['errors'], true ) );
+		$this->assert_false( $called );
+		$this->assert_true( $response['meta']['query_deferred'] );
+	}
+
+	public function test_handler_fails_closed_when_change_provider_fails(): void {
+		$handler = new OfflinePullRouteHandler(
+			null,
+			null,
+			static function (): array {
+				throw new RuntimeException( 'pull unavailable' );
+			},
+			static fn (): string => '2026-06-06T20:00:00Z'
+		);
+		$response = $handler->handle(
+			new OfflineRestRequestData( $this->pull_payload(), array(), array(), array() )
+		);
+
+		$this->assert_same( 'invalid', $response['status'] );
+		$this->assert_same( 400, $response['status_code'] );
+		$this->assert_same( 'offline_pull_change_provider_failed', $response['code'] );
+		$this->assert_same( array( 'change_set_provider_failed' ), $response['errors'] );
+		$this->assert_true( $response['meta']['write_deferred'] );
+	}
+
+	private function handler(): OfflinePullRouteHandler {
+		return new OfflinePullRouteHandler(
+			null,
+			null,
+			null,
+			static fn (): string => '2026-06-06T20:00:00Z'
+		);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private function pull_payload(): array {
+		return array(
+			'device_id'          => 'device-main-01',
+			'domains'            => array( 'inventory' ),
+			'cursors'            => array(
+				'inventory' => 'inv-cursor-01',
+			),
+			'page_size'          => 50,
+			'include_tombstones' => true,
+			'schema_version'     => 1,
+		);
+	}
+
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function complete_change_sets(): array {
+		return array(
+			'inventory' => array(
+				'cursor'     => 'inv-cursor-advance-01',
+				'has_more'   => false,
+				'data'       => array(
+					array(
+						'entity_type'    => 'inventory_item',
+						'entity_id'      => 'inv-1001',
+						'row_version'    => 7,
+						'updated_at_utc' => '2026-06-06T20:04:00Z',
+						'payload'        => array(
+							'status' => 'available',
+						),
+					),
+				),
+				'tombstones' => array(),
+			),
+		);
+	}
+
+	private function advanced_cursor_result(): OfflinePullCursorAdvanceRepositoryResult {
+		$plan = OfflinePullCursorAdvancePlan::accepted(
+			'device-main-01',
+			42,
+			'wp_',
+			array(
+				array(
+					'offline_device_id'    => 42,
+					'device_public_id'     => 'device-main-01',
+					'domain'               => 'inventory',
+					'cursor_value'         => 'inv-cursor-advance-01',
+					'last_server_time_utc' => '2026-06-06 20:04:00',
+					'last_pulled_at'       => '2026-06-06 20:04:00',
+					'row_count'            => 1,
+					'row_version_next'     => 1,
+				),
+			)
+		);
+		$query_plan = ( new OfflinePullCursorAdvanceQueryBuilder() )->build( $plan );
+
+		return OfflinePullCursorAdvanceRepositoryResult::advanced(
+			$query_plan,
+			array(
+				array(
+					'domain'        => 'inventory',
+					'rows_affected' => 1,
+				),
+			),
+			1
+		);
+	}
+
+	private function rejected_cursor_result(): OfflinePullCursorAdvanceRepositoryResult {
+		$plan       = OfflinePullCursorAdvancePlan::rejected(
+			'device-main-01',
+			array( 'inventory_change_set_missing' )
+		);
+		$query_plan = ( new OfflinePullCursorAdvanceQueryBuilder() )->build( $plan );
+
+		return OfflinePullCursorAdvanceRepositoryResult::rejected(
+			$query_plan,
+			$query_plan->errors()
+		);
+	}
+}

@@ -1,0 +1,180 @@
+# Phase 2 Inventory And Pricing
+
+## Status
+
+In progress. The first local implementation slice is complete and verified;
+staging database acceptance remains pending.
+
+## Delivered
+
+- Migration `0002` for inventory/pricing foundations:
+  - `tcg_reference_cards`
+  - `tcg_reference_variants`
+  - `tcg_inventory_locations`
+  - `tcg_inventory_items`
+  - `tcg_inventory_movements`
+  - `tcg_barcodes`
+  - `tcg_price_change_log`
+  - `tcg_manager_overrides`
+- Reversible drop order for Phase 2 tables.
+- Inventory status rules for active, reserved, sold, review, damaged, and
+  removed workflows.
+- Intake validation for required minimum sale price, raw/graded requirements,
+  active item barcode/location, and listed item reference identity.
+- Planned inventory/search REST contracts for exact serialized inventory CRUD,
+  reservation actions, movement, price lock, bulk intake, import/export,
+  public search, reference search, inventory search, and version grouping.
+- Dependency-free staff/offline/ScryDex-import intake parser with normalized
+  exact-card fields, visibility, pricing floor checks, and deferred
+  WooCommerce/label side-effect flags.
+- Plan-only intake persistence for staged inventory item creation, including
+  schema-aligned insert rows, prepared SQL templates, deterministic public IDs,
+  fallback pending-intake barcode/SKU generation, money/timestamp planning, and
+  explicit write/projection deferral metadata.
+- Explicit inventory intake repository adapter for staged `$wpdb` inserts,
+  including invalid-plan short-circuiting, active table-prefix validation,
+  insert-count outcome handling, transactional initial price-change log
+  persistence, created-item response payloads, and write/projection deferral
+  audits.
+- Inventory intake repository duplicate barcode/SKU preflight checks with
+  stable staff-facing collision error codes before insert.
+- Staged inventory intake route handler and factory for explicitly enabled
+  `POST /inventory` creation tests, composing parser, persistence planner,
+  repository execution, created responses, default route deferral, and
+  projection/label-print deferral metadata.
+- Gated inventory REST controller, permission callback factory, public-read
+  permission adapter, capability permission adapter, registration planner, and
+  registrar for future inventory search/create routes while default live
+  registration remains disabled.
+- Public inventory read rate-limit policy for future public search routes,
+  including WordPress transient storage support, hashed bucket audit data,
+  fail-closed public access when no limiter is configured, and staff fallback
+  authorization for staging/admin reads.
+- Inventory route dependency factory and readiness presenter for composing
+  staged search/create handlers, controller dispatch, permission callbacks,
+  registration planning, and registrar readiness without enabling live routes.
+- Authenticated health and admin System Status reporting for inventory route
+  dependency readiness, with WordPress smoke coverage proving inventory search
+  and create routes stay unregistered by default.
+- Inventory route bootstrap planning, status presentation, dependency-factory
+  composition, and WordPress `rest_api_init` hook wiring while route
+  registration remains blocked by default.
+- Default inventory dependency composition now includes staged search and
+  intake handler factories so health/admin diagnostics can report factory and
+  database readiness while route execution remains deferred.
+- Staff-facing WordPress Inventory admin workspace for route readiness, route
+  contract, and next-checkpoint review while live inventory execution remains
+  disabled.
+- Inventory route runtime settings and contract configuration for staging-only
+  staff `/inventory/search` route enablement, with writes, public reads,
+  WooCommerce projection, Square projection, and label actions still disabled
+  by default.
+- Environment-aware `inventory_pricing` feature flag availability for local,
+  development, and staging environments while production remains unavailable.
+- WordPress integration staging smoke coverage for enabling only the staff
+  `/inventory/search` route while writes, public reads, WooCommerce projection,
+  Square projection, and POS ingestion stay closed.
+- Staging-only staff inventory create runtime gate for `POST /inventory`,
+  proving REST-backed card intake writes can be enabled without enabling
+  production routes or external WooCommerce/Square/POS/label side effects.
+- WordPress integration staging smoke coverage now creates a disposable
+  Bulbasaur inventory item through REST and searches it back through the staff
+  inventory route while verifying the initial price-change log row.
+- Staged inventory create responses now expose side-effect-free WooCommerce
+  product and Square inventory projection contracts after successful database
+  writes, keeping external writes and network calls deferred.
+- WordPress integration migration rehearsal now rolls the disposable database
+  from the current target back to schema version `1`, verifies Phase 2
+  inventory/pricing tables are dropped, migrates back to the target, and
+  verifies those tables return. The rehearsal requires an explicit destructive
+  test flag and refuses production.
+- WordPress integration inventory search benchmark fixture now seeds 50,000
+  deterministic disposable inventory rows, exercises public visible search,
+  staff deep pagination, and staff barcode lookup through the staged search
+  handler, emits timing baselines, and refuses production unless explicitly
+  enabled for a non-production database.
+- Staff Inventory Workspace search form, route-readiness lockout, and
+  REST-backed read-only results panel for the staging staff inventory search
+  route.
+- Staff Inventory Workspace intake form for gated staging card creation through
+  `POST /inventory`, including card identity, barcode/SKU, location, pricing,
+  status, condition, and visibility fields.
+- Staff Inventory Workspace card lookup for the website reference catalog,
+  showing image URL, set/number, stock/price context, condition and quantity
+  controls, and a handoff that prefills the existing intake form without
+  changing ScryDex importer internals.
+- Disposable WordPress staging smoke seed data for one Pokemon inventory item,
+  proving staff inventory search returns real table data in CI.
+- Dependency-free inventory search parser with query, game, status, location,
+  visibility, sort, and pagination filters.
+- Plan-only inventory search query contracts for public, staff, hidden, and all
+  inventory views, including public defaults for visible/available cards,
+  barcode/SKU search for staff views, and deferred route/database execution.
+- Inventory search response presentation with public-safe redaction and
+  staff-only operational fields for exact-card handling.
+- Inventory search SQL-template planning with allowlisted selected columns,
+  validated where/sort contracts, prepared `SELECT` and `COUNT` templates,
+  pagination arguments, and deferred repository execution metadata.
+- Explicit inventory search repository adapter that executes prepared
+  `SELECT` and `COUNT` templates through injected `$wpdb`, validates the active
+  table prefix, normalizes row envelopes, rejects database/malformed-row
+  failures, and keeps live route registration disabled.
+- Staged inventory search route handler and factory for explicitly enabled
+  `/inventory/search` reads, composing parser, planner, repository, and
+  public/staff response presentation while default route registration remains
+  gated.
+- WooCommerce product projection planning for exact serialized inventory rows,
+  including available/visible simple-product create and update payloads,
+  unavailable mapped-card stockout payloads, serialized inventory metadata,
+  store-currency and single-quantity validation, and deferred write metadata.
+- WooCommerce product write request planning for those projection operations,
+  including non-production create/update/stockout request envelopes,
+  idempotency keys, product IDs/SKUs for review, and continued product-write,
+  Square, and payment-capture deferrals.
+- WooCommerce product write request readiness wiring across guarded projection
+  execution, staged inventory create response metadata, dependency
+  health/admin summaries, and the Staff Inventory workspace, with production
+  request-context rejection before any product writer callback can run.
+- API-client WooCommerce product adapter contract for validating staged
+  create/update/stockout request envelopes outside WordPress, rejecting
+  production/live-looking credential contexts, and preserving official
+  WooCommerce Square handoff for catalog/inventory sync.
+- Guarded WooCommerce product projection execution for staging-only adapter
+  handoff, including default lockout, explicit execution requirements,
+  skipped/failed projection handling, writer failure rejection, audit-safe
+  result metadata, and continued production/payment/Square deferrals.
+- Guarded Square inventory projection execution for staging-only POS inventory
+  adapter handoff, including separate catalog and inventory writers, default
+  network-write lockout, skipped/failed projection handling, writer failure
+  rejection, and payment-capture deferral to the official WooCommerce Square
+  extension.
+- Pricing policy helper for market plus 10 percent, currency mismatch blocking,
+  price lock blocking, status exclusions, and minimum price floor hits.
+- Manager override policy helper for below-minimum sale approval, distinct
+  manager requirement, required reason, and override-row persistence signal.
+- Manager override reauthentication checks, stable override public ID planning,
+  reauthentication audit metadata, and staged `$wpdb` repository persistence
+  for approved below-minimum sale override rows.
+
+## Verification Performed
+
+On PHP 8.2.29:
+
+- 47 PHP files passed syntax checks.
+- 34 unit tests passed.
+- The plugin bootstrap smoke test passed.
+- A GitHub Actions WordPress integration workflow was added to install
+  WordPress, WooCommerce, activate the plugin, and verify schema version `2`,
+  expected tables, roles, and REST health output with WP-CLI.
+
+## Acceptance Still Required
+
+1. Clean migration from schema version `1` to `2` on the GoDaddy staging
+   database.
+2. Rollback from schema version `2` to `1` on the GoDaddy staging database.
+3. `dbDelta` compatibility on the target GoDaddy WordPress database
+   configuration.
+4. Review and approve search and pagination benchmark baselines on GoDaddy
+   staging after running the 50,000-item fixture there.
+5. Live route registration remains disabled until target-staging permission,
+   rate-limit, and route smoke tests are complete.

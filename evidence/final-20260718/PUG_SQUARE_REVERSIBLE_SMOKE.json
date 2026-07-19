@@ -1,0 +1,68 @@
+{
+  "action": "reversible_square_catalog_inventory_smoke",
+  "environment": "production",
+  "location_id_configured": true,
+  "sku": "PUGQ607190054",
+  "created_catalog_item_id": "YYMKWQ36KPDH7C6EYYNKEK7L",
+  "created_catalog_variation_id": "XJNCXFWFVI57HFB5GVUVWOEV",
+  "checks": [
+    {
+      "name": "test_sku_did_not_preexist",
+      "pass": true,
+      "expected": 0,
+      "actual": 0
+    },
+    {
+      "name": "catalog_and_count_create_readback",
+      "pass": true,
+      "expected": true,
+      "actual": {
+        "status": "ok",
+        "code": "square_catalog_inventory_synced",
+        "http_status": 0,
+        "endpoint": "",
+        "errors": [],
+        "readback_verified": true
+      }
+    },
+    {
+      "name": "catalog_price_and_zero_count_readback",
+      "pass": true,
+      "expected": true,
+      "actual": {
+        "status": "ok",
+        "code": "square_catalog_inventory_synced",
+        "readback_verified": true,
+        "quantity_on_hand": 0
+      }
+    },
+    {
+      "name": "temporary_inventory_zeroed",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "temporary_catalog_item_deleted",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "temporary_sku_absent_after_cleanup",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    }
+  ],
+  "cleanup": {
+    "attempted": true,
+    "inventory_zeroed": true,
+    "catalog_item_deleted": true,
+    "sku_absent_after_cleanup": true
+  },
+  "credentials_printed": false,
+  "raw_credentials_returned": false,
+  "passed": true,
+  "completed_at_utc": "2026-07-19T00:54:45.574Z"
+}
