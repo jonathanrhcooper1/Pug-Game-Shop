@@ -1,0 +1,267 @@
+(node:7652) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{
+  "action": "production_local_sync_square_sale_smoke",
+  "status": "ok",
+  "localIntake": {
+    "publicId": "local-inventory-d737e64e-81b0-4689-a965-df5863105236",
+    "barcode": "PUGS9T011546Z",
+    "status": "available",
+    "credentialsPrinted": false
+  },
+  "inventoryPush": {
+    "acceptedCount": 1,
+    "retryCount": 0,
+    "wordpressInventoryPushConnected": true,
+    "woocommerceProductSync": {
+      "requested": true,
+      "synced": true,
+      "status": "executed",
+      "productIds": [
+        4363
+      ],
+      "errors": [],
+      "execution": {
+        "status": "",
+        "projectionCode": "",
+        "writeRequestCode": "",
+        "operationResults": []
+      },
+      "paymentCaptureDeferred": true,
+      "squareInventoryDeferred": true
+    }
+  },
+  "squareSale": {
+    "finalizedCount": 1,
+    "localStatus": "sold",
+    "localSource": "accepted",
+    "wordpressAutoSyncPerformed": true,
+    "wordpressAcceptedCount": 1,
+    "wordpressRetryCount": 0,
+    "squareReceiptReference": "SQ-CODEX-20260719T011546Z",
+    "squareOrderId": "SQ-ORDER-20260719T011546Z",
+    "paymentCaptureSupported": false,
+    "paymentCaptureAuthority": "official_woocommerce_square_extension",
+    "acceptedEntity": "local-inventory-d737e64e-81b0-4689-a965-df5863105236",
+    "wordpressInventory": {
+      "public_id": "05ff3776-0dad-df67-07f3-ac3b1e59f008",
+      "sku": "PUGS9T011546Z",
+      "barcode": "PUGS9T011546Z",
+      "status": "sold",
+      "square_receipt_reference": "SQ-CODEX-20260719T011546Z",
+      "price_change_log_persisted": false
+    },
+    "woocommerceProductSync": {
+      "requested": true,
+      "synced": true,
+      "status": "executed",
+      "productIds": [
+        4363
+      ],
+      "errors": [],
+      "execution": {
+        "status": "executed",
+        "projectionCode": "woocommerce_grouped_product_stockout_ready",
+        "writeRequestCode": "woocommerce_product_write_request_ready",
+        "operationResults": [
+          {
+            "status": "written",
+            "code": "",
+            "operation": "mark_grouped_product_out_of_stock",
+            "productId": 4363,
+            "failureType": "",
+            "failureCode": "",
+            "failureReason": ""
+          }
+        ]
+      },
+      "paymentCaptureDeferred": true,
+      "squareInventoryDeferred": true
+    }
+  },
+  "wordpressSearch": {
+    "skipped": false,
+    "httpStatus": 200,
+    "requestedStatus": "sold",
+    "itemCount": 1,
+    "matched": true,
+    "item": {
+      "public_id": "05ff3776-0dad-df67-07f3-ac3b1e59f008",
+      "barcode": "PUGS9T011546Z",
+      "sku": "PUGS9T011546Z",
+      "card_name": "Codex Square Sale Smoke",
+      "status": "sold",
+      "online_visibility": "visible",
+      "kiosk_visibility": "visible",
+      "pos_visibility": "visible"
+    },
+    "credentialsPrinted": false,
+    "endpoint": "https://2vd.cc4.myftpupload.com/wp-json/tcg-store/v1/inventory/search?q=PUGS9T011546Z&visibility=staff&status=sold&page_size=5"
+  },
+  "checks": [
+    {
+      "name": "local_intake_created",
+      "pass": true,
+      "expected": "PUGS9T011546Z",
+      "actual": "PUGS9T011546Z"
+    },
+    {
+      "name": "inventory_auto_published_to_wordpress",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "inventory_auto_published_woocommerce_product",
+      "pass": true,
+      "expected": "requested/synced/product_id",
+      "actual": {
+        "requested": true,
+        "synced": true,
+        "status": "executed",
+        "productIds": [
+          4363
+        ],
+        "errors": [],
+        "execution": {
+          "status": "",
+          "projectionCode": "",
+          "writeRequestCode": "",
+          "operationResults": []
+        },
+        "paymentCaptureDeferred": true,
+        "squareInventoryDeferred": true
+      }
+    },
+    {
+      "name": "square_sale_finalize_accepted",
+      "pass": true,
+      "expected": true,
+      "actual": true
+    },
+    {
+      "name": "square_sale_marked_local_item_sold",
+      "pass": true,
+      "expected": "sold",
+      "actual": "sold"
+    },
+    {
+      "name": "square_sale_payment_capture_deferred",
+      "pass": true,
+      "expected": "capture false / official_woocommerce_square_extension",
+      "actual": "false / official_woocommerce_square_extension"
+    },
+    {
+      "name": "wordpress_sale_push_synced",
+      "pass": true,
+      "expected": "sold with Square reference",
+      "actual": {
+        "public_id": "05ff3776-0dad-df67-07f3-ac3b1e59f008",
+        "sku": "PUGS9T011546Z",
+        "barcode": "PUGS9T011546Z",
+        "status": "sold",
+        "square_receipt_reference": "SQ-CODEX-20260719T011546Z",
+        "price_change_log_persisted": false
+      }
+    },
+    {
+      "name": "woocommerce_sale_sync_completed",
+      "pass": true,
+      "expected": "requested/synced/product_id",
+      "actual": {
+        "requested": true,
+        "synced": true,
+        "status": "executed",
+        "productIds": [
+          4363
+        ],
+        "errors": [],
+        "execution": {
+          "status": "executed",
+          "projectionCode": "woocommerce_grouped_product_stockout_ready",
+          "writeRequestCode": "woocommerce_product_write_request_ready",
+          "operationResults": [
+            {
+              "status": "written",
+              "code": "",
+              "operation": "mark_grouped_product_out_of_stock",
+              "productId": 4363,
+              "failureType": "",
+              "failureCode": "",
+              "failureReason": ""
+            }
+          ]
+        },
+        "paymentCaptureDeferred": true,
+        "squareInventoryDeferred": true
+      }
+    },
+    {
+      "name": "wordpress_sold_search_matched",
+      "pass": true,
+      "expected": "sold",
+      "actual": "sold"
+    },
+    {
+      "name": "manual_push_not_required_for_sale",
+      "pass": true,
+      "expected": "0 retries",
+      "actual": {
+        "intakeRetries": 0,
+        "saleRetries": 0
+      }
+    },
+    {
+      "name": "wordpress_cleanup_deleted_smoke_row",
+      "pass": true,
+      "expected": ">=1",
+      "actual": 1
+    },
+    {
+      "name": "wordpress_cleanup_deleted_woocommerce_product",
+      "pass": true,
+      "expected": ">=1",
+      "actual": 1
+    },
+    {
+      "name": "local_cleanup_deleted_smoke_row",
+      "pass": true,
+      "expected": ">=1",
+      "actual": 1
+    }
+  ],
+  "cleanup": {
+    "attempted": true,
+    "wordpress": {
+      "status": "ok",
+      "exitCode": 0,
+      "inventoryRowsMatched": 1,
+      "inventoryRowsDeleted": 1,
+      "priceRowsDeleted": 2,
+      "woocommerceProductsMatched": 1,
+      "woocommerceProductsDeleted": 1,
+      "matchedStatus": {
+        "status": "sold"
+      },
+      "diagnostics": {
+        "inventory_table": "wp_d062e758d8_tcg_inventory_items",
+        "barcode_length": 13,
+        "row_query_error": ""
+      },
+      "runnerRemoved": true,
+      "credentialsPrinted": false,
+      "stderrTail": ""
+    },
+    "local": {
+      "status": "ok",
+      "inventoryRowsDeleted": 1,
+      "queueRowsDeleted": 0,
+      "attempts": 1,
+      "serverRestartRecommended": true
+    }
+  },
+  "productionApprovalRequired": true,
+  "credentialsPrinted": false,
+  "rawResponsePrinted": false,
+  "passed": true
+}

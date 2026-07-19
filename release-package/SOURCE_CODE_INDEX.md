@@ -3,9 +3,9 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
-Release date: 2026-06-17
-Last updated: 2026-06-17
+Version: 0.203.1
+Release date: 2026-07-18
+Last updated: 2026-07-18
 Document purpose: Generated index of source/config/test files included in the repository handover.
 Audience: Developer and support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
@@ -29,6 +29,10 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | CONNECTOR_STATUS_REPORT.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | OPEN_BLOCKERS.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | PRODUCTION_AUDIT_REPORT.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| PUG_ARCHITECTURE_AND_DATA_FLOW.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| PUG_OPERATIONS_RUNBOOK.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| PUG_ROOT_CAUSE_REPORT.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| PUG_TEST_EVIDENCE.md | Project source/configuration | .md | Covered by related unit/contract test |
 | README.md | Project source/configuration | .md | Covered by related unit/contract test |
 | REVISION_LOG.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | SYNC_QUEUE_REPORT.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
@@ -37,15 +41,29 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/local-sync-server/.env.example | Project source/configuration | .example | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/README.md | Project source/configuration | .md | Covered by related unit/contract test |
 | apps/local-sync-server/config/windows-service.manifest.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/docs/scrydex-pricing-mapping.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/package.json | Project source/configuration | .json | Covered by related unit/contract test |
+| apps/local-sync-server/src/authoritativeLedger.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/cashDrawerKick.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/cli.mjs | LAN middleman server source | .mjs | Covered by related unit/contract test |
+| apps/local-sync-server/src/dymoLabelPrinter.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/exchangeRateProvider.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/gradedPricingProviders.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/lanServerUrl.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncDiscovery.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncHttpServer.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncServerContract.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/localSyncStore.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/pricingEngine.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/scrydexCatalogIndexer.mjs | LAN middleman server source | .mjs | Covered by related unit/contract test |
+| apps/local-sync-server/src/scrydexVisionIdentifier.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/squareCatalogInventorySyncer.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/squareInventoryCountsPuller.mjs | LAN middleman server source | .mjs | Covered by related unit/contract test |
+| apps/local-sync-server/src/squareSalesReportsPuller.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/squareTerminalConnector.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/wordpressCatalogExportPull.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressCatalogFallback.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/wordpressCatalogIndex.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressCreditPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressCustomerUpsertPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressEventCheckinPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
@@ -57,21 +75,50 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/local-sync-server/src/wordpressInventoryPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressKioskOrderPush.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | apps/local-sync-server/src/wordpressReportsPull.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/src/wordpressScryDexWebhookRelay.mjs | LAN middleman server source | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tests/authoritative-ledger.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/cash-drawer-kick.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/dymo-label-printer.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/exchange-rate-provider.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/fixtures/scrydex-validation-pages.json | End-to-end or contract test | .json | Test file |
+| apps/local-sync-server/tests/fixtures/sync-reconciliation-report.json | End-to-end or contract test | .json | Test file |
 | apps/local-sync-server/tests/graded-pricing-providers.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-discovery.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-barcode-history.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-cash-drawer-session.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-checkout.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-contract.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-credit-adjustment.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-event-create.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-fulfillment.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-hold-expiry.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-inventory-quantity-update.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-kiosk-payment.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-locations.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-maintenance.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-multi-client.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-persistence.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-projection-delivery.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-runtime.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-scrydex-catalog-jobs.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-square-inventory-reconciliation.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-square-sale-removal-sync.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-square-sales-reporting.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-square-terminal.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/local-sync-server-trade-ins.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-users-health.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-woocommerce-sale-atomicity.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/local-sync-server-wordpress-inventory-square-sync.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/pricing-engine.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/recovery-migration-tools.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/scrydex-catalog-indexer-pagination.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/scrydex-reference-search.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/scrydex-validation-harness.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/square-catalog-inventory-syncer.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/square-inventory-counts-puller.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/square-sales-reports-puller.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/sync-reconciliation-report.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/wordpress-catalog-export-pull.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-catalog-fallback.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-credit-push.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-customer-push.mjs | End-to-end or contract test | .mjs | Test file |
@@ -83,13 +130,29 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/local-sync-server/tests/wordpress-inventory-pull.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-inventory-push.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-inventory-sale-push.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/wordpress-inventory-update-push.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-kiosk-push.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/local-sync-server/tests/wordpress-reports-pull.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tests/wordpress-scrydex-webhook-relay.mjs | End-to-end or contract test | .mjs | Test file |
+| apps/local-sync-server/tools/daily-price-sync.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/dump-inventory-snapshots.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/force-pull-website.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/lib/barcode-alias-migration.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/lib/ops-common.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/lib/recovery-common.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/lib/trade-reconciliation.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/migrate-barcode-aliases.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/reconcile-trade-inventory.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/scrydex-validation.mjs | Project source/configuration | .mjs | Covered by related unit/contract test |
+| apps/local-sync-server/tools/start-visual-qa-server.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| apps/local-sync-server/tools/sync-reconciliation-report.mjs | Project source/configuration | .mjs | Covered by related unit/contract test |
 | apps/offline-app/README.md | Project source/configuration | .md | Covered by related unit/contract test |
 | apps/offline-app/config/sqlite-schema.manifest.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/config/windows-package.manifest.json | Project source/configuration | .json | Covered by related unit/contract test |
 | apps/offline-app/package-lock.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/package.json | Project source/configuration | .json | Covered by related unit/contract test |
+| apps/offline-app/pnpm-lock.yaml | Project source/configuration | .yaml | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/pnpm-workspace.yaml | Project source/configuration | .yaml | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/build.rs | Offline app Windows shell source | .rs | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/capabilities/default.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/gen/schemas/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -98,459 +161,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/gen/schemas/windows-schema.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/migrations/0001_offline_foundation.sql | Offline app Windows shell source | .sql | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/src/lib.rs | Offline app Windows shell source | .rs | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/src/main.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/src/main.rs | Offline app Windows shell source | .rs | Covered by related unit/contract test |
 | apps/offline-app/src-tauri/target/.rustc_info.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/adler2-708dea00d6a216f0/lib-adler2.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ahash-1f91ace4ea87f7d9/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ahash-3abb8edc28b555ff/lib-ahash.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ahash-ca42821deddbbe42/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/aho-corasick-bd2c63a8290410c1/lib-aho_corasick.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/alloc-no-stdlib-f942eb6e35a4ef08/lib-alloc_no_stdlib.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/alloc-stdlib-f4963da2cb2bf1c8/lib-alloc_stdlib.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/anyhow-7292878aaa05da4c/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/anyhow-854be13ee807ceeb/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/anyhow-c6babb0c09bad520/lib-anyhow.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/atomic-waker-a63bfe5478bbd105/lib-atomic_waker.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/autocfg-8c965f4063c10cfd/lib-autocfg.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/base64-ca72789b075579c1/lib-base64.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/bit-set-a80679ff610144e8/lib-bit_set.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/bit-vec-0f1595689d637db3/lib-bit_vec.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/bitflags-993d6e3c3708f1dc/lib-bitflags.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/bitflags-c518ebd8f493898b/lib-bitflags.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/bitflags-de74cd729bd09fd1/lib-bitflags.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/block-buffer-0cd2650f577987c1/lib-block_buffer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/brotli-0e1c3509a09ae4a1/lib-brotli.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/brotli-decompressor-91d8f121483fa252/lib-brotli_decompressor.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/byteorder-04b068faa2a5ce23/lib-byteorder.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/bytes-2374475d4ec174da/lib-bytes.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/camino-541d15d96da2ff80/lib-camino.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/camino-5c1c8693e6fcbf64/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/camino-9443787eef558086/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cargo-platform-07e01be78746cc4c/lib-cargo_platform.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cargo_metadata-b6d1db9b9f0eb083/lib-cargo_metadata.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cargo_toml-660affabc70626b0/lib-cargo_toml.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cc-efe04dd3d132e9b2/lib-cc.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cfb-36964e7a42f70f3b/lib-cfb.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cfb-69e35df78e83640d/lib-cfb.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cfg-if-50da2642d7d10359/lib-cfg_if.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cookie-62e55373b6945abf/lib-cookie.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cookie-72e6612ab0930e5f/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cookie-ba0d0f95d27dc253/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cpufeatures-7cfad6cf704d67d6/lib-cpufeatures.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crc32fast-1c041f34d42edac0/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crc32fast-7988aeb7d7c85e24/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crc32fast-f063ff96dfd585c6/lib-crc32fast.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crossbeam-channel-2db7acf23903f0e2/lib-crossbeam_channel.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crossbeam-utils-05ff7bf3fa474e2e/lib-crossbeam_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crossbeam-utils-8066693d49c7288a/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crossbeam-utils-8ba130f70681044d/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/crypto-common-60448a1f3727900d/lib-crypto_common.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cssparser-ccb619f6e44600f0/lib-cssparser.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/cssparser-macros-c5bb283f046e63dd/lib-cssparser_macros.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ctor-262999504c7e1fbc/lib-ctor.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ctor-proc-macro-ba51d1894c95f918/lib-ctor_proc_macro.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/darling-839acef1191f89c7/lib-darling.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/darling_core-2a0be018ab7a49b8/lib-darling_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/darling_macro-0ecb1950cc63fd8a/lib-darling_macro.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/deranged-75a7f64913ecbeb6/lib-deranged.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/derive_more-6e31518980482dcd/lib-derive_more.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/derive_more-impl-bf3272a4e4b3d95b/lib-derive_more_impl.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/digest-9bab93fc182642b2/lib-digest.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dirs-19d3b57845a58734/lib-dirs.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dirs-a803eb5afcbf7a95/lib-dirs.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dirs-sys-06351849d855a35e/lib-dirs_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dirs-sys-d145f118bba8d7fa/lib-dirs_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/displaydoc-12e117d2cc5dc8bd/lib-displaydoc.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dom_query-e782f0e0c5bdde14/lib-dom_query.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dpi-0cdc6519da80b74c/lib-dpi.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dtoa-9ec691ecd82ae4ac/lib-dtoa.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dtoa-short-2677d0819641c7b5/lib-dtoa_short.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dunce-055fb06185da01ec/lib-dunce.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/dyn-clone-b44e02aa7499e4bb/lib-dyn_clone.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/embed-resource-81b6c741c500d773/lib-embed_resource.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/encoding_rs-6668f9a3bfbb9061/lib-encoding_rs.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/equivalent-b19a42cd8c2442b0/lib-equivalent.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/erased-serde-15beca30643b5e3e/lib-erased_serde.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/erased-serde-34a9c2f65112b32c/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/erased-serde-8bffd7c57ef8d2d0/lib-erased_serde.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/erased-serde-8f5f4ef94a9443e7/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/fallible-iterator-d32409da769221f7/lib-fallible_iterator.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/fallible-streaming-iterator-1c0352f5fd89c0fd/lib-fallible_streaming_iterator.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/fastrand-f47cf8eb7b2e972b/lib-fastrand.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/fdeflate-2a12cb157125ce12/lib-fdeflate.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/find-msvc-tools-824f9ded730dd358/lib-find_msvc_tools.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/flate2-df70ff1795a3ba6c/lib-flate2.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/fnv-03937741514939f5/lib-fnv.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/foldhash-44d2bd3163d93bdd/lib-foldhash.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/form_urlencoded-0977931150670c0a/lib-form_urlencoded.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/form_urlencoded-f56a3cd6753b58f7/lib-form_urlencoded.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/futures-channel-3e394625f62ffbfb/lib-futures_channel.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/futures-core-4fcb200a4b6ba7b0/lib-futures_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/futures-task-0501ad89d61e0536/lib-futures_task.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/futures-util-023c7de83a12457b/lib-futures_util.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/generic-array-5ec5ee46430be4f3/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/generic-array-91b16dd255e0db51/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/generic-array-f84af665175abae3/lib-generic_array.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/getrandom-22cbf390aea25eb0/lib-getrandom.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/getrandom-35e7bd5f7930b705/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/getrandom-40d34049b695ef5f/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/getrandom-46f74a3a3f25b987/lib-getrandom.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/getrandom-c52c4dcb593455bd/lib-getrandom.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/getrandom-e9faf9724e08c3de/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/getrandom-ed1f94bceed784af/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/glob-2e2cf4d75ff2d305/lib-glob.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/hashbrown-32c9fb729af75c96/lib-hashbrown.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/hashbrown-bae4266ff5dabe82/lib-hashbrown.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/hashbrown-f49008ce597efaa8/lib-hashbrown.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/hashlink-afcd8310673d2af5/lib-hashlink.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/heck-530ae96cd4e922bb/lib-heck.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/html5ever-424b472a7960f64b/lib-html5ever.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/http-7499b226233dde33/lib-http.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/http-body-3c3edcd54d5be328/lib-http_body.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/http-body-util-08f6d9671658c402/lib-http_body_util.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/httparse-2c652abd85dc21ee/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/httparse-4dc4630409fa7385/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/httparse-7ca13416f5fd0f0e/lib-httparse.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/hyper-4c5c136747c88ff9/lib-hyper.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/hyper-rustls-fa265d9731c10011/lib-hyper_rustls.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/hyper-util-2b8eaa6681eabca3/lib-hyper_util.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ico-0e75dff6ab83d469/lib-ico.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_collections-0b859816b078547b/lib-icu_collections.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_collections-ff336fd75d7c7f32/lib-icu_collections.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_locale_core-b1270a9f3ea68c4c/lib-icu_locale_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_locale_core-ed5ee4ce023705f0/lib-icu_locale_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_normalizer-6af44a8f90515796/lib-icu_normalizer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_normalizer-b975ccf181832091/lib-icu_normalizer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_normalizer_data-96a52fd262d0f4c6/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_normalizer_data-aacece9abdcdcc8b/lib-icu_normalizer_data.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_normalizer_data-fcc13466500a304d/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_properties-3531fdd97f58a54b/lib-icu_properties.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_properties-9dee3c2d5b539363/lib-icu_properties.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_properties_data-22e67dfbb93d8ee9/lib-icu_properties_data.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_properties_data-7b1353f86d4d36da/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_properties_data-cd63a06a3e531c28/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_provider-1b0167f405cd2e83/lib-icu_provider.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/icu_provider-953a7704f3966e56/lib-icu_provider.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ident_case-68eb72f8b9e5c610/lib-ident_case.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/idna-1b937fb1d02b66c7/lib-idna.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/idna-55c49df56a28ffd7/lib-idna.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/idna_adapter-6e6850567107b7cf/lib-idna_adapter.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/idna_adapter-c887f2d233ea4c61/lib-idna_adapter.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/indexmap-762e5b6277c8ca7c/lib-indexmap.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/indexmap-86c2f8fd8f75aa20/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/indexmap-996f7834ac715357/lib-indexmap.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/indexmap-f00f99b5dac879b6/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/infer-87e837a5741ca3c2/lib-infer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/infer-f0c95f2f6f01473d/lib-infer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ipnet-dea9cc84ab6ce748/lib-ipnet.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/itoa-a8758a9001f01135/lib-itoa.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/json-patch-04f9ca7f29104511/lib-json_patch.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/json-patch-6cb80836d19e0ca4/lib-json_patch.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/jsonptr-0a3849578ece2304/lib-jsonptr.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/jsonptr-262e4184f693b047/lib-jsonptr.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/keyboard-types-d3fa7f288cba168f/lib-keyboard_types.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/keyring-73299adaef7e77f6/lib-keyring.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/libc-751e763eb72b7eae/lib-libc.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/libc-763fb040b2d663ab/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/libc-dd5b03e75856a267/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/libsqlite3-sys-106474e6f4bfc4f7/lib-libsqlite3_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/libsqlite3-sys-56ff66295091b517/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/libsqlite3-sys-887852ffd63539b8/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/litemap-bc0b328e814c0a7a/lib-litemap.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/lock_api-adbb4475e277e311/lib-lock_api.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/log-42b5b4de622ac783/lib-log.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/markup5ever-652d62da50b4feea/lib-markup5ever.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/memchr-03065c283c645776/lib-memchr.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/mime-73aaa303d72938a8/lib-mime.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/miniz_oxide-c1dfb26ef9a9d964/lib-miniz_oxide.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/mio-04dc9d4e7291613f/lib-mio.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/muda-c63512c45cac9256/lib-muda.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/new_debug_unreachable-3351dca6712d6be5/lib-debug_unreachable.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/num-conv-1a31483c0368ad4f/lib-num_conv.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/once_cell-0e6203ca65831a86/lib-once_cell.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/open-5024cac9332d21b7/lib-open.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/option-ext-d34cdf2551cb6085/lib-option_ext.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/os_pipe-291513bcd981b5e9/lib-os_pipe.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/parking_lot-192d740573d14fc2/lib-parking_lot.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/parking_lot-d4acb0d556fe6e55/lib-parking_lot.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/parking_lot_core-12fc7eb0299b59cc/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/parking_lot_core-69d260337b0ac6c7/lib-parking_lot_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/parking_lot_core-9551ed705df7587b/lib-parking_lot_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/parking_lot_core-e3e5c74a4f654ef3/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/percent-encoding-430cdb9c98e552e7/lib-percent_encoding.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/percent-encoding-62d9e9a014bdc3c1/lib-percent_encoding.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/phf-3f0d442b5d90d721/lib-phf.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/phf-a77d9dd699600692/lib-phf.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/phf_codegen-039b42fba5bbac9e/lib-phf_codegen.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/phf_generator-18dbea8cfbeeb032/lib-phf_generator.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/phf_macros-5197527a1480ccf5/lib-phf_macros.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/phf_shared-33f5d032dc3d79af/lib-phf_shared.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/phf_shared-9ee7a876cd36c6e4/lib-phf_shared.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/pin-project-lite-c9545d3e16671299/lib-pin_project_lite.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/pkg-config-3e67ae996f5d4ab8/lib-pkg_config.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/plist-74a02d039bb26954/lib-plist.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/plist-fcc34a2dfb9384b2/lib-plist.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/png-e798f97c5a2bf03f/lib-png.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/potential_utf-bd0ad156a1c098fe/lib-potential_utf.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/potential_utf-caaf695fac979146/lib-potential_utf.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/powerfmt-69c7238331924e58/lib-powerfmt.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/precomputed-hash-f5838773140009ff/lib-precomputed_hash.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/proc-macro2-0089b8fc4861aeb0/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/proc-macro2-01ac8537dae2b402/lib-proc_macro2.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/proc-macro2-f101e74d49154d97/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/quick-xml-b74711e98035e839/lib-quick_xml.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/quote-78c7521c3e232bbe/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/quote-e600caeee2b20115/lib-quote.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/quote-ff2a90532af845aa/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/raw-window-handle-97de44c0dc830f12/lib-raw_window_handle.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/regex-7ccd2a88f08f044b/lib-regex.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/regex-automata-cb576d302a3bd8e4/lib-regex_automata.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/regex-syntax-608f43b0e5826f9f/lib-regex_syntax.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/reqwest-41a3725420d29cea/lib-reqwest.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ring-09a44db80c7ac74e/lib-ring.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ring-15e1f58b911770a3/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ring-489eb117ad029ffa/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rusqlite-a6fc265258057038/lib-rusqlite.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rustc-hash-0cd0ca309a1e0da6/lib-rustc_hash.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rustc_version-7bd0047c53d5eb58/lib-rustc_version.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rustls-51e3f5f2018c252e/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rustls-5272716d76621ddd/lib-rustls.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rustls-cf4187a2b853571f/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rustls-pki-types-6931c068445013f9/lib-rustls_pki_types.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/rustls-webpki-56342e519a13c53b/lib-webpki.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/ryu-e66e2e84528ce1f6/lib-ryu.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/same-file-5f18772a81401d76/lib-same_file.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/same-file-a9ac7b0104689213/lib-same_file.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/schemars-8db0b721eee5f877/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/schemars-c8a87c6deb383b2d/lib-schemars.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/schemars-f2bdbd922a10c26c/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/schemars_derive-e6b40fc0a5859842/lib-schemars_derive.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/scopeguard-e5d2c7e18f425fea/lib-scopeguard.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/selectors-0f205fa6de5c7883/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/selectors-56d56537857cb48d/lib-selectors.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/selectors-6d390b27f27f34b0/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/semver-58a97154ae5263a3/lib-semver.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/semver-7a8f27d67c4db3ea/lib-semver.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-1632d5f9704053d5/lib-serde.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-51226174b1e49143/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-69dadcdd184ecf30/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-9d2f4cb267e4d75f/lib-serde.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-b4e8599ad30d0584/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-cdb2584a7192e2fc/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-untagged-7a18d21ac3d53b16/lib-serde_untagged.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde-untagged-d0129385cc0c4653/lib-serde_untagged.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_core-2edbf5ce1d61934b/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_core-35ba2c05936e7c77/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_core-73d152b7ceda14db/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_core-7db73e3b165acf0c/lib-serde_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_core-a135f920db68de26/lib-serde_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_core-fdf5f60f2a35bbe7/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_derive-895d56c487d9cfab/lib-serde_derive.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_derive_internals-cb16b69fb0c40fd7/lib-serde_derive_internals.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_json-0f4d7de54130b8b0/lib-serde_json.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_json-32914949b4053350/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_json-553be65809f52a71/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_json-9d2f8d5283adfa3f/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_json-b5a1dd586962f72e/lib-serde_json.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_json-c5169bc26a41dd4f/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_repr-b4feb6b007bb1372/lib-serde_repr.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_spanned-277264f2ad43cefe/lib-serde_spanned.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_spanned-7317107a49582ddd/lib-serde_spanned.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_urlencoded-777fe600d337ef8d/lib-serde_urlencoded.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_with-0c908f56f7d3119a/lib-serde_with.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_with-36965218498283ad/lib-serde_with.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serde_with_macros-1295a941deebaf5e/lib-serde_with_macros.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serialize-to-javascript-29b2dbae4824b9f6/lib-serialize_to_javascript.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/serialize-to-javascript-impl-ce87f5200f6bf13c/lib-serialize_to_javascript_impl.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/servo_arc-ac1defba9d94612d/lib-servo_arc.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/sha2-42f511abcab234b9/lib-sha2.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/shared_child-cc6dda4c5e0737d4/lib-shared_child.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/shlex-f9df91f0b2c0ecd4/lib-shlex.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/simd-adler32-3150a16d58d9514c/lib-simd_adler32.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/siphasher-d89e92747f1de111/lib-siphasher.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/slab-0452de114df72725/lib-slab.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/smallvec-50a66600b2d2177b/lib-smallvec.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/smallvec-b298682c54a24465/lib-smallvec.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/socket2-478561b64aeb1838/lib-socket2.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/softbuffer-f585d7e8ffc944f2/lib-softbuffer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/stable_deref_trait-48ab879ba2e22c76/lib-stable_deref_trait.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/stable_deref_trait-9030104b42672411/lib-stable_deref_trait.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/string_cache-1aff88ac487ded23/lib-string_cache.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/string_cache_codegen-f1e9ed79ee31b48e/lib-string_cache_codegen.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/strsim-39eba2b191cdc78a/lib-strsim.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/subtle-ff5c8053a15a735d/lib-subtle.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/syn-b4e521442ece14ed/lib-syn.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/sync_wrapper-2e963b8920ea93cc/lib-sync_wrapper.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/synstructure-a72f5bfae830a3c4/lib-synstructure.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tao-cac7e91e9dfe9390/lib-tao.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-2f0e801798e15292/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-a2fbd35d5122668e/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-build-e82b42348f31cf0d/lib-tauri_build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-codegen-55e6c332f07aa835/lib-tauri_codegen.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-dca1c905e4b210d6/lib-tauri.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-macros-b96cf416836a0397/lib-tauri_macros.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-plugin-449540be35f837ad/lib-tauri_plugin.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-plugin-shell-56996737f2438604/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-plugin-shell-605119d3fea44e97/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-plugin-shell-a17254f25ba9855e/lib-tauri_plugin_shell.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-runtime-6253ec0457216c42/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-runtime-c1caf11ada0633ea/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-runtime-f90d794550f228c7/lib-tauri_runtime.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-runtime-wry-52428c4b1c675e16/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-runtime-wry-9251e54156f58514/lib-tauri_runtime_wry.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-runtime-wry-cb0d89f5b26c54cd/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-utils-42f4c2b5156c4012/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-utils-f832e78877122cda/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tauri-winres-4e3ab25b6f2c47b1/lib-tauri_winres.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-4b8494d5fcbd18dd/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-68a5ceb981b6f2ac/test-lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-7b184b692af0f5d6/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-7d70825afb185135/test-lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-8376e4b4bc722e61/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-9111ff56b117d3e5/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-ade9e3566cbeb53c/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-bd15e7e9619ada7d/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-c2765b1209e7618c/test-bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tcg-store-offline-e3bd45ac22e74e52/test-bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tendril-9b7dba683de5f9e0/lib-tendril.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-295b8b286a75f786/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-a54c91ae6ec73860/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-bb0bf2af49900e54/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-bd8ea4cc14d7a3c7/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-e196c11b7df54c50/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-f4d6322d70c52f5c/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-impl-b4e7a93fb4faad45/lib-thiserror_impl.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/thiserror-impl-e01168587242ea7a/lib-thiserror_impl.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/time-4e9bc177fd144aa7/lib-time.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/time-7621df6bbe7a3951/lib-time.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/time-core-27f04bc81daeef4e/lib-time_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/time-macros-5b8a6d5de9e07283/lib-time_macros.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tinystr-1d0b91f468f34187/lib-tinystr.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tinystr-cdf860e10a7e1592/lib-tinystr.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tokio-7451f16acb74d6e4/lib-tokio.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tokio-rustls-f908b02e4ae17d8f/lib-tokio_rustls.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml-0a01df433e5b6de2/lib-toml.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml-6e94eb2ddc29062f/lib-toml.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml-dde3e57236e4b8b4/lib-toml.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml_datetime-01d1a278afe44aef/lib-toml_datetime.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml_datetime-4637051da0eaf5e8/lib-toml_datetime.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml_datetime-d9a2ceed3b0c2bbc/lib-toml_datetime.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml_parser-439945e812265b03/lib-toml_parser.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/toml_writer-851e0dd56e677921/lib-toml_writer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tower-fb72a7ec61c72665/lib-tower.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tower-http-f25027dc732e782e/lib-tower_http.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tower-layer-b9c1d30a49fec744/lib-tower_layer.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tower-service-3d89b48e7529514a/lib-tower_service.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tracing-6211047cb30e497b/lib-tracing.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/tracing-core-556801fa8edcbf03/lib-tracing_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/try-lock-275b5e8e17894b19/lib-try_lock.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/typeid-1e51bb5c9d8f5e68/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/typeid-d9b972aba2ca812e/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/typeid-dfb99493f7620faa/lib-typeid.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/typenum-dfb7bb22243cc977/lib-typenum.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/unic-char-property-527bd1fb13d87383/lib-unic_char_property.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/unic-char-range-20d3b3d8ff8ddb0c/lib-unic_char_range.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/unic-common-c67dc0dad09f681e/lib-unic_common.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/unic-ucd-ident-1402fb92ca1b767c/lib-unic_ucd_ident.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/unic-ucd-version-7cacdd7714cf71de/lib-unic_ucd_version.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/unicode-ident-c2fe9f6b8ade098b/lib-unicode_ident.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/unicode-segmentation-60cced87b8299ca1/lib-unicode_segmentation.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/untrusted-566b390964d57499/lib-untrusted.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/url-6624cacbded4c2ea/lib-url.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/url-cb5f154697a26dd7/lib-url.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/urlpattern-06eb49aaa5efb41d/lib-urlpattern.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/urlpattern-ccec56e60deace47/lib-urlpattern.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/utf-8-1fc59436e84361de/lib-utf8.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/utf8_iter-95d82ed6768ab36e/lib-utf8_iter.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/uuid-1a997661db8151c5/lib-uuid.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/uuid-f05025a0994dc573/lib-uuid.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/vcpkg-efed40ad735ffcfc/lib-vcpkg.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/version_check-dfb8931b0be28ab2/lib-version_check.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/vswhom-622a8f1800072efc/lib-vswhom.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/vswhom-sys-6c35df59f53f60ab/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/vswhom-sys-e0e9f9d0c69fc482/lib-vswhom_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/vswhom-sys-e49c8b1e17454e50/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/walkdir-80fd1b56cae674a4/lib-walkdir.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/walkdir-f9e85412ad159763/lib-walkdir.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/want-ec73f91f5af7d404/lib-want.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/web_atoms-100a2f08464b0527/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/web_atoms-327bfd391b0ca720/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/web_atoms-92988f0837d54033/lib-web_atoms.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/webpki-roots-6813147fbfd758ef/lib-webpki_roots.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/webview2-com-4281ab201f935f67/lib-webview2_com.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/webview2-com-macros-2597ec9040080535/lib-webview2_com_macros.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/webview2-com-sys-5f24982193eac586/lib-webview2_com_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/webview2-com-sys-60d56c135baf87e8/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/webview2-com-sys-c5d39ecf43b9d019/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/winapi-util-9a116ac9b35f42a8/lib-winapi_util.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/winapi-util-ac1ae5159018481d/lib-winapi_util.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/window-vibrancy-5a4d2925c6e02e7b/lib-window_vibrancy.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-4fd77df1904b35ef/lib-windows.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-collections-738dac91d05a186c/lib-windows_collections.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-core-689b286589ea2271/lib-windows_core.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-future-377b6c4524a68ad9/lib-windows_future.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-implement-3df8c5e0084bc1cc/lib-windows_implement.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-interface-67e8dee7b3c79c12/lib-windows_interface.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-link-d2ef63ecef51002c/lib-windows_link.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-link-e5d67dbb9625e185/lib-windows_link.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-numerics-aa7e51fdb5ef7465/lib-windows_numerics.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-result-79f61ce203a58cae/lib-windows_result.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-strings-de162edd9fd4c3ba/lib-windows_strings.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-sys-7d0a8a45f9dd8be8/lib-windows_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-sys-7f3b8c08dd62f4da/lib-windows_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-sys-cbbc5b6989251580/lib-windows_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-sys-de781fada6d3b103/lib-windows_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-sys-e74719f1aaf3fcd4/lib-windows_sys.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-targets-11541c1387113afb/lib-windows_targets.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-targets-b170585257b0d7b4/lib-windows_targets.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-threading-48c0063f702dbde5/lib-windows_threading.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows-version-311dc7bf13e799e0/lib-windows_version.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows_x86_64_msvc-ad2aa6b1840fd81d/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows_x86_64_msvc-b76b1035c894b0c1/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows_x86_64_msvc-c5c5726af64828cf/lib-windows_x86_64_msvc.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows_x86_64_msvc-d70364700e1c05c8/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows_x86_64_msvc-d7f0513d54c405a6/lib-windows_x86_64_msvc.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/windows_x86_64_msvc-e925f74822633694/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/winnow-aadb9e51292de79e/lib-winnow.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/winnow-f83060dd4a555a13/lib-winnow.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/winreg-0df57910f83916bd/lib-winreg.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/writeable-3f9e5d7c77afadb6/lib-writeable.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/wry-2e6dbbacfa94230c/lib-wry.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/wry-3fa6c6b38befdde5/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/wry-8d1ecc6b8379e6a6/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/yoke-derive-cd79a1d6dcf00adf/lib-yoke_derive.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/yoke-e9a677f987e581cb/lib-yoke.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/yoke-eeb0b6664bebf826/lib-yoke.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerocopy-0f2690c291069dbd/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerocopy-b3834615987c6210/lib-zerocopy.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerocopy-c70da36f1137c855/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerofrom-76334b22dec253a5/lib-zerofrom.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerofrom-derive-401402adab66e5eb/lib-zerofrom_derive.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zeroize-455fad8eb4d3b216/lib-zeroize.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerotrie-b09243c19f342a3b/lib-zerotrie.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerotrie-bc731b1d2f473d53/lib-zerotrie.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerovec-82de6ee4bf32fc9e/lib-zerovec.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerovec-derive-fedc10c48c75e77a/lib-zerovec_derive.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zerovec-dfb09e4ba1d27240/lib-zerovec.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zmij-08aed8c3c171b8b1/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zmij-87e4aa7ad443f12d/lib-zmij.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/.fingerprint/zmij-bbaef9d295c9b9a4/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/libsqlite3-sys-887852ffd63539b8/out/bindgen.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/selectors-0f205fa6de5c7883/out/ascii_case_insensitive_html_attributes.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/serde-51226174b1e49143/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/serde-69dadcdd184ecf30/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/serde_core-2edbf5ce1d61934b/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/serde_core-35ba2c05936e7c77/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/tauri-plugin-shell-605119d3fea44e97/out/global-scope.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-7b184b692af0f5d6/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-7b184b692af0f5d6/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-7b184b692af0f5d6/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ade9e3566cbeb53c/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ade9e3566cbeb53c/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/tcg-store-offline-ade9e3566cbeb53c/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/thiserror-e196c11b7df54c50/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/web_atoms-327bfd391b0ca720/out/generated.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/debug/build/web_atoms-327bfd391b0ca720/out/named_entities.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/adler2-bb2db03096979b79/lib-adler2.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/ahash-05bd04b5cdb63db2/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/aho-corasick-a35d3a06614f9133/lib-aho_corasick.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -749,7 +361,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/release/.fingerprint/tauri-runtime-wry-08b7167c61e37b5e/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/tauri-utils-9de669c7da58f7bb/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/tauri-winres-a7474e0510b7a51d/lib-tauri_winres.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-25610440e75d9839/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/release/.fingerprint/tcg-store-offline-7d6289b0b20794bc/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/tendril-58f1dcee953999bb/lib-tendril.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/thiserror-4d128aa971afa30b/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/release/.fingerprint/thiserror-61fcb5faaba2b6c2/build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -976,9 +588,9 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tauri-runtime-wry-091e77664e9daa6a/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tauri-runtime-wry-0b165859664a396a/lib-tauri_runtime_wry.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tauri-utils-a533a043f80c7346/lib-tauri_utils.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-3ffa27bb6bc9d667/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-9111ff56b117d3e5/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-9111ff56b117d3e5/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by related unit/contract test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-d9d7e8c5dc5d81df/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-e55d531b7efae375/bin-tcg-store-offline.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/tcg-store-offline-e55d531b7efae375/lib-tcg_store_offline_lib.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/thiserror-01db21e857368487/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/thiserror-040be03b201db952/run-build-script-build-script-build.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/.fingerprint/thiserror-2a9af6c4948fc03a/lib-thiserror.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
@@ -1057,20 +669,13 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/serde-ac8dda2dbd7d2d1b/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/serde_core-1e83e2134ed52895/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tauri-plugin-shell-ed2d1f2ad9e73e1f/out/global-scope.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/0526c5566ce48d0bb3ce5551c3c6fe91e81f394b53b895728537e2d545f0c957.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/4463b5589ec518cfaadc0f59d4a1d38638b731b3eb4c57fa3654d25c763410df.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/761acea8ad53bd2c2d64675bcff92c2791ebeae7a670e6ee293f2e56018bb640.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/83d80c9ab3367a0ec69f760becc02ed39cc4514c7297f6b95b48ba7ab1e249d2.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/893083e38902b845c927d3a080227ebca034cd43a4dd2573ca9bd2bb7b5bcec6.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/8dcb13b5edad72f40dab6e6c641916dce5c758c46c160898e2d56c3d377052b0.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/9d760c8ffd5b900aa091aba5986dcae9479d501c3953a4be54fe29d86da30b6a.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/b47e449b26b6ae727db8313b45c235e1c27ceee0e9ce3883ec9a26fc2826d312.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/c03cc46a238f74e030eedbd5bd8cd06de7cb50a06fd9c1db90025060e71d132d.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/f6a16eee99fad108ae08b1078344f85198d8127af339e541461cf008d235c29b.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-3ffa27bb6bc9d667/out/tauri-codegen-assets/f8e57a8ae75b0d5e64523eb229af791f2f3436a117d6ca4fc53d081a4c26e15c.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-d9d7e8c5dc5d81df/out/__global-api-script.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-d9d7e8c5dc5d81df/out/acl-manifests.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-d9d7e8c5dc5d81df/out/capabilities.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-d9d7e8c5dc5d81df/out/tauri-codegen-assets/0a8712294b982e0afc02927f8c52c19d0070bf0f190beda597ca7370ed811824.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-d9d7e8c5dc5d81df/out/tauri-codegen-assets/1d17618491e6d958f67e4ad94fd236c4223e5be347df95ec7c6a2738e9d3a11e.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-d9d7e8c5dc5d81df/out/tauri-codegen-assets/5dc30b01c3c4347d5e3d51af9cdb76198c42a0ca467f1b129948afb34efde8ac.js | Offline app Windows shell source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/tcg-store-offline-d9d7e8c5dc5d81df/out/tauri-codegen-assets/dc5ddf27126d2afde83345bcbc5e0f1b3de7e10db2fb3b3e9d35ec265a99572f.css | Offline app Windows shell source | .css | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/build/thiserror-040be03b201db952/out/private.rs | Offline app Windows shell source | .rs | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src-tauri/tauri.conf.json | Offline app Windows shell source | .json | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/App.tsx | Offline app frontend source | .tsx | Covered by related unit/contract test |
@@ -1083,7 +688,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/offline-app/src/data/tauriOfflineSyncAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/tauriQueueAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/src/data/tauriSecureStoreAdapter.ts | Offline app frontend source | .ts | Covered by package/build/smoke tests or pending targeted test |
-| apps/offline-app/src/main.tsx | Offline app frontend source | .tsx | Covered by package/build/smoke tests or pending targeted test |
+| apps/offline-app/src/main.tsx | Offline app frontend source | .tsx | Covered by related unit/contract test |
 | apps/offline-app/src/styles.css | Offline app frontend source | .css | Covered by package/build/smoke tests or pending targeted test |
 | apps/offline-app/tests/local-queue-persistence-contract.mjs | End-to-end or contract test | .mjs | Test file |
 | apps/offline-app/tests/local-sync-client-contract.mjs | End-to-end or contract test | .mjs | Test file |
@@ -1101,8 +706,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/storefront-theme-or-blocks/README.md | WordPress storefront theme source | .md | Covered by related unit/contract test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/404.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/editor.css | WordPress storefront theme source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/main.css | WordPress storefront theme source | .css | Covered by package/build/smoke tests or pending targeted test |
-| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/js/main.js | WordPress storefront theme source | .js | Covered by package/build/smoke tests or pending targeted test |
+| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/css/main.css | WordPress storefront theme source | .css | Covered by related unit/contract test |
+| apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/assets/js/main.js | WordPress storefront theme source | .js | Covered by related unit/contract test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/footer.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/front-page.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/storefront-theme-or-blocks/pug-arcade-commerce-v2/functions.php | WordPress storefront theme source | .php | Covered by package/build/smoke tests or pending targeted test |
@@ -1130,12 +735,14 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Api/V1/CustomerCreditRouteContracts.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/EventsController.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/FulfillmentOrderController.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/Api/V1/FulfillmentOrderMutationPolicy.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/HealthController.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/InventoryCapabilityPermissionCallbackAdapter.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/InventoryController.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandler.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventoryIntakeRouteHandlerFactory.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventoryMarkSoldRouteHandler.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/Api/V1/InventoryProjectionController.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventoryPublicReadPermissionCallbackAdapter.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventoryPublicReadRateLimitPolicy.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventoryRouteBootstrapPlanner.php | WordPress plugin source | .php | Covered by related unit/contract test |
@@ -1151,6 +758,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandler.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/InventorySearchRouteHandlerFactory.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/KioskOrderController.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
+| apps/wordpress-plugin/src/Api/V1/KioskReservationReplay.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionCurrentRowProvider.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/OfflineConflictResolutionRouteHandler.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Api/V1/OfflineConflictRouteHandlerFactory.php | WordPress plugin source | .php | Covered by related unit/contract test |
@@ -1206,6 +814,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Api/V1/ReferenceCardSearchRouteHandler.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/ReportsController.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Api/V1/ScryDexCatalogController.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/Api/V1/ScryDexWebhookController.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/Api/V1/ScryDexWebhookRelayController.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Auth/AdminAccess.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Auth/CapabilityRegistry.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Auth/RoleManager.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
@@ -1260,6 +870,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Inventory/InventoryIntakeRequest.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Inventory/InventoryIntakeValidationResult.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Inventory/InventoryItemValidator.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/Inventory/InventoryProjectionRepository.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuildPlan.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Inventory/InventorySearchQueryBuilder.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Inventory/InventorySearchQueryPlan.php | WordPress plugin source | .php | Covered by related unit/contract test |
@@ -1302,6 +913,9 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/Migrations/Version0013ExternalInventoryMappings.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Migrations/Version0014ReferenceVariantImages.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Migrations/Version0015ProviderPriceReferenceBackfill.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
+| apps/wordpress-plugin/src/Migrations/Version0016ScryDexWebhookRelay.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
+| apps/wordpress-plugin/src/Migrations/Version0017InventoryProjectionQuantity.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
+| apps/wordpress-plugin/src/Migrations/Version0018ScryDexWebhookRelayRepair.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Offline/OfflineConflictListRequest.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Offline/OfflineConflictListRequestParser.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Offline/OfflineConflictListRequestValidationResult.php | WordPress plugin source | .php | Covered by related unit/contract test |
@@ -1483,6 +1097,11 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/ScryDex/ScryDexSyncPageProcessor.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/ScryDex/ScryDexSyncPlanner.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/ScryDex/ScryDexUsageBudgetPlanner.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookEventRepository.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookPayloadParser.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookRefreshRunner.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookSignatureVerifier.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/ScryDex/ScryDexWebhookSyncDispatcher.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Settings/BrandingSettings.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/src/Settings/CustomerCreditSettings.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/Settings/FulfillmentNotificationSettings.php | WordPress plugin source | .php | Covered by package/build/smoke tests or pending targeted test |
@@ -1525,6 +1144,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/src/WooCommerce/SerializedOrderLifecyclePlanner.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/WooCommerce/SerializedOrderLineMetadataPlan.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/WooCommerce/SerializedOrderLineMetadataPlanner.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/WooCommerce/SerializedOrderRefundHandler.php | WordPress plugin source | .php | Covered by related unit/contract test |
+| apps/wordpress-plugin/src/WooCommerce/SerializedReturnReviewRepository.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/src/WooCommerce/WooCommerceInventoryProductWriter.php | WordPress plugin source | .php | Covered by related unit/contract test |
 | apps/wordpress-plugin/tcg-store-platform.php | Project source/configuration | .php | Covered by package/build/smoke tests or pending targeted test |
 | apps/wordpress-plugin/tests/Integration/Database/README.md | End-to-end or contract test | .md | Test file |
@@ -1566,6 +1187,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/tests/Unit/FeatureFlagsTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/FoundationSchemaTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/FulfillmentOrderControllerTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/FulfillmentOrderMutationPolicyTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/GroupedInventoryProductHooksTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryAdminWorkspaceUiTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryExternalMappingRepositoryTest.php | End-to-end or contract test | .php | Test file |
@@ -1579,6 +1201,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/tests/Unit/InventoryProductProjectionExecutorTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryProductProjectionPlannerTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryProductWriteRequestPlannerTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/InventoryProjectionControllerContractTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/InventoryProjectionQuantityMigrationTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryPublicReadPermissionCallbackAdapterTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryRouteBootstrapperTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryRouteContractTest.php | End-to-end or contract test | .php | Test file |
@@ -1596,6 +1220,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/tests/Unit/InventoryStatusTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/InventoryWorkspacePresenterTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/KioskOrderRouteContractTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/KioskReservationReplayTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/ManagerOverridePersistencePlannerTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/ManagerOverridePolicyTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/ManagerOverrideRepositoryTest.php | End-to-end or contract test | .php | Test file |
@@ -1748,10 +1373,20 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/tests/Unit/ScryDexSyncPageProcessorTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetPlannerTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/ScryDexUsageBudgetSettingsTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookControllerContractTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookPayloadParserTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookRefreshRunnerSourceTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookRelayControllerContractTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookRelayMigrationTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookRelayRepairMigrationTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookSignatureVerifierTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/ScryDexWebhookSyncDispatcherTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SerializedCartItemValidatorTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SerializedInventoryHookRegistryTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SerializedOrderLifecyclePlannerTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SerializedOrderLineMetadataPlannerTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/SerializedOrderRefundHandlerTest.php | End-to-end or contract test | .php | Test file |
+| apps/wordpress-plugin/tests/Unit/SerializedReturnReviewRepositoryTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SettingsPageSourceTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SettingsTest.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/Unit/SquareInventoryBatchSyncPlannerTest.php | End-to-end or contract test | .php | Test file |
@@ -1776,6 +1411,9 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | apps/wordpress-plugin/tests/wordpress-staging-inventory-smoke.php | End-to-end or contract test | .php | Test file |
 | apps/wordpress-plugin/tests/wp-now-blueprint.json | End-to-end or contract test | .json | Test file |
 | apps/wordpress-plugin/uninstall.php | Project source/configuration | .php | Covered by package/build/smoke tests or pending targeted test |
+| debug-artifacts/BUG_REPRODUCTION.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| debug-artifacts/FLOW_TRACE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| debug-artifacts/INSTALL_VERIFICATION.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | docs/API.md | Project source/configuration | .md | Covered by related unit/contract test |
 | docs/API_ROUTES.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | docs/ARCHITECTURE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
@@ -1810,11 +1448,19 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | docs/UI_FLOWS.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | docs/branding/the-pug-customer-ui.css | Project source/configuration | .css | Covered by package/build/smoke tests or pending targeted test |
 | docs/branding/the-pug-rebrand-plan.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| evidence/baseline-20260718/baseline-results.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| evidence/final-20260718/PUG_SQUARE_REVERSIBLE_SMOKE.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| evidence/final-20260718/test-site-scrydex-webhook-roundtrip.json | Project source/configuration | .json | Covered by related unit/contract test |
+| evidence/final-20260718/ui/ui-acceptance.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | fixtures/README.md | Project source/configuration | .md | Covered by related unit/contract test |
 | fixtures/mocks/pos/payment-responses.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | fixtures/mocks/scrydex/cards-page-1.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | fixtures/mocks/scrydex/checkpoint-resume.json | Project source/configuration | .json | Covered by related unit/contract test |
 | fixtures/seed/development-data.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
+| migrations/20260718_authoritative_inventory_sync_down.sql | Project source/configuration | .sql | Covered by package/build/smoke tests or pending targeted test |
+| migrations/20260718_authoritative_inventory_sync_up.sql | Project source/configuration | .sql | Covered by package/build/smoke tests or pending targeted test |
+| migrations/20260718_authoritative_inventory_sync_v2_rollback.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| migrations/20260718_authoritative_inventory_sync_v2_up.sql | Project source/configuration | .sql | Covered by package/build/smoke tests or pending targeted test |
 | migrations/README.md | Project source/configuration | .md | Covered by related unit/contract test |
 | package-lock.json | Project source/configuration | .json | Covered by package/build/smoke tests or pending targeted test |
 | package.json | Project source/configuration | .json | Covered by related unit/contract test |
@@ -1836,6 +1482,8 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | packages/validation/src/posPaymentPolicy.mjs | Project source/configuration | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | packages/validation/tests/pos-payment-policy.mjs | End-to-end or contract test | .mjs | Test file |
 | playwright.config.ts | Project source/configuration | .ts | Covered by package/build/smoke tests or pending targeted test |
+| pnpm-lock.yaml | Project source/configuration | .yaml | Covered by package/build/smoke tests or pending targeted test |
+| pnpm-workspace.yaml | Project source/configuration | .yaml | Covered by package/build/smoke tests or pending targeted test |
 | release-package/ADMIN_USER_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/API_AND_CONNECTOR_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/BACKUP_RESTORE_AND_RECOVERY_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
@@ -1847,6 +1495,7 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | release-package/DATABASE_SCHEMA_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/ENVIRONMENT_VARIABLES.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/EVENTS_AND_TOPDECK_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
+| release-package/GO_LIVE_VERIFICATION_CHECKLIST.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/KIOSK_AND_OFFLINE_APP_GUIDE.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | release-package/OPEN_ITEMS.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
@@ -1866,18 +1515,24 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | release-package/TROUBLESHOOTING_RUNBOOK.md | Project source/configuration | .md | Covered by package/build/smoke tests or pending targeted test |
 | scripts/README.md | Build/deployment/test automation | .md | Covered by related unit/contract test |
 | scripts/generate-release-documentation.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/import-square-catalog-local-inventory.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/lib/local-env.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/lib/staging-ssh.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/live-square-reversible-smoke.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/local-clear-card-inventory-and-queues.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/local-sync-smoke.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/package-local-sync-server.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/package-production-release.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/package-wordpress-plugin.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/package-wordpress-theme.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/prepare-pug-grading-singles-import.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/production-clear-card-inventory.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/production-configure-commerce-menu.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-configure-public-pages.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-configure-scrydex.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-install-storefront-theme.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/production-install-wordpress-package.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/production-repair-imported-inventory.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-local-pickup-fulfillment-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-local-sync-inventory-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-local-sync-square-sale-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
@@ -1885,10 +1540,12 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | scripts/production-run-scrydex-index.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-run-woocommerce-card-smoke.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-seed-visible-card-inventory.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/production-upload-notification-sound.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-verify-active-syncs.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-verify-public-shortcodes.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-verify-reference-search.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/production-verify-scrydex-catalog.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
+| scripts/run-final-local-ui-acceptance.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/run-offline-app-rust-tests.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/run-offline-app-windows-build.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
 | scripts/scrydex-live-smoke.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
@@ -1905,14 +1562,21 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | scripts/staging-run-scrydex-sync.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/staging-run-search-benchmark.mjs | Build/deployment/test automation | .mjs | Covered by package/build/smoke tests or pending targeted test |
 | scripts/staging-upload-wordpress-package.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/test-data/cleanup-pug-sanitized-e2e-fixtures.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/test-data/pug-sanitized-e2e-fixtures-lib.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/test-data/setup-pug-sanitized-e2e-fixtures.mjs | Build/deployment/test automation | .mjs | Covered by related unit/contract test |
+| scripts/tests/live-square-reversible-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/local-clear-demo-data-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/local-sync-server-package-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/local-sync-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/production-clear-card-inventory-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-commerce-menu-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-install-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-pickup-fulfillment-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-sync-inventory-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-sync-square-sale-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-local-sync-workflows-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/production-notification-sound-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-public-pages-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-public-shortcodes-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-reference-search-contract.mjs | Build/deployment/test automation | .mjs | Test file |
@@ -1922,7 +1586,10 @@ The index excludes generated dependencies, build artifacts, release binaries, lo
 | scripts/tests/production-scrydex-verify-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-theme-install-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/production-woocommerce-card-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/pug-grading-singles-import-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/sanitized-e2e-fixture-lifecycle.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/scrydex-live-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |
+| scripts/tests/square-local-inventory-import-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/staging-install-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/staging-inventory-runtime-config-contract.mjs | Build/deployment/test automation | .mjs | Test file |
 | scripts/tests/staging-inventory-smoke-contract.mjs | Build/deployment/test automation | .mjs | Test file |

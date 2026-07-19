@@ -1,0 +1,19 @@
+Pug 0.203.1 release artifact audit
+Generated UTC: 2026-07-19T02:39:30.4104462Z
+
+PASS: four deliverable manifests and installers present.
+PASS: production release package contract.
+PASS: no production secret markers.
+PASS: no forbidden archive paths (node_modules, target, .git, real .env, logs, caches).
+PASS: no preview or test hosts in packaged text files.
+PASS: final test WordPress plugin 0.203.1 active at schema 18.
+
+SHA-256:
+93b25765c313020b9d2852d83734c87a65b06421e8492684ce82e320b2aad35a  pug-arcade-commerce-v2-0.203.1.zip
+419b0d5f61000e7fc2409cb40a5999952e5228934b9da493df3dec87a11ac14b  pug-lan-server.zip
+fbd62d7f2131f9e987b2aff76bf540880c9ae698acddb55f8d8fe0b17e3a057d  tcg-store-platform-0.203.1.zip
+a788071f0a54007b9e7e94c5366592920deb409714a478bc375f3eee0b7c68cd  the-pug-store-deliverables-0.203.1.zip
+91175acc503baf585b0b768eca68022e37546373d77dc07c509ec53f310373cd  the-pug-store-deliverables-0.203.1/Kiosk Page/Pug Kiosk App-0.203.1.exe
+e7695b98fc1daf6309a00b177c3d74131cd3300cb0ebeb6de41650c4d0bdd329  the-pug-store-deliverables-0.203.1/LAN Server + Pug Store App/Pug Store App-0.203.1.exe
+12309de880c4a69c8b2cd48c7a85eaf71f664e8c2c3b1452c15a70e09ead4f81  the-pug-store-deliverables-0.203.1/Pug Checkout App/Pug Checkout App-0.203.1.exe
+e7695b98fc1daf6309a00b177c3d74131cd3300cb0ebeb6de41650c4d0bdd329  the-pug-store-deliverables-0.203.1/Pug Store App/Pug Store App-0.203.1.exe

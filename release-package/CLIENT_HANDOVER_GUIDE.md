@@ -4,7 +4,7 @@ Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
 Version: 0.203.1
-Release date: 2026-06-17
+Release date: 2026-07-18
 Last updated: 2026-07-18
 Document purpose: Primary client-facing handover guide for the complete trading-card store platform.
 Audience: Owner, manager, administrator, support technician
@@ -16,13 +16,13 @@ Created by JC Electronics
 Prepared for: The Pug
 Prepared by: JC Electronics
 Release version: 0.203.1
-Release date: 2026-06-17
+Release date: 2026-07-18
 
 This guide summarizes the production system, owner responsibilities, support responsibilities, launch checks, and secure handoff process.
 
 ## Executive Summary
 
-The platform connects the public WordPress/WooCommerce website, custom trading-card inventory plugin, in-store employee app, customer kiosk, LAN middleman server, serialized inventory model, ScryDex reference data, customer credit ledger, buylist/trade-in intake, event registration, and reporting. The LAN server's SQLite ledger is authoritative for physical inventory quantity, reservations, approved selling price, price review, trades, and connector delivery state. WordPress/WooCommerce remains authoritative for online carts, payments, orders, and customer-facing content. The local app and kiosk keep operating through network interruptions by using the LAN cache and replaying idempotent queued actions when connectivity returns.
+The platform connects the public WordPress/WooCommerce website, custom trading-card inventory plugin, in-store employee app, customer kiosk, checkout app, LAN middleman server, serialized inventory model, ScryDex reference data, customer credit ledger, buylist/trade-in intake, event registration, and reporting. The LAN ledger is the inventory and local-credit authority. WordPress/WooCommerce remains authoritative for online carts, payments, orders, and customer-facing pages, while Square remains authoritative for captured POS payments. Apps cache safe read models and replay durable queued actions when connectivity returns.
 
 ## Major Capabilities
 

@@ -3,9 +3,9 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
-Release date: 2026-06-17
-Last updated: 2026-06-17
+Version: 0.203.1
+Release date: 2026-07-18
+Last updated: 2026-07-18
 Document purpose: Install, upgrade, deploy, validate, and roll back the production platform.
 Audience: Administrator, developer, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
@@ -57,11 +57,12 @@ Required variables and WordPress fields are documented in `ENVIRONMENT_VARIABLES
 8. Run active sync verification and checkout/kiosk smoke tests.
 9. Record rollback points and owner approval.
 
-## Three Deliverables
+## Four Deliverables
 
 1. `Pug Store App` installs the staff app on store workstations.
 2. `LAN Server + Pug Store App` installs the LAN server on the in-store host and includes the app installer plus website ZIP dependencies.
 3. `Kiosk Page` installs the kiosk-only fullscreen app for customer inventory lookup and pickup requests.
+4. `Pug Checkout App` installs the counter checkout surface for barcode scanning, customer credit, and Square payment handoff.
 
 ## Offline App And LAN Server Installation
 
@@ -69,9 +70,10 @@ Required variables and WordPress fields are documented in `ENVIRONMENT_VARIABLES
 2. Allow inbound LAN traffic to the configured server port and UDP discovery port.
 3. Install the Pug Store App on staff stations.
 4. Install Kiosk Page on customer-facing kiosk stations.
-5. Let apps auto-discover the middleman; if blocked, enter `http://STORE-SERVER-IP:8787` manually.
-6. Pair devices using the configured pairing process.
-7. Verify pull inventory, push inventory, customer lookup, kiosk order, fulfillment, and queue replay.
+5. Install Pug Checkout App on the counter checkout workstation.
+6. Let apps auto-discover the middleman; if blocked, enter `http://STORE-SERVER-IP:8787` manually.
+7. Pair devices using the configured pairing process.
+8. Verify pull inventory, push inventory, customer lookup, kiosk order, fulfillment, and queue replay.
 
 ## LAN Server SQLite
 

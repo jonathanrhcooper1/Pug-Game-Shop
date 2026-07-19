@@ -9,7 +9,7 @@ const distDir = resolve(root, "dist")
 const releaseDir = resolve(distDir, `the-pug-store-deliverables-${packageJson.version}`)
 const offlineBundleDir = resolve(root, "apps/offline-app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis")
 const fallbackOfflineBundleDir = resolve(root, "apps/offline-app/src-tauri/target/release/bundle/nsis")
-const deliverableNames = ["Pug Store App", "LAN Server + Pug Store App", "Kiosk Page"]
+const deliverableNames = ["Pug Store App", "LAN Server + Pug Store App", "Kiosk Page", "Pug Checkout App"]
 
 mkdirSync(distDir, { recursive: true })
 rmSync(releaseDir, { recursive: true, force: true })
@@ -20,6 +20,7 @@ run("npm.cmd", ["run", "package:wordpress-theme"])
 run("npm.cmd", ["run", "package:local-sync-server"])
 run("npm.cmd", ["run", "build:offline-app:windows"], { PUG_WINDOWS_APP_PROFILE: "store" })
 run("npm.cmd", ["run", "build:offline-app:windows"], { PUG_WINDOWS_APP_PROFILE: "kiosk" })
+run("npm.cmd", ["run", "build:offline-app:windows"], { PUG_WINDOWS_APP_PROFILE: "checkout" })
 
 const pluginZip = resolve(distDir, `tcg-store-platform-${packageJson.version}.zip`)
 const themeZip = resolve(distDir, `pug-arcade-commerce-v2-${packageJson.version}.zip`)
@@ -28,12 +29,14 @@ const documentationDir = resolve(root, "release-package")
 const pugStoreAppDir = resolve(releaseDir, "Pug Store App")
 const lanServerPlusAppDir = resolve(releaseDir, "LAN Server + Pug Store App")
 const kioskPageDir = resolve(releaseDir, "Kiosk Page")
+const checkoutAppDir = resolve(releaseDir, "Pug Checkout App")
 const lanWebsiteDir = resolve(lanServerPlusAppDir, "website")
 const lanDocumentationDir = resolve(lanServerPlusAppDir, "documentation")
 
 mkdirSync(pugStoreAppDir, { recursive: true })
 mkdirSync(lanServerPlusAppDir, { recursive: true })
 mkdirSync(kioskPageDir, { recursive: true })
+mkdirSync(checkoutAppDir, { recursive: true })
 mkdirSync(lanWebsiteDir, { recursive: true })
 
 copyRequired(pluginZip, resolve(lanWebsiteDir, basename(pluginZip)))
@@ -52,11 +55,14 @@ if (existsSync(documentationDir)) {
 
 const appInstaller = findNewestInstallerMatching([offlineBundleDir, fallbackOfflineBundleDir], "Pug Store App")
 const kioskInstaller = findNewestInstallerMatching([offlineBundleDir, fallbackOfflineBundleDir], "Pug Kiosk App")
+const checkoutInstaller = findNewestInstallerMatching([offlineBundleDir, fallbackOfflineBundleDir], "Pug Checkout App")
 const appInstallerFileName = `Pug Store App-${packageJson.version}.exe`
 const kioskInstallerFileName = `Pug Kiosk App-${packageJson.version}.exe`
+const checkoutInstallerFileName = `Pug Checkout App-${packageJson.version}.exe`
 const pugStoreAppManifest = buildPugStoreAppManifest(appInstaller)
 const lanServerPlusAppManifest = buildLanServerPlusAppManifest(appInstaller)
 const kioskPageManifest = buildKioskPageManifest(kioskInstaller)
+const checkoutAppManifest = buildCheckoutAppManifest(checkoutInstaller)
 
 if (appInstaller) {
   copyFileSync(appInstaller, resolve(pugStoreAppDir, appInstallerFileName))
@@ -65,6 +71,10 @@ if (appInstaller) {
 
 if (kioskInstaller) {
   copyFileSync(kioskInstaller, resolve(kioskPageDir, kioskInstallerFileName))
+}
+
+if (checkoutInstaller) {
+  copyFileSync(checkoutInstaller, resolve(checkoutAppDir, checkoutInstallerFileName))
 }
 
 writeFileSync(
@@ -87,6 +97,7 @@ writeFileSync(
   JSON.stringify(lanServerPlusAppManifest, null, 2) + "\n",
 )
 writeFileSync(resolve(kioskPageDir, "kiosk-page.install.json"), JSON.stringify(kioskPageManifest, null, 2) + "\n")
+writeFileSync(resolve(checkoutAppDir, "pug-checkout-app.install.json"), JSON.stringify(checkoutAppManifest, null, 2) + "\n")
 writeFileSync(
   resolve(pugStoreAppDir, "README.txt"),
   [
@@ -140,19 +151,34 @@ writeFileSync(
   ].join("\n"),
 )
 writeFileSync(
+  resolve(checkoutAppDir, "README.txt"),
+  [
+    "Pug Checkout App",
+    "",
+    "Use this deliverable on the checkout workstation for barcode scanning, customer selection, local store-credit redemption, and Square payment handoff.",
+    checkoutInstaller ? `Installer: ${checkoutInstallerFileName}` : "Installer missing: rerun npm.cmd run package:production-release after the checkout app build succeeds.",
+    "The checkout app opens fullscreen and connects to the same authoritative LAN server as the staff and kiosk apps.",
+    "It auto-discovers the LAN server over UDP port 8788. If discovery is blocked, enter the LAN server URL manually.",
+    "Square remains the payment-capture authority; the LAN ledger owns inventory and local store credit.",
+    "",
+  ].join("\n"),
+)
+writeFileSync(
   resolve(releaseDir, "README-FIRST.txt"),
   [
     "The Pug store deliverables",
     "",
-    "This package contains exactly three deliverables:",
+    "This package contains four deliverables:",
     "1. Pug Store App",
     "2. LAN Server + Pug Store App",
     "3. Kiosk Page",
+    "4. Pug Checkout App",
     "",
     "Recommended install order:",
     "1. Open LAN Server + Pug Store App, install/verify the website ZIPs, then start the LAN server on the in-store host machine.",
     "2. Install Pug Store App on staff stations.",
     "3. Install Kiosk Page on customer-facing kiosk stations.",
+    "4. Install Pug Checkout App on the counter checkout workstation.",
     "",
     "Connectivity:",
     "- Pug Store App auto-discovers the LAN server over UDP pug-local-sync-discovery-v1 on port 8788.",
@@ -176,6 +202,9 @@ writeFileSync(
     kioskInstaller
       ? `Bundled kiosk installer: ${kioskInstallerFileName}`
       : "Kiosk installer was not found. Rerun npm.cmd run package:production-release after the kiosk app build succeeds.",
+    checkoutInstaller
+      ? `Bundled checkout installer: ${checkoutInstallerFileName}`
+      : "Checkout installer was not found. Rerun npm.cmd run package:production-release after the checkout app build succeeds.",
     "",
   ].join("\n"),
 )
@@ -199,6 +228,7 @@ console.log(
       pugStoreAppPackage: pugStoreAppDir,
       lanServerPlusAppPackage: lanServerPlusAppDir,
       kioskPagePackage: kioskPageDir,
+      checkoutAppPackage: checkoutAppDir,
       deliverablesManifest: resolve(releaseDir, "deliverables.manifest.json"),
       autoDiscovery: "udp:pug-local-sync-discovery-v1:8788",
       manualMiddlemanUrlFallback: true,
@@ -301,6 +331,34 @@ function buildKioskPageManifest(installerPath) {
       "Add a card to the kiosk cart.",
       "Submit a pickup request and verify it reaches fulfillment.",
     ],
+  }
+}
+
+function buildCheckoutAppManifest(installerPath) {
+  return {
+    schema_version: 1,
+    deliverable: "Pug Checkout App",
+    version: packageJson.version,
+    installer: installerPath ? checkoutInstallerFileName : null,
+    launch_mode: "checkout",
+    build_mode: "checkout",
+    fullscreen: true,
+    decorations: false,
+    command_prompt_window_required: false,
+    requires_lan_server: true,
+    source_of_truth: "authoritative_lan_inventory_ledger",
+    payment_authority: "square",
+    local_credit_authority: "authoritative_lan_customer_credit_ledger",
+    auto_discovery: {
+      protocol: "pug-local-sync-discovery-v1",
+      transport: "udp",
+      port: 8788,
+      credentials_returned: false,
+    },
+    manual_fallback: {
+      supported: true,
+      example_url: "http://SERVER-IP:8787",
+    },
   }
 }
 

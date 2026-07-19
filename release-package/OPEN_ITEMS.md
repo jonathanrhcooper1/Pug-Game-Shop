@@ -3,9 +3,9 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
-Release date: 2026-06-17
-Last updated: 2026-06-17
+Version: 0.203.1
+Release date: 2026-07-18
+Last updated: 2026-07-18
 Document purpose: Transparent list of safe-for-production, blocked, and future enhancement items.
 Audience: Owner, manager, support technician
 ## Open Items

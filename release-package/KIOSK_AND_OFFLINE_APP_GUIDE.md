@@ -4,14 +4,14 @@ Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
 Version: 0.203.1
-Release date: 2026-06-17
+Release date: 2026-07-18
 Last updated: 2026-07-18
 Document purpose: Guide for the employee app, kiosk mode, local server, offline queue, pairing, and reconnect behavior.
 Audience: Owner, manager, staff, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
 ## Topology
 
-The employee app and kiosk communicate with the LAN middleman server. Its SQLite inventory ledger is authoritative for physical quantity, reservations, approved price, trade intake, and delivery state. WordPress/WooCommerce remains authoritative for online carts, payments, and orders. The LAN server publishes verified projections to WordPress and Square, ingests their sales/refunds idempotently, and safely queues work during outages.
+The employee, kiosk, and checkout apps communicate with the LAN middleman server. Its durable ledger is authoritative for inventory and local store credit. WordPress/WooCommerce projects online catalog and order facts, while Square projects POS catalog/count facts and owns captured payment facts.
 
 ## Modes
 
@@ -19,11 +19,12 @@ The employee app and kiosk communicate with the LAN middleman server. Its SQLite
 | --- | --- | --- |
 | Employee | Inventory, checkout, customers, trade-ins, fulfillment, reports, events, sync. | Staff/manager |
 | Kiosk Page | Fullscreen customer kiosk app for inventory lookup and order submission. | Customer |
-| Middleman server | Local cache, queue, auto-discovery, WordPress bridge, POS connector. | Support/admin |
+| Checkout | Barcode-driven counter sale, customer credit, and Square payment handoff. | Staff |
+| Middleman server | Authoritative inventory/credit ledger, durable queue, auto-discovery, WordPress bridge, and POS connector. | Support/admin |
 
 ## Release Deliverables
 
-The packaged handoff has exactly three deliverables: `Pug Store App`, `LAN Server + Pug Store App`, and `Kiosk Page`. The Kiosk Page deliverable includes a kiosk-only fullscreen Windows installer that connects to the same LAN server as the Pug Store App and does not expose staff screens.
+The packaged handoff has four deliverables: `Pug Store App`, `LAN Server + Pug Store App`, `Kiosk Page`, and `Pug Checkout App`. Kiosk is customer-only; Checkout is the counter sale surface. Both connect to the same authoritative LAN server and do not replace Square payment capture.
 
 ## Auto-Discovery And Manual Fallback
 

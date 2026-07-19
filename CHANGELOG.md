@@ -16,6 +16,11 @@ Detailed release notes are maintained in [docs/CHANGELOG.md](docs/CHANGELOG.md).
   21 final desktop/mobile staff, kiosk, checkout, reports, and diagnostics views.
 - Bumped WordPress, LAN, employee, kiosk, checkout, and Tauri release identity
   consistently to `0.203.1`.
+- Added `Pug Checkout App` as a separately compiled fullscreen Windows
+  installer and expanded the production handoff from three to four explicit
+  deliverables.
+- Regenerated the technical handoff at version `0.203.1` so its topology,
+  install order, and LAN-ledger authority model match the release code.
 
 - Rebuilt the production release package so the staff app, kiosk app, LAN
   server contract, tests, and release docs target `https://thepuggaming.com`

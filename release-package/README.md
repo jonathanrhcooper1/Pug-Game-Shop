@@ -3,9 +3,9 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
-Release date: 2026-06-17
-Last updated: 2026-06-17
+Version: 0.203.1
+Release date: 2026-07-18
+Last updated: 2026-07-18
 Document purpose: Entry point for the technical handover and production release package.
 Audience: Owner, administrator, support technician, and developer
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
@@ -19,13 +19,14 @@ Audience: Owner, administrator, support technician, and developer
 
 ## Installable Release Artifact
 
-The installable handoff is organized as exactly three deliverables:
+The installable handoff is organized as four deliverables:
 
 1. `Pug Store App`
 2. `LAN Server + Pug Store App`
 3. `Kiosk Page`
+4. `Pug Checkout App`
 
-The generated bundle is named `the-pug-store-deliverables-0.202.0.zip`. The LAN package contains the WordPress plugin ZIP, storefront theme ZIP, LAN server ZIP, Pug Store App installer, support documentation, manifests, and first-read instructions.
+The generated bundle is named `the-pug-store-deliverables-0.203.1.zip`. The LAN package contains the WordPress plugin ZIP, storefront theme ZIP, LAN server ZIP, Pug Store App installer, support documentation, manifests, and first-read instructions.
 
 ## Recommended Reading Order
 

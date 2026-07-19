@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url"
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
 const version = packageJson.version
-const releaseDate = "2026-06-17"
-const lastUpdated = "2026-06-17"
+const releaseDate = "2026-07-18"
+const lastUpdated = "2026-07-18"
 const projectName = "The Pug Trading-Card Store Platform"
 const creator = "Created by JC Electronics"
 
@@ -316,13 +316,14 @@ docs.set("release-package/README.md", header(
   ]),
 ) + section("Installable Release Artifact",
   [
-    "The installable handoff is organized as exactly three deliverables:",
+    "The installable handoff is organized as four deliverables:",
     "",
     "1. `Pug Store App`",
     "2. `LAN Server + Pug Store App`",
     "3. `Kiosk Page`",
+    "4. `Pug Checkout App`",
     "",
-    "The generated bundle is named `the-pug-store-deliverables-0.202.0.zip`. The LAN package contains the WordPress plugin ZIP, storefront theme ZIP, LAN server ZIP, Pug Store App installer, support documentation, manifests, and first-read instructions.",
+    `The generated bundle is named \`the-pug-store-deliverables-${version}.zip\`. The LAN package contains the WordPress plugin ZIP, storefront theme ZIP, LAN server ZIP, Pug Store App installer, support documentation, manifests, and first-read instructions.`,
   ].join("\n"),
 ) + section("Recommended Reading Order",
   steps([
@@ -350,7 +351,7 @@ docs.set("release-package/CLIENT_HANDOVER_GUIDE.md", header(
     "This guide summarizes the production system, owner responsibilities, support responsibilities, launch checks, and secure handoff process.",
   ].join("\n"),
 ) + section("Executive Summary",
-  "The platform connects the public WordPress/WooCommerce website, custom trading-card inventory plugin, in-store employee app, customer kiosk, LAN middleman server, serialized inventory model, ScryDex reference data, customer credit ledger, buylist/trade-in intake, event registration, and reporting. WordPress remains the source of truth for website inventory, online orders, customer-facing pages, and custom business tables. The local app and kiosk are designed to keep the store operating during network interruptions by caching data locally and replaying queued actions when connectivity returns.",
+  "The platform connects the public WordPress/WooCommerce website, custom trading-card inventory plugin, in-store employee app, customer kiosk, checkout app, LAN middleman server, serialized inventory model, ScryDex reference data, customer credit ledger, buylist/trade-in intake, event registration, and reporting. The LAN ledger is the inventory and local-credit authority. WordPress/WooCommerce remains authoritative for online carts, payments, orders, and customer-facing pages, while Square remains authoritative for captured POS payments. Apps cache safe read models and replay durable queued actions when connectivity returns.",
 ) + section("Major Capabilities",
   moduleSummaryTable(),
 ) + section("Environments",
@@ -418,7 +419,7 @@ docs.set("release-package/OWNER_OPERATIONS_GUIDE.md", header(
   "Daily owner procedures for operating and supervising the platform.",
   "Store owner and general manager",
 ) + credentialNotice() + section("Owner Dashboard Overview",
-  "The owner should treat the WordPress admin, WooCommerce reports, plugin reports, local app reports, sync logs, and payment/POS dashboards as one operational picture. The website is the source of truth; the app and kiosk provide fast in-store workflows and queue safely during outages.",
+  "The owner should treat the WordPress admin, WooCommerce reports, plugin reports, local app reports, sync logs, and payment/POS dashboards as one operational picture. The LAN ledger is the inventory and local-credit authority; WordPress/WooCommerce owns online order facts, and Square owns captured POS payment facts.",
 ) + section("Daily Opening Checklist",
   checklist([
     "Open the website and confirm public pages load.",
@@ -591,11 +592,12 @@ docs.set("release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md", header(
     "Run active sync verification and checkout/kiosk smoke tests.",
     "Record rollback points and owner approval.",
   ]),
-) + section("Three Deliverables",
+) + section("Four Deliverables",
   steps([
     "`Pug Store App` installs the staff app on store workstations.",
     "`LAN Server + Pug Store App` installs the LAN server on the in-store host and includes the app installer plus website ZIP dependencies.",
     "`Kiosk Page` installs the kiosk-only fullscreen app for customer inventory lookup and pickup requests.",
+    "`Pug Checkout App` installs the counter checkout surface for barcode scanning, customer credit, and Square payment handoff.",
   ]),
 ) + section("Offline App And LAN Server Installation",
   steps([
@@ -603,6 +605,7 @@ docs.set("release-package/INSTALLATION_AND_DEPLOYMENT_GUIDE.md", header(
     "Allow inbound LAN traffic to the configured server port and UDP discovery port.",
     "Install the Pug Store App on staff stations.",
     "Install Kiosk Page on customer-facing kiosk stations.",
+    "Install Pug Checkout App on the counter checkout workstation.",
     "Let apps auto-discover the middleman; if blocked, enter `http://STORE-SERVER-IP:8787` manually.",
     "Pair devices using the configured pairing process.",
     "Verify pull inventory, push inventory, customer lookup, kiosk order, fulfillment, and queue replay.",
@@ -711,16 +714,17 @@ docs.set("release-package/KIOSK_AND_OFFLINE_APP_GUIDE.md", header(
   "Guide for the employee app, kiosk mode, local server, offline queue, pairing, and reconnect behavior.",
   "Owner, manager, staff, support technician",
 ) + credentialNotice() + section("Topology",
-  "The employee app and kiosk communicate with the LAN middleman server. The LAN server communicates with WordPress. WordPress remains the source of truth, while the local server caches data and safely queues operations during outages.",
+  "The employee, kiosk, and checkout apps communicate with the LAN middleman server. Its durable ledger is authoritative for inventory and local store credit. WordPress/WooCommerce projects online catalog and order facts, while Square projects POS catalog/count facts and owns captured payment facts.",
 ) + section("Modes",
   table(["Mode", "Purpose", "User"],
     [
       ["Employee", "Inventory, checkout, customers, trade-ins, fulfillment, reports, events, sync.", "Staff/manager"],
       ["Kiosk Page", "Fullscreen customer kiosk app for inventory lookup and order submission.", "Customer"],
-      ["Middleman server", "Local cache, queue, auto-discovery, WordPress bridge, POS connector.", "Support/admin"],
+      ["Checkout", "Barcode-driven counter sale, customer credit, and Square payment handoff.", "Staff"],
+      ["Middleman server", "Authoritative inventory/credit ledger, durable queue, auto-discovery, WordPress bridge, and POS connector.", "Support/admin"],
     ]),
 ) + section("Release Deliverables",
-  "The packaged handoff has exactly three deliverables: `Pug Store App`, `LAN Server + Pug Store App`, and `Kiosk Page`. The Kiosk Page deliverable includes a kiosk-only fullscreen Windows installer that connects to the same LAN server as the Pug Store App and does not expose staff screens.",
+  "The packaged handoff has four deliverables: `Pug Store App`, `LAN Server + Pug Store App`, `Kiosk Page`, and `Pug Checkout App`. Kiosk is customer-only; Checkout is the counter sale surface. Both connect to the same authoritative LAN server and do not replace Square payment capture.",
 ) + section("Auto-Discovery And Manual Fallback",
   "Apps attempt auto-discovery using `pug-local-sync-discovery-v1` over UDP port `8788`. If the network blocks discovery, staff can manually enter the middleman URL, for example `http://STORE-SERVER-IP:8787`.",
 ) + section("Offline Behavior",
@@ -1330,7 +1334,7 @@ docs.set("release-package/CHANGELOG.md", header(
   table(["Type", "Summary"],
     [
       ["Added", "Complete technical handover, owner guide, admin/staff guide, kiosk/offline guide, connector guide, database guide, sync guide, pricing/inventory guide, credit/buylist guide, events guide, POS/payments guide, security guide, runbook, backup guide, QA checklist, credential handoff, code map, and source index."],
-      ["Changed", "Production release package builder now organizes the handoff into exactly three deliverables: Pug Store App, LAN Server + Pug Store App, and Kiosk Page."],
+      ["Changed", "Production release package builder now organizes the handoff into four deliverables: Pug Store App, LAN Server + Pug Store App, Kiosk Page, and Pug Checkout App."],
       ["Changed", "LAN server notes clarify that SQLite is provided by Node built-in `node:sqlite`; the package creates/uses `store-sync.sqlite` at runtime and does not ship or install a database file."],
       ["Fixed", "Release handoff now includes checksum and install-order documentation."],
       ["Security", "Credential documentation uses placeholders/masked examples only and explicitly prohibits committed secrets."],
@@ -1350,7 +1354,7 @@ docs.set("release-package/REVISION_LOG.md", header(
       ["docs/DATABASE_TABLES.md", "Schema reference requested.", "Documented custom table purposes and modules.", "Database", "None", "Docs only.", "Revert file."],
       ["scripts/package-production-release.mjs", "Full package must include docs/theme.", "Copies theme and documentation into production release bundle.", "Release packaging", "None", "Package contract run.", "Revert script and rerun package."],
       ["scripts/tests/production-release-package-contract.mjs", "Guard package contents.", "Added markers for theme and documentation.", "Packaging tests", "None", "Contract test run.", "Revert test."],
-      ["scripts/package-production-release.mjs", "Handoff must expose exactly three deliverables.", "Renamed output to Pug Store App, LAN Server + Pug Store App, and Kiosk Page with explicit manifests.", "Release packaging", "None", "Package contract run.", "Revert script and rerun package."],
+      ["scripts/package-production-release.mjs", "Handoff must expose four role-specific deliverables.", "Packaged Pug Store App, LAN Server + Pug Store App, Kiosk Page, and Pug Checkout App with explicit manifests.", "Release packaging", "None", "Package contract run.", "Revert script and rerun package."],
       ["release-package/*", "SQLite install question needed a package-backed answer.", "Documented that the LAN server uses Node built-in `node:sqlite`, creates or reuses `store-sync.sqlite`, and does not ship/install SQLite separately.", "Documentation", "None", "Docs/contract review.", "Revert docs."],
     ]),
 ))
@@ -1421,14 +1425,14 @@ docs.set("docs/RELEASE_NOTES.md", header(
   "Client-facing release notes for version handoff.",
   "Owner, manager, administrator, support technician",
 ) + credentialNotice() + section(`Release ${version}`,
-  "This release packages the production WordPress/WooCommerce trading-card store platform into exactly three deliverables: Pug Store App, LAN Server + Pug Store App, and Kiosk Page, with handover documentation prepared by JC Electronics.",
+  "This release packages the production WordPress/WooCommerce trading-card store platform into four deliverables: Pug Store App, LAN Server + Pug Store App, Kiosk Page, and Pug Checkout App, with handover documentation prepared by JC Electronics.",
 ) + section("Major Features",
   moduleSummaryTable(),
 ) + section("Installation Notes",
   list([
-    "Use `dist/the-pug-store-deliverables-0.202.0.zip` as the complete installable handoff.",
+    `Use \`dist/the-pug-store-deliverables-${version}.zip\` as the complete installable handoff.`,
     "Verify checksum before installation.",
-    "Start with the LAN Server + Pug Store App deliverable, then install Pug Store App and install Kiosk Page on the customer station.",
+    "Start with LAN Server + Pug Store App, then install Pug Store App on staff stations, Kiosk Page on customer stations, and Pug Checkout App on the counter workstation.",
     "Configure credentials through secure channels only.",
     "Run production active sync verification before owner signoff.",
   ]),

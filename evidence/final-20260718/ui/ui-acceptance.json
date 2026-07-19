@@ -1,0 +1,432 @@
+{
+  "status": "passed",
+  "generated_at_utc": "2026-07-19T02:29:57.332Z",
+  "base_url": "http://127.0.0.1:1420",
+  "screenshots": [
+    "01-login-desktop.png",
+    "03-inventory-desktop.png",
+    "04-trade-ins-desktop.png",
+    "05-scrydex-desktop.png",
+    "06-price-review-desktop.png",
+    "07-status-desktop.png",
+    "08-fulfillment-desktop.png",
+    "09-queue-desktop.png",
+    "09b-connector-delivery-diagnostics.png",
+    "10-events-desktop.png",
+    "11-reports-desktop.png",
+    "12-conflicts-desktop.png",
+    "13-customers-desktop.png",
+    "14-settings-desktop.png",
+    "16-kiosk-catalog-desktop.png",
+    "17-kiosk-cart-desktop.png",
+    "18-kiosk-order-sent-desktop.png",
+    "19-checkout-desktop.png",
+    "20-inventory-mobile.png",
+    "21-trade-in-mobile.png",
+    "22-kiosk-mobile.png"
+  ],
+  "findings": [
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "checkout-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-desktop",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "POST http://127.0.0.1:8787/sync/push returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/push)"
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "POST http://127.0.0.1:8787/sync/pull returned HTTP 409."
+    },
+    {
+      "severity": "warning",
+      "surface": "employee-mobile",
+      "message": "Browser resource error: Failed to load resource: the server responded with a status of 409 (Conflict) (http://127.0.0.1:8787/sync/pull)"
+    }
+  ],
+  "fatal_error": "",
+  "secrets_recorded": false
+}

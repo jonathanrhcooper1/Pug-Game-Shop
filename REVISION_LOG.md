@@ -14,6 +14,11 @@
   notes for reservation/availability ledger snapshots and replay audit.
 - Added live-safe webhook, Square, ScryDex, WordPress/WooCommerce, migration,
   reconciliation, and browser acceptance evidence.
+- Added a separately compiled Pug Checkout App installer and updated the
+  generated handoff from three packages to four role-specific deliverables.
+- Corrected generated architecture guidance so the LAN ledger is authoritative
+  for inventory/local credit, WooCommerce for online orders, and Square for
+  captured POS payments.
 - Updated all coordinated deliverable versions to 0.203.1.
 
 ### Why
@@ -31,6 +36,9 @@ repairs the actual schema shape.
 - `apps/wordpress-plugin/src/Version.php`
 - `scripts/test-wordpress-scrydex-webhook-roundtrip.ps1`
 - `scripts/run-final-local-ui-acceptance.mjs`
+- `scripts/generate-release-documentation.mjs`
+- `scripts/package-production-release.mjs`
+- `scripts/tests/production-release-package-contract.mjs`
 - `migrations/20260718_authoritative_inventory_sync_v2_*`
 - coordinated package/version manifests and release documentation
 
@@ -51,6 +59,8 @@ repairs the actual schema shape.
 - Test-site WooCommerce card, inventory, Square sale, and pickup fulfillment.
 - Live ScryDex represented-set validation and read-only connected reconciliation.
 - Production secret scan.
+- Final four-deliverable package build, manifest/host/archive scan, and SHA-256
+  checksum generation.
 
 ### Rollback Notes
 

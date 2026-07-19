@@ -3,15 +3,15 @@
 Created by JC Electronics
 
 Project: The Pug Trading-Card Store Platform
-Version: 0.202.0
-Release date: 2026-06-17
-Last updated: 2026-06-17
+Version: 0.203.1
+Release date: 2026-07-18
+Last updated: 2026-07-18
 Document purpose: Report on source review, comments/docblocks, and remaining developer review areas.
 Audience: Developer, support technician
 > Security notice: Real passwords, API keys, access tokens, SSH keys, payment keys, database passwords, and private credentials are not included in this documentation or repository. Use `SECURE_CREDENTIAL_HANDOFF.md` and `CREDENTIAL_INVENTORY_TEMPLATE.md` for secure transfer and rotation tracking.
 ## Review Scope
 
-Reviewed source package structure and indexed 1934 source/config/test files excluding generated dependencies, build caches, logs, release binaries, and local private environment files.
+Reviewed source package structure and indexed 1601 source/config/test files excluding generated dependencies, build caches, logs, release binaries, and local private environment files.
 
 ## Files Updated In This Pass
 

@@ -14,18 +14,34 @@ bulk connector write was performed by this validation pass.
 | WordPress unit, bootstrap, PHP lint | Pass: 1,089 tests, bootstrap smoke, 680 PHP files | `evidence/final-20260718/test-local-0.203.1.txt` |
 | Full coordinated suite | Pass: LAN, ledger, pricing, conditions/variants, Square, WordPress, fulfillment, trades, holds, ScryDex, packaging, Rust | `evidence/final-20260718/npm-test-0.203.1.txt` |
 | Local browser acceptance | Pass: 21 screenshots, zero errors, zero overflow | `evidence/final-20260718/ui/ui-acceptance.json` |
-| Secret scan | Pass: no production secret markers | `evidence/final-20260718/no-production-secrets-0.203.1.txt` |
+| Release package contract | Pass: four role-specific deliverables and required manifests/installers | `scripts/tests/production-release-package-contract.mjs` |
+| Secret scan | Pass: source and final package contain no production secret markers | `evidence/final-20260718/no-production-secrets-package-0.203.1.txt` |
 | Required test matrix | Pass: 12/12 required areas present | Included in the full-suite log |
 
-The 48 UI warnings are duplicate browser response/console reports for the
+The 80 UI warnings are duplicate browser response/console reports for the
 isolated visual fixture's expected HTTP 409 pull/push conflicts. There are no
 HTTP 500, page-error, or layout-overflow findings.
+
+## Release artifacts
+
+| Deliverable | Artifact |
+| --- | --- |
+| Complete handoff | `dist/the-pug-store-deliverables-0.203.1.zip` |
+| Staff workstation | `dist/the-pug-store-deliverables-0.203.1/Pug Store App/Pug Store App-0.203.1.exe` |
+| LAN authority plus staff app | `dist/the-pug-store-deliverables-0.203.1/LAN Server + Pug Store App/` |
+| Customer kiosk | `dist/the-pug-store-deliverables-0.203.1/Kiosk Page/Pug Kiosk App-0.203.1.exe` |
+| Counter checkout | `dist/the-pug-store-deliverables-0.203.1/Pug Checkout App/Pug Checkout App-0.203.1.exe` |
+
+SHA-256 values for the complete ZIP, component ZIPs, and all installers are in
+`dist/SHA256SUMS-0.203.1.txt`. The package scan found no real `.env` files,
+build caches, source-control metadata, preview/test hosts, or restricted secret
+markers.
 
 ## External reversible checks
 
 | Surface | Result | Cleanup |
 | --- | --- | --- |
-| Test WordPress plugin | Installed and active; database migrated from 17 to 18; all webhook relay columns/index present | Package ZIP removed from remote `/tmp` |
+| Test WordPress plugin | Final 0.203.1 ZIP installed and active; database schema 18; REST namespace, health, connector manifest, and noindex checks pass | Uploaded package ZIP removed after installation |
 | WooCommerce card lifecycle | Product/condition reservation and order conversion passed | Temporary product, order, reservation, and inventory removed |
 | Local pickup fulfillment | Paid pickup relay and fulfillment lifecycle passed | Temporary WordPress and LAN records removed |
 | LAN to WordPress inventory | Product creation and exact readback passed | Temporary product/inventory removed |
