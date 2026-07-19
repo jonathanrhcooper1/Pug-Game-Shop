@@ -16,32 +16,27 @@ const salePush = createWordPressInventorySalePush({
 
     return Response.json(
       {
-        status: "updated",
-        code: "inventory_projection_updated",
+        status: "sold",
+        code: "inventory_item_marked_sold",
         data: {
           inventory_id: 41,
           public_id: "wp-inventory-001",
           sku: "PUG-WP-CHARIZARD",
           barcode: "PUG-WP-CHARIZARD",
+          previous_status: "available",
           status: "sold",
-          quantity_on_hand: 0,
-          sale_price_minor_units: 25000,
-          minimum_sale_price_minor_units: 25000,
-          market_price_minor_units: 0,
-          sale_currency: "USD",
-          online_visibility: "visible",
-          kiosk_visibility: "visible",
-          pos_visibility: "visible",
+          date_sold: "2026-07-18 20:00:00",
           row_version: 8,
           woocommerce_product_id: 9001,
+          square_receipt_reference: "SQ-SALE-9001",
         },
         meta: {
+          idempotent: false,
           woocommerce_product_sync: {
             requested: true,
             synced: true,
-            verified: true,
             status: "executed",
-            product_ids: [9001],
+            execution: { product_ids: [9001] },
             payment_capture_deferred: true,
             square_inventory_deferred: true,
             errors: [],
@@ -79,11 +74,12 @@ const result = await salePush({
 })
 
 assert.equal(result.status, "ok")
-assert.equal(result.wordpress_code, "inventory_projection_updated")
+assert.equal(result.wordpress_code, "inventory_item_marked_sold")
 assert.equal(result.inventory.public_id, "wp-inventory-001")
 assert.equal(result.inventory.status, "sold")
-assert.equal(result.inventory.quantity_on_hand, 0)
+assert.equal(result.inventory.square_receipt_reference, "SQ-SALE-9001")
 assert.equal(result.readback_verified, true)
+assert.equal(result.wordpress_verification.checks.square_receipt_reference, true)
 assert.equal(result.woocommerce_product_sync.requested, true)
 assert.equal(result.woocommerce_product_sync.synced, true)
 assert.deepEqual(result.woocommerce_product_sync.product_ids, [9001])
@@ -91,15 +87,54 @@ assert.equal(result.square_payment_capture_supported, false)
 assert.equal(result.payment_capture_authority, "official_woocommerce_square_extension")
 assert.equal(result.credentials_synced_to_client, false)
 assert.equal(result.authorization_header_printed, false)
-assert.equal(observedRequest.url, "https://example.test/wp-json/tcg-store/v1/inventory-projections/wp-inventory-001")
+assert.equal(observedRequest.url, "https://example.test/wp-json/tcg-store/v1/inventory/wp-inventory-001/mark-sold")
 assert.equal(observedRequest.headers["idempotency-key"], "op-square-sale-001")
 assert.ok(observedRequest.headers.authorization.startsWith("Basic "))
 assert.equal(observedRequest.body.barcode, "PUG-WP-CHARIZARD")
 assert.equal(observedRequest.body.sale_price_minor_units, 25000)
-assert.equal(observedRequest.body.quantity_on_hand, 0)
-assert.equal(observedRequest.body.status, "sold")
+assert.equal(observedRequest.body.square_receipt_reference, "SQ-SALE-9001")
+assert.equal(observedRequest.body.square_order_id, "SQ-ORDER-9001")
+assert.equal(observedRequest.body.sold_by_user_id, "staff-front-counter")
 assert.equal(observedRequest.body.sync_woocommerce_product, true)
 assert.equal(observedRequest.body.production_write_approval, "woocommerce-product-sync")
+
+const unverifiedPush = createWordPressInventorySalePush({
+  websiteUrl: "https://example.test",
+  authHeader: "Bearer test-token",
+  fetcher: async () =>
+    Response.json(
+      {
+        status: "sold",
+        code: "inventory_item_marked_sold",
+        data: {
+          inventory_id: 41,
+          public_id: "wp-inventory-001",
+          status: "sold",
+          square_receipt_reference: "WRONG-RECEIPT",
+        },
+        meta: {
+          woocommerce_product_sync: { requested: true, synced: true, status: "executed" },
+        },
+      },
+      { status: 200 },
+    ),
+})
+
+const unverified = await unverifiedPush({
+  operation: {
+    operation_id: "op-unverified",
+    payload: {
+      inventory_public_id: "wp-inventory-001",
+      square_receipt_reference: "SQ-SALE-EXPECTED",
+    },
+  },
+  item: { wordpress_public_id: "wp-inventory-001" },
+})
+
+assert.equal(unverified.status, "blocked")
+assert.equal(unverified.code, "wordpress_inventory_sale_readback_unverified")
+assert.equal(unverified.readback_verified, false)
+assert.ok(unverified.errors.includes("square_receipt_reference"))
 
 const rejectedPush = createWordPressInventorySalePush({
   websiteUrl: "https://example.test",

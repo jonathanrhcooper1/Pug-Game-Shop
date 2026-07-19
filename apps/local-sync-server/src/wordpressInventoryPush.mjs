@@ -211,43 +211,77 @@ export function createWordPressInventorySalePush(options = {}) {
       }
     }
 
+    const endpoint = new URL(`${endpointBase}/inventory/${encodeURIComponent(identity)}/mark-sold`)
+    const body = inventorySaleBody(operation, item)
     const controller = typeof AbortController === "function" ? new AbortController() : null
     const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
 
     try {
-      const projection = await writeInventoryProjection({
-        endpointBase,
-        identity,
-        operation,
-        item: {
-          ...item,
-          status: nonNegativeInteger(operation?.payload?.quantity_on_hand ?? item?.quantity_on_hand) > 0 ? "available" : "sold",
+      const response = await fetcher(endpoint, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          authorization: authorizationHeader,
+          "content-type": "application/json",
+          "idempotency-key": String(operation?.operation_id ?? item?.public_id ?? ""),
         },
-        fetcher,
-        authorizationHeader,
+        body: JSON.stringify(body),
         signal: controller?.signal,
       })
+      const responseBody = await safeJson(response)
 
-      if (!projection.ok) {
-        return projectionFailure("wordpress_inventory_sale_rejected", projection)
+      if (!response?.ok || responseBody?.status !== "sold") {
+        return {
+          status: "blocked",
+          code: "wordpress_inventory_sale_rejected",
+          http_status: Number(response?.status ?? 0),
+          wordpress_code: String(responseBody?.code ?? ""),
+          message: "WordPress rejected this Square POS sale inventory finalization.",
+          errors: Array.isArray(responseBody?.errors) ? responseBody.errors : [],
+          credentials_synced_to_client: false,
+          authorization_header_printed: false,
+          endpoint: secretSafeEndpoint(endpoint),
+        }
+      }
+
+      const inventory = inventorySaleResponseData(responseBody)
+      const woocommerceProductSync = woocommerceProductSyncResponse(responseBody)
+      const verification = verifyInventorySale(identity, body, inventory, responseBody, woocommerceProductSync)
+
+      if (!verification.verified) {
+        return {
+          status: "blocked",
+          code: "wordpress_inventory_sale_readback_unverified",
+          http_status: Number(response.status ?? 200),
+          wordpress_code: String(responseBody.code ?? ""),
+          message: "WordPress did not return an exact verified Square sale readback.",
+          errors: verification.mismatches,
+          inventory,
+          wordpress_readback: inventory,
+          wordpress_verification: verification,
+          readback_verified: false,
+          credentials_synced_to_client: false,
+          authorization_header_printed: false,
+          endpoint: secretSafeEndpoint(endpoint),
+        }
       }
 
       return {
         status: "ok",
         code: "wordpress_inventory_item_marked_sold",
-        http_status: projection.httpStatus,
-        wordpress_code: projection.wordpressCode,
-        inventory: projection.inventory,
-        woocommerce_product_sync: projection.woocommerceProductSync,
-        readback_verified: projection.verification.verified,
-        wordpress_readback_verified: projection.verification.verified,
-        wordpress_readback: projection.inventory,
-        wordpress_verification: projection.verification,
+        http_status: Number(response.status ?? 200),
+        wordpress_code: String(responseBody.code ?? "inventory_item_marked_sold"),
+        inventory,
+        woocommerce_product_sync: woocommerceProductSync,
+        readback_verified: verification.verified,
+        wordpress_readback_verified: verification.verified,
+        wordpress_readback: inventory,
+        wordpress_verification: verification,
         square_payment_capture_supported: false,
         payment_capture_authority: "official_woocommerce_square_extension",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
-        endpoint: projection.endpoint,
+        endpoint: secretSafeEndpoint(endpoint),
       }
     } catch (error) {
       return {
@@ -256,7 +290,7 @@ export function createWordPressInventorySalePush(options = {}) {
         message: error instanceof Error ? error.message : "WordPress inventory sale push unavailable.",
         credentials_synced_to_client: false,
         authorization_header_printed: false,
-        endpoint: secretSafeEndpoint(new URL(`${endpointBase}/inventory-projections/${encodeURIComponent(identity)}`)),
+        endpoint: secretSafeEndpoint(endpoint),
       }
     } finally {
       if (timeout) {
@@ -638,6 +672,32 @@ function inventorySaleResponseData(body) {
     row_version: positiveInt(data.row_version),
     woocommerce_product_id: positiveInt(data.woocommerce_product_id),
     square_receipt_reference: String(data.square_receipt_reference ?? ""),
+  }
+}
+
+function verifyInventorySale(identity, expected, actual, responseBody, woocommerceProductSync) {
+  const idempotent = responseBody?.meta?.idempotent === true || responseBody?.code === "inventory_item_already_sold"
+  const checks = {
+    identity:
+      actual.public_id === cleanPublicIdentity(identity) ||
+      String(actual.inventory_id ?? "") === cleanPublicIdentity(identity),
+    status: actual.status === "sold",
+    square_receipt_reference:
+      actual.square_receipt_reference === cleanText(expected.square_receipt_reference),
+    woocommerce:
+      idempotent ||
+      (woocommerceProductSync.requested === true && woocommerceProductSync.synced === true),
+  }
+  const mismatches = Object.entries(checks)
+    .filter(([, matched]) => !matched)
+    .map(([field]) => field)
+
+  return {
+    verified: mismatches.length === 0,
+    checks,
+    mismatches,
+    idempotent,
+    source_of_truth: "local_sync_server",
   }
 }
 
