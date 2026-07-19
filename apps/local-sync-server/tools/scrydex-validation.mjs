@@ -176,6 +176,8 @@ export async function runScryDexValidation(options = {}) {
     passed_card_count: 0,
     warning_card_count: 0,
     failed_card_count: 0,
+    quarantined_card_count: 0,
+    unsafe_failed_card_count: 0,
     empty_set_count: 0,
     provider_error_count: 0,
     expansion_listing_truncated_count: 0,
@@ -287,7 +289,10 @@ export async function runScryDexValidation(options = {}) {
           summary.sampled_card_count += 1
           if (row.validation_status === "pass") summary.passed_card_count += 1
           if (row.validation_status === "warning") summary.warning_card_count += 1
-          if (row.validation_status === "fail") summary.failed_card_count += 1
+          if (row.validation_status === "fail") {
+            summary.failed_card_count += 1
+            if (row.final_publication_decision === "manual_review") summary.quarantined_card_count += 1
+          }
           await writeCsvRow(writer, csvValues(row))
         }
       }
@@ -296,8 +301,10 @@ export async function runScryDexValidation(options = {}) {
     await closeWriter(writer)
   }
 
+  summary.unsafe_failed_card_count = Math.max(0, summary.failed_card_count - summary.quarantined_card_count)
+  summary.manual_review_required = summary.quarantined_card_count > 0
   if (
-    summary.failed_card_count > 0 ||
+    summary.unsafe_failed_card_count > 0 ||
     summary.provider_error_count > 0 ||
     summary.expansion_listing_truncated_count > 0
     || summary.represented_set_unresolved_count > 0
@@ -840,30 +847,53 @@ function representedCatalogSets(catalogRows, inventoryRows) {
   const sets = new Map()
   const referenceSetByProviderCardId = new Map()
   for (const row of catalogRows) {
-    const providerCardId = cleanText(row.provider_card_id ?? row.providerCardId)
-    const providerSetId = cleanText(row.provider_set_id ?? row.expansion_id ?? row.set_id)
+    const providerCardId = firstCleanText(row.provider_card_id, row.providerCardId)
+    const providerSetId = firstCleanText(
+      row.provider_set_id,
+      row.expansion_id,
+      row.set_id,
+      providerSetIdFromCardId(providerCardId),
+    )
     if (providerCardId && providerSetId) referenceSetByProviderCardId.set(providerCardId, providerSetId)
   }
 
   for (const [source, rows] of [["catalog", catalogRows], ["inventory", inventoryRows]]) {
     for (const row of rows) {
-    const game = cleanGame(row.game)
-    const providerCardId = cleanText(row.provider_card_id ?? row.providerCardId)
-    const providerSetId = cleanText(
-      row.provider_set_id ?? row.expansion_id ?? row.set_id ?? referenceSetByProviderCardId.get(providerCardId),
-    )
-    const setName = cleanText(row.set_name ?? row.name)
-    const setCode = cleanText(row.set_code ?? row.code)
-    if (source === "inventory" && !providerCardId) continue
-    if (!game || (!providerSetId && !setName && !setCode)) continue
-    const key = [game, providerSetId || normalizeComparable(setCode) || normalizeComparable(setName)].join("|")
-    if (!sets.has(key)) sets.set(key, { game, providerSetId, setName, setCode })
+      const game = cleanGame(row.game)
+      const providerCardId = firstCleanText(row.provider_card_id, row.providerCardId)
+      const providerSetId = firstCleanText(
+        row.provider_set_id,
+        row.expansion_id,
+        row.set_id,
+        referenceSetByProviderCardId.get(providerCardId),
+        providerSetIdFromCardId(providerCardId),
+      )
+      const setName = cleanText(row.set_name ?? row.name)
+      const setCode = cleanText(row.set_code ?? row.code)
+      if (source === "inventory" && !providerCardId) continue
+      if (!game || (!providerSetId && !setName && !setCode)) continue
+      const key = [game, providerSetId || normalizeComparable(setCode) || normalizeComparable(setName)].join("|")
+      if (!sets.has(key)) sets.set(key, { game, providerSetId, setName, setCode })
     }
   }
   return [...sets.values()].sort((left, right) => compareText(
     `${left.game}|${left.providerSetId}|${left.setCode}|${left.setName}`,
     `${right.game}|${right.providerSetId}|${right.setCode}|${right.setName}`,
   ))
+}
+
+function providerSetIdFromCardId(value) {
+  const providerCardId = cleanText(value)
+  const separator = providerCardId.lastIndexOf("-")
+  return separator > 0 ? providerCardId.slice(0, separator) : ""
+}
+
+function firstCleanText(...values) {
+  for (const value of values) {
+    const text = cleanText(value)
+    if (text) return text
+  }
+  return ""
 }
 
 function selectRepresentedExpansionIds(providerExpansionSets, representedSets) {

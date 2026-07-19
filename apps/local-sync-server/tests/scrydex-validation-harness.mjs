@@ -84,7 +84,10 @@ async function testExpansionAliasAndLanguageNormalization() {
   const localRow = {
     ...fixture.local_catalog_rows.find((row) => row.provider_card_id === providerCard.id),
     provider_set_id: "",
-    set_code: "FXA",
+    expansion_id: "",
+    set_id: "",
+    set_name: "",
+    set_code: "",
     language: "EN",
     finish: "normal",
   }
