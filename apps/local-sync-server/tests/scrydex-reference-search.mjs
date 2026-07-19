@@ -566,6 +566,22 @@ try {
   assert.equal(variantPriceIntake.status, "ok")
   assert.equal(variantPriceIntake.item.provider_variant_id, "price-test-extended")
 
+  const contaminatedMappingIntake = await store.createInventoryIntake(auth.session.token, {
+    card_name: "Sealed Product Box",
+    set_name: "Trade-In Intake",
+    game: "pokemon",
+    condition: "Near Mint",
+    provider_card_id: "price-test-001",
+    provider_variant_id: "price-test-extended",
+    finish: "foil",
+    price_minor_units: 2750,
+    minimum_sale_price_minor_units: 2000,
+    online_visibility: "visible",
+    kiosk_visibility: "visible",
+    pos_visibility: "visible",
+  })
+  assert.equal(contaminatedMappingIntake.status, "ok")
+
   const bulkReviewIntake = await store.createInventoryIntake(auth.session.token, {
     card_name: "Variant Price Test",
     set_name: "Variant Set",
@@ -594,6 +610,16 @@ try {
   assert.equal(variantReprice.inventory_reprice.changed_count, 0)
   assert.ok(variantReprice.inventory_reprice.price_review_required_count >= 1)
   assert.equal(variantReprice.inventory_reprice.floor_clamped_count, 0)
+
+  const contaminatedMappingInventory = store.searchInventory({ query: "Sealed Product Box" })
+  assert.equal(contaminatedMappingInventory.status, "ok")
+  assert.equal(contaminatedMappingInventory.items[0].price_minor_units, 2800)
+  const contaminatedMappingReview = store.listPriceReviews(auth.session.token, { status: "pending" }).reviews.find(
+    (review) => review.inventory_item?.card_name === "Sealed Product Box",
+  )
+  assert.ok(contaminatedMappingReview)
+  assert.equal(contaminatedMappingReview.reason_code, "reference_identity_mismatch")
+  assert.equal(contaminatedMappingReview.candidate_price_minor_units, 2800)
 
   const priceReviews = store.listPriceReviews(auth.session.token, { status: "pending" })
   assert.equal(priceReviews.status, "ok")

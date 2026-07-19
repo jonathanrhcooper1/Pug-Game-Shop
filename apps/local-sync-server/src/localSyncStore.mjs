@@ -17728,10 +17728,15 @@ function inventoryReferenceEnrichment(referenceCards, draft = {}, referenceLooku
   const card = matches[0]?.card
 
   if (!card) {
-    return emptyInventoryReferenceEnrichment()
+    return emptyInventoryReferenceEnrichment(
+      requestedProviderCardId ? "reference_identity_mismatch" : "reference_card_not_found",
+    )
   }
 
   const variant = inventoryReferenceVariant(card, draft)
+  if (inventoryReferenceVariantIdentityMismatch(variant, draft)) {
+    return emptyInventoryReferenceEnrichment("reference_identity_mismatch")
+  }
   const priceSelection = inventoryReferencePriceSelection(card, draft)
   const pricePoint = priceSelection.status === "ok" ? priceSelection.point : null
   const usdPricePoint = cleanCurrency(priceSelection.source_currency) === "USD" ? pricePoint : null
@@ -17763,7 +17768,7 @@ function inventoryReferenceEnrichment(referenceCards, draft = {}, referenceLooku
   }
 }
 
-function emptyInventoryReferenceEnrichment() {
+function emptyInventoryReferenceEnrichment(reasonCode = "reference_card_not_found") {
   return {
     provider_card_id: "",
     reference_variant_id: null,
@@ -17778,7 +17783,7 @@ function emptyInventoryReferenceEnrichment() {
     image_url: "",
     back_image_url: "",
     price_minor_units: 0,
-    price_selection: { status: "review_required", reason_code: "reference_card_not_found" },
+    price_selection: { status: "review_required", reason_code: reasonCode },
     source_provider: "scrydex",
     source_record_id: "",
     source_observed_at_utc: "",
@@ -17797,6 +17802,18 @@ function inventoryReferenceMatchScore(card, draft = {}) {
 
   if (requestedProviderCardId) {
     if (cardProviderId !== requestedProviderCardId) {
+      return 0
+    }
+
+    if (normalizedNeedle && cardName && cardName !== normalizedNeedle) {
+      return 0
+    }
+
+    if (setNeedle && !genericInventorySetName(setNeedle) && !setText.includes(setNeedle)) {
+      return 0
+    }
+
+    if (numberNeedle && numberText && !numberText.includes(numberNeedle)) {
       return 0
     }
 
@@ -17941,10 +17958,60 @@ function genericInventorySetName(value) {
     normalized.includes("singles") ||
     normalized.includes("square category") ||
     normalized.includes("manual intake") ||
+    normalized.includes("trade in intake") ||
+    normalized.includes("intake queue") ||
     normalized === "pokemon" ||
     normalized === "magic the gathering" ||
     normalized === "one piece" ||
     normalized === "mtg"
+}
+
+function inventoryReferenceVariantIdentityMismatch(variant, draft = {}) {
+  if (!variant) {
+    return false
+  }
+
+  const requestedLanguage = normalizeCardLanguage(draft.language)
+  const matchedLanguage = normalizeCardLanguage(variant.language)
+  if (requestedLanguage && matchedLanguage && requestedLanguage !== matchedLanguage) {
+    return true
+  }
+
+  const requestedFinish = normalizeCardFinish(draft.finish)
+  const matchedFinish = normalizeCardFinish(variant.finish ?? variant.printing ?? variant.variant)
+  return Boolean(requestedFinish && matchedFinish && requestedFinish !== matchedFinish)
+}
+
+function normalizeCardLanguage(value) {
+  const normalized = cleanScryDexSearchText(value).replace(/\s+/g, "")
+  const aliases = {
+    en: "english",
+    eng: "english",
+    english: "english",
+    ja: "japanese",
+    jp: "japanese",
+    jpn: "japanese",
+    japanese: "japanese",
+  }
+  return aliases[normalized] ?? normalized
+}
+
+function normalizeCardFinish(value) {
+  const normalized = cleanScryDexSearchText(value).replace(/\s+/g, "")
+  const aliases = {
+    normal: "nonfoil",
+    nonfoil: "nonfoil",
+    regular: "nonfoil",
+    standard: "nonfoil",
+    foil: "foil",
+    holo: "foil",
+    holofoil: "foil",
+    reverse: "reversefoil",
+    reversefoil: "reversefoil",
+    reverseholo: "reversefoil",
+    reverseholofoil: "reversefoil",
+  }
+  return aliases[normalized] ?? normalized
 }
 
 function minorUnits(value) {

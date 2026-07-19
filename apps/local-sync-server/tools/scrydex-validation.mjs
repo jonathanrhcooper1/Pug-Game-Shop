@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { createScryDexCatalogIndexer } from "../src/scrydexCatalogIndexer.mjs"
+import { createExchangeRateProvider } from "../src/exchangeRateProvider.mjs"
 import {
   calculateAutomaticSalePrice,
   convertSourcePriceToUsd,
@@ -179,6 +180,7 @@ export async function runScryDexValidation(options = {}) {
     provider_error_count: 0,
     expansion_listing_truncated_count: 0,
     provider_request_method: "GET",
+    jpy_fx_quote_status: objectValue(options.fxQuotes)?.JPY ? "available" : "unavailable",
     database_writes: false,
     credentials_printed: false,
   }
@@ -217,8 +219,12 @@ export async function runScryDexValidation(options = {}) {
       }
 
       const expansionIds = uniqueSortedIds(expansionResult.expansion_result?.provider_set_ids)
+      const providerSets = validObjects(expansionResult.expansion_result?.provider_sets)
       const gameRepresentedSets = representedSets.filter((set) => set.game === game)
-      const selection = selectRepresentedExpansionIds(expansionIds, gameRepresentedSets)
+      const selection = selectRepresentedExpansionIds(
+        providerSets.length > 0 ? providerSets : expansionIds,
+        gameRepresentedSets,
+      )
       const selectedExpansionIds = gameRepresentedSets.length > 0 ? selection.expansionIds : expansionIds
 
       for (const unresolved of selection.unresolved) {
@@ -538,10 +544,10 @@ function validateCard(card, context) {
   if (expectedReferenceVariantId && matchedReferenceVariantId && expectedReferenceVariantId !== matchedReferenceVariantId) {
     failureCodes.push("reference_variant_mismatch")
   }
-  if (expectedLanguage && matchedLanguage && normalizeComparable(expectedLanguage) !== normalizeComparable(matchedLanguage)) {
+  if (expectedLanguage && matchedLanguage && normalizeLanguage(expectedLanguage) !== normalizeLanguage(matchedLanguage)) {
     failureCodes.push("language_mismatch")
   }
-  if (expectedFinish && matchedFinish && normalizeComparable(expectedFinish) !== normalizeComparable(matchedFinish)) {
+  if (expectedFinish && matchedFinish && normalizeFinish(expectedFinish) !== normalizeFinish(matchedFinish)) {
     failureCodes.push("finish_mismatch")
   }
   if (expectedTreatment && matchedTreatment && normalizeComparable(expectedTreatment) !== normalizeComparable(matchedTreatment)) {
@@ -643,7 +649,7 @@ function validateCard(card, context) {
     percent_change_basis_points: calculation
       ? priceChangeBasisPoints(currentPriceMinorUnits, calculation.candidate_price_minor_units)
       : "",
-    final_publication_decision: decision,
+    final_publication_decision: failureCodes.length > 0 ? "manual_review" : decision,
     price_observed_at_utc: selection?.observed_at_utc || cleanText(card?.price_observed_at_utc),
     catalog_source: cleanText(expected?.catalog_source) || "scrydex_provider_validation",
     validation_status: failureCodes.length > 0 ? "fail" : warningCodes.length > 0 ? "warning" : "pass",
@@ -832,14 +838,27 @@ function readTableIfPresent(database, tableName) {
 
 function representedCatalogSets(catalogRows, inventoryRows) {
   const sets = new Map()
-  for (const row of [...catalogRows, ...inventoryRows]) {
-    const game = cleanGame(row.game)
+  const referenceSetByProviderCardId = new Map()
+  for (const row of catalogRows) {
+    const providerCardId = cleanText(row.provider_card_id ?? row.providerCardId)
     const providerSetId = cleanText(row.provider_set_id ?? row.expansion_id ?? row.set_id)
+    if (providerCardId && providerSetId) referenceSetByProviderCardId.set(providerCardId, providerSetId)
+  }
+
+  for (const [source, rows] of [["catalog", catalogRows], ["inventory", inventoryRows]]) {
+    for (const row of rows) {
+    const game = cleanGame(row.game)
+    const providerCardId = cleanText(row.provider_card_id ?? row.providerCardId)
+    const providerSetId = cleanText(
+      row.provider_set_id ?? row.expansion_id ?? row.set_id ?? referenceSetByProviderCardId.get(providerCardId),
+    )
     const setName = cleanText(row.set_name ?? row.name)
     const setCode = cleanText(row.set_code ?? row.code)
+    if (source === "inventory" && !providerCardId) continue
     if (!game || (!providerSetId && !setName && !setCode)) continue
     const key = [game, providerSetId || normalizeComparable(setCode) || normalizeComparable(setName)].join("|")
     if (!sets.has(key)) sets.set(key, { game, providerSetId, setName, setCode })
+    }
   }
   return [...sets.values()].sort((left, right) => compareText(
     `${left.game}|${left.providerSetId}|${left.setCode}|${left.setName}`,
@@ -847,10 +866,24 @@ function representedCatalogSets(catalogRows, inventoryRows) {
   ))
 }
 
-function selectRepresentedExpansionIds(providerExpansionIds, representedSets) {
+function selectRepresentedExpansionIds(providerExpansionSets, representedSets) {
+  const providerSets = providerExpansionSets.map((value) => objectValue(value)
+    ? {
+        id: cleanText(value.id ?? value.provider_set_id ?? value.set_id),
+        name: cleanText(value.name ?? value.set_name ?? value.title),
+        code: cleanText(value.code ?? value.set_code),
+      }
+    : { id: cleanText(value), name: "", code: "" })
+    .filter((set) => set.id)
+  const providerExpansionIds = uniqueValues(providerSets.map((set) => set.id)).sort(compareText)
   if (representedSets.length === 0) return { expansionIds: providerExpansionIds, unresolved: [] }
 
-  const providerIds = new Map(providerExpansionIds.map((id) => [normalizeComparable(id), id]))
+  const providerIds = new Map()
+  for (const set of providerSets) {
+    for (const alias of uniqueValues([set.id, set.code, set.name]).map(normalizeComparable).filter(Boolean)) {
+      if (!providerIds.has(alias)) providerIds.set(alias, set.id)
+    }
+  }
   const expansionIds = []
   const unresolved = []
   for (const set of representedSets) {
@@ -858,8 +891,6 @@ function selectRepresentedExpansionIds(providerExpansionIds, representedSets) {
     const matched = candidates.map(normalizeComparable).map((key) => providerIds.get(key)).find(Boolean)
     if (matched) {
       expansionIds.push(matched)
-    } else if (set.providerSetId) {
-      expansionIds.push(set.providerSetId)
     } else {
       unresolved.push(set)
     }
@@ -1033,6 +1064,38 @@ function sourceVariantIdentity(variant, selection) {
 
 function normalizeComparable(value) {
   return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, "")
+}
+
+function normalizeLanguage(value) {
+  const normalized = normalizeComparable(value)
+  const aliases = {
+    en: "english",
+    eng: "english",
+    english: "english",
+    ja: "japanese",
+    jp: "japanese",
+    jpn: "japanese",
+    japanese: "japanese",
+  }
+  return aliases[normalized] ?? normalized
+}
+
+function normalizeFinish(value) {
+  const normalized = normalizeComparable(value)
+  const aliases = {
+    normal: "nonfoil",
+    nonfoil: "nonfoil",
+    regular: "nonfoil",
+    standard: "nonfoil",
+    foil: "foil",
+    holo: "foil",
+    holofoil: "foil",
+    reverse: "reversefoil",
+    reversefoil: "reversefoil",
+    reverseholo: "reversefoil",
+    reverseholofoil: "reversefoil",
+  }
+  return aliases[normalized] ?? normalized
 }
 
 function validObjects(value) {
@@ -1362,6 +1425,18 @@ async function main() {
 
     apiKey = firstEnv("SCRYDEX_API_KEY", "PUG_SCRYDEX_API_KEY")
     teamId = firstEnv("SCRYDEX_TEAM_ID", "PUG_SCRYDEX_TEAM_ID")
+    const exchangeRateProvider = createExchangeRateProvider({
+      baseUrl: firstEnv("PUG_FX_PROVIDER_BASE_URL", "LOCAL_SYNC_FX_PROVIDER_BASE_URL"),
+      provider: firstEnv("PUG_FX_PROVIDER", "LOCAL_SYNC_FX_PROVIDER") || "ECB",
+      timeoutMs: firstEnv("PUG_FX_PROVIDER_TIMEOUT_MS", "LOCAL_SYNC_FX_PROVIDER_TIMEOUT_MS"),
+    })
+    const jpyFxQuote = await exchangeRateProvider({ source_currency: "JPY", target_currency: "USD" })
+    const maxFxAgeHours = boundedInteger(
+      firstEnv("PUG_FX_MAX_AGE_HOURS", "LOCAL_SYNC_FX_MAX_AGE_HOURS"),
+      1,
+      720,
+      96,
+    )
     const summary = await runScryDexValidation({
       ...cli,
       apiKey,
@@ -1369,6 +1444,8 @@ async function main() {
       baseUrl: cli.baseUrl || firstEnv("SCRYDEX_BASE_URL", "PUG_SCRYDEX_BASE_URL"),
       timeoutMs: firstEnv("SCRYDEX_CATALOG_TIMEOUT_MS", "PUG_SCRYDEX_CATALOG_TIMEOUT_MS"),
       databasePath: cli.databasePath || firstEnv("LOCAL_SYNC_SQLITE_PATH", "PUG_LOCAL_SYNC_DB"),
+      fxQuotes: jpyFxQuote ? { JPY: jpyFxQuote } : {},
+      maxFxAgeMs: maxFxAgeHours * 60 * 60 * 1000,
     })
     console.log(JSON.stringify(summary, null, 2))
     if (summary.status !== "ok") process.exitCode = 1

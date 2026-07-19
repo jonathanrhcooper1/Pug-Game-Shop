@@ -57,7 +57,7 @@
     "inventory:prepare-pug-grading-singles": "node scripts/prepare-pug-grading-singles-import.mjs",
     "inventory:import-square-catalog-local": "node scripts/import-square-catalog-local-inventory.mjs",
     "scrydex:live-smoke": "node scripts/scrydex-live-smoke.mjs",
-    "scrydex:validate": "npm --prefix apps/local-sync-server run ops:validate-scrydex",
+    "scrydex:validate": "node apps/local-sync-server/tools/scrydex-validation.mjs",
     "sync:reconcile": "npm --prefix apps/local-sync-server run ops:reconcile",
     "square:live-reversible-smoke": "node scripts/live-square-reversible-smoke.mjs",
     "test-data:setup": "node scripts/test-data/setup-pug-sanitized-e2e-fixtures.mjs",

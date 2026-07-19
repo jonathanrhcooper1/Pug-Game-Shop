@@ -123,6 +123,7 @@ export function createScryDexCatalogIndexer(options = {}) {
 
 async function fetchExpansionPages({ fetcher, baseUrl, apiKey, teamId, timeoutMs, maxRetries, game, pageSize, maxPages, onProgress }) {
   const providerSetIds = []
+  const providerSetsById = new Map()
   let providerRequestCount = 0
   let rowCount = 0
   let continuationAvailable = false
@@ -183,6 +184,12 @@ async function fetchExpansionPages({ fetcher, baseUrl, apiKey, teamId, timeoutMs
       const id = cleanText(row.id ?? row.provider_set_id ?? row.set_id)
       if (id) {
         providerSetIds.push(id)
+        const current = providerSetsById.get(id) ?? { id, name: "", code: "" }
+        providerSetsById.set(id, {
+          id,
+          name: current.name || cleanText(row.name ?? row.set_name ?? row.title),
+          code: current.code || cleanText(row.code ?? row.set_code),
+        })
       }
     }
 
@@ -199,6 +206,7 @@ async function fetchExpansionPages({ fetcher, baseUrl, apiKey, teamId, timeoutMs
     page_count: lastPage,
     row_count: rowCount,
     provider_set_ids: [...new Set(providerSetIds)],
+    provider_sets: [...providerSetsById.values()],
     continuation_available: continuationAvailable && lastPage >= maxPages,
     database_writes_deferred: true,
     provider_body_logged: false,

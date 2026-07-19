@@ -20,6 +20,7 @@ try {
   await testDeterministicStreamingValidation()
   await testTwoPageTwoHundredCardCap()
   await testRepresentedLocalCatalogSetScoping()
+  await testExpansionAliasAndLanguageNormalization()
   await testSanitizedFixtureReportGeneration()
   await testRetryAfterRateLimitHandling()
   await testRemainingAndResetRateLimitHandling()
@@ -61,6 +62,50 @@ async function testRepresentedLocalCatalogSetScoping() {
   assert.equal(summary.set_count, 1)
   assert.equal(summary.sampled_card_count, 2)
   assert.ok(cardRequests.length > 0)
+  assert.ok(cardRequests.every((path) => path.includes("/fixture-set-alpha/cards")))
+}
+
+async function testExpansionAliasAndLanguageNormalization() {
+  const cardRequests = []
+  const providerCard = structuredClone(fixture.cards_by_expansion["fixture-set-alpha"][0])
+  providerCard.variants[0].language = "English"
+  providerCard.variants[0].finish = "regular"
+  const fetcher = async (url) => {
+    const endpoint = new URL(String(url))
+    const page = Number(endpoint.searchParams.get("page"))
+    const pageSize = Number(endpoint.searchParams.get("page_size"))
+    if (endpoint.pathname === "/pokemon/v1/expansions") {
+      return jsonResponse({ data: pageSlice(fixture.expansions, page, pageSize) })
+    }
+    cardRequests.push(endpoint.pathname)
+    const expansionId = decodeURIComponent(endpoint.pathname.match(/expansions\/([^/]+)\/cards$/)?.[1] ?? "")
+    return jsonResponse({ data: pageSlice(expansionId === "fixture-set-alpha" ? [providerCard] : [], page, pageSize) })
+  }
+  const localRow = {
+    ...fixture.local_catalog_rows.find((row) => row.provider_card_id === providerCard.id),
+    provider_set_id: "",
+    set_code: "FXA",
+    language: "EN",
+    finish: "normal",
+  }
+  const summary = await runScryDexValidation({
+    apiKey: "alias-fixture-key",
+    teamId: "alias-fixture-team",
+    baseUrl: "https://scrydex.example.test",
+    fetcher,
+    games: ["pokemon"],
+    catalogRows: [localRow],
+    inventoryRows: [],
+    cardsPerSet: 200,
+    outputPath: join(temporaryDirectory, "expansion-alias.csv"),
+    requestsPerSecond: 99,
+    sleep: async () => {},
+  })
+
+  assert.equal(summary.status, "ok")
+  assert.equal(summary.represented_set_unresolved_count, 0)
+  assert.equal(summary.set_count, 1)
+  assert.equal(summary.failed_card_count, 0)
   assert.ok(cardRequests.every((path) => path.includes("/fixture-set-alpha/cards")))
 }
 
